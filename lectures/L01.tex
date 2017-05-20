@@ -1,0 +1,102 @@
+\include{header}
+
+\begin{document}
+
+\lecture{ 1 --- Database Systems }{\term}{Jeff Zarnett}
+
+\section*{Databases and Database Systems}
+
+Databases and database systems are everywhere. It is safe to say that it would not be possible you to read this pdf (or attend the lecture in which it is used) without the involvement of databases. They store data in an orderly fashion and allow for its retrieval at a later date. Thus a database keeps track of what students are attending the university now, who is enrolled in what course, what PDF files are associated with what term's offering of the course, and so on. The more traditional examples relate to everyday life for a common person: banking, airline reservations, e-commerce websites...
+
+A database is by no means the only way to store data; data may be stored in any format one wishes. Professors, for example, are notorious for storing their data in large unorganized piles of paper in their offices. Simple text files are often used to record data. A surprising amount of the world operates on the basis of Microsoft Excel spreadsheets. This is not because of the mathematical functions or intelligence of Excel but rather the gridlines. Seriously.
+
+For small amounts of data it may not matter very much that the data is not structured and not organized. For larger amounts of data, this quickly becomes impractical. Some sort of structure is needed and the first approach to dealing with this was to use files. Programs stored data in files and manipulated those files. Suppose a simple example from~\cite{dsc}, about keeping track of students at university.
+
+Assuming there are files for students, instructors, courses, et cetera, then we need programs (or functionality of a single program) to add students, add instructors, add courses, register students for courses, generate class rosters, assign grades to students, generate transcripts... As time goes on, new functionality is added and the functionality is extended and changed.
+
+Files for data storage have some serious drawbacks:
+\begin{itemize}
+	\item \textbf{Data Redundancy:} The same data may be duplicated (appear in more than one location in the files).
+	\item \textbf{Data Inconsistency:} Copies of duplicate data may not agree (e.g., an address update for a person may not be reflected in all copies).
+	\item \textbf{Data Isolation:} Data can be spread over lots of files and hard to get together to find the information you want.
+	\item \textbf{Integrity Problems:} There are real world rules that need to be respected, such as the pieces of inventory in stock cannot become negative; files don't support rules.
+	\item \textbf{Atomicity Problems:} Updates to data should be atomic: succeed completely or it should be as if it did not happen at all. File systems may, or may not provide guarantees about writing to them.
+	\item \textbf{Concurrent-Access Problems:} If two operations take place on a file at the same time, they may, or may not produce the expected outcome (remember earlier courses about concurrency?)
+	\item \textbf{Security Problems:} It is hard to restrict access to just a subset of data: a professor should be able to only update the grades of students taking her class in the current term, for example...
+\end{itemize}
+
+The database, or more specifically, a database management system (DBMS) is a solution to these problems. Of course, a database, if poorly designed, will not fix all of those problems. It is certainly possible to have redundant or inconsistent data if the data storage is poorly designed. It is similarly possible to fail to introduce the rules to ensure integrity and suffer as the logical rules are violated. 
+
+There are three levels of abstraction we are interested in when discussing a database, from least abstraction to most~\cite{dsc}:
+
+\begin{enumerate}
+	\item Physical Level -- How the data is actually stored.
+	\item Logical Level -- How the data is structured (organized).
+	\item View Level -- A virtual structure based on how we would like to see the data. 
+\end{enumerate}
+
+When examining the physical level, it matters how the data is stored (usually on disk), including the low level data structures to contain the data. Database administrators may care about this data and it may be necessary to manipulate the physical storage configuration to get better performance, But for the most part, application programmers are unaware of this level; the focus on the next.
+
+The logical level tells us what data is in the database and what the relationships are between those pieces of data. Because of the abstraction, when thinking about the database, there is no need to be aware of the physical level data structures or even their location. At this level data that belongs together is grouped together, in the same way that we might pack data together in a structure or class.
+
+At the view level, we are looking at only a part of the database. There are often many views for the same database, such as one for students and another for instructors and yet a third for university administrators. 
+
+A database is typically accessed via a database server. Thus we see the client-server model in use: an application program then accesses the database through some request interface and receives answers. There also exist client programs that allow you to send commands to the database directly and get responses. This is one way that we might see what the current state of the database is. We can also issue statements that change the data directly, although caution must obviously be used to ensure correctness; an incorrect statement can do a lot of damage and lead, perhaps, to unrecoverable data loss. Soon enough we will begin to learn the format and syntax for issuing database commands.
+
+
+\subsection*{Schemas \& Instances}
+
+A database \textit{schema} defines the structure of the database, including what data is  to be stored in what format. An instance of a database reflects both the schema and the particular content of that database. If this analogy helps, you may think of a schema as being like a class file definition in an object-oriented programming language. Except the schema can define multiple types of object and the database instance includes instances of many different types.
+
+A schema may look something like the below data, which represents some motor vehicle registration data:
+
+\begin{center}
+	\textbf{CAR}\\
+	\begin{tabular}{|l|l|}\hline
+		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{year} & \texttt{integer not null}\\ \hline
+		\textbf{make} & \texttt{string(64) not null}\\ \hline
+		\textbf{model} & \texttt{string(64) not null}\\ \hline		
+		\textbf{VIN} & \texttt{string(17) not null}\\ \hline		
+		\textbf{license\_plate\_id} & \texttt{string(40)}\\ \hline		
+	\end{tabular}
+	
+	\textbf{LICENSE\_PLATE}\\
+	\begin{tabular}{|l|l|}\hline
+		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{number} & \texttt{string(8) not null}\\ \hline
+		\textbf{owner\_address\_id} & \texttt{string(40) not null}\\ \hline		
+	\end{tabular}
+	
+		\textbf{OWNER\_ADDRESS}\\
+	\begin{tabular}{|l|l|}\hline
+		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{name} & \texttt{string(64) not null}\\ \hline
+		\textbf{street} & \texttt{string(64) not null}\\ \hline
+		\textbf{city} & \texttt{string(32) not null}\\ \hline
+		\textbf{province} & \texttt{string(2) not null}\\ \hline
+		\textbf{postal\_code} & \texttt{string(7) not null}\\ \hline
+
+	\end{tabular}
+\end{center}
+
+There are some immediate observations. The first is these three types (car, license plate, and owner address) are all intended to represent some analogue to a real life thing in the same way that objects in an object-oriented programming language. Each entity is broken down into some number of fields, and each field has a name and a type. There are potentially restrictions on a type, such as the ``not null'' requirement. Field names must be relatively unique but do not have to be globally unique. There also appear to be references to other entities, but we will return to that subject later.
+
+If we create a new database and apply this schema, we created a new instance but it is empty. This is the initial state of the database and each modification to the database creates a new state of the database. At any time, we can take a snapshot of the current database (export all its data). This is a common operation for taking backups, for example, of the data, or just make a copy.
+
+The most common type of modification would be to manipulate data in it: add an item (e.g., a new car is purchased and the data gets entered), modify an item (e.g., someone moves and their address needs to get updated), or delete an item (e.g., a license plate is retired from service).
+
+That is not the only kind of change, however, because the schema can and does change. Textbook authors like in~\cite{fds} sometimes tell you that schema changes will be rare, but much depends on your application. If it is a stable application then schema changes are rare; if it is a startup company or an app with ever-expanding functionality then the the schema will change regularly.
+
+Modifying a schema, can, of course, be dangerous. If we decide to remove a data element, such as the province from the address, then data may be lost. If we add another property, such as a country, by default it contains nothing -- and if this property is to be defined as ``not null'' then a default value is needed.
+
+The database server can, of course, have multiple instances, and multiple schemas\footnote{In a technical sense the plural of schema is schemata, but schemas is common in English.} all of which are independent of one another. Two databases may use the same schema but contain completely different data. Two databases can begin with the same schema but evolve in different directions over time based on the changes that are made. A change in the schema may result in changes to some data (e.g., data is truncated when a field is made smaller) but does not have to (e.g., a field is made larger and the existing data is unchanged).
+
+
+The entities (car, license plate, owner address) themselves are only a part of the picture. There are also the relationships between these, which are partially reflected in the fields like \texttt{owner\_address\_id}. This takes us to our next subject, which is to examine the relational model in more detail.
+
+
+
+\input{bibliography.tex}
+
+\end{document}
