@@ -35,42 +35,42 @@ There are three levels of abstraction we are interested in when discussing a dat
 	\item View Level -- A virtual structure based on how we would like to see the data. 
 \end{enumerate}
 
-When examining the physical level, it matters how the data is stored (usually on disk), including the low level data structures to contain the data. Database administrators may care about this data and it may be necessary to manipulate the physical storage configuration to get better performance, But for the most part, application programmers are unaware of this level; the focus on the next.
+When examining the physical level, it matters how the data is stored (usually on disk), including the low level data structures to contain the data. Database administrators may care about this data and it may be necessary to manipulate the physical storage configuration to get better performance, But for the most part, application programmers are unaware of this level; they focus on the next level.
 
 The logical level tells us what data is in the database and what the relationships are between those pieces of data. Because of the abstraction, when thinking about the database, there is no need to be aware of the physical level data structures or even their location. At this level data that belongs together is grouped together, in the same way that we might pack data together in a structure or class.
 
-At the view level, we are looking at only a part of the database. There are often many views for the same database, such as one for students and another for instructors and yet a third for university administrators. 
+At the view level, we are looking at only a part of the database. There are often many views for the same database, such as one for students and another for instructors and yet a third for university administrators. We will create lots of different views of the same data based on the needs of the users (or database administrators who want to check on things).
 
-A database is typically accessed via a database server. Thus we see the client-server model in use: an application program then accesses the database through some request interface and receives answers. There also exist client programs that allow you to send commands to the database directly and get responses. This is one way that we might see what the current state of the database is. We can also issue statements that change the data directly, although caution must obviously be used to ensure correctness; an incorrect statement can do a lot of damage and lead, perhaps, to unrecoverable data loss. Soon enough we will begin to learn the format and syntax for issuing database commands.
+A database is typically accessed via a database server. Thus we see the client-server model in use: an application program then accesses the database through some request interface and receives answers. There also exist client programs that allow you to send commands to the database directly and get responses. This is one way that we might see what the current state of the database is. We can also issue statements that change the data directly, although caution must obviously be used to ensure correctness; an incorrect statement can do a lot of damage and lead, perhaps, to unrecoverable data loss. Soon enough, we will begin to learn the format and syntax for issuing database commands.
 
 
 \subsection*{Schemas \& Instances}
 
 A database \textit{schema} defines the structure of the database, including what data is  to be stored in what format. An instance of a database reflects both the schema and the particular content of that database. If this analogy helps, you may think of a schema as being like a class file definition in an object-oriented programming language. Except the schema can define multiple types of object and the database instance includes instances of many different types.
 
-A schema may look something like the below data, which represents some motor vehicle registration data:
+A (logical) schema may look something like the example below, which represents some motor vehicle registration data. This is the sort of thing that ministries of transport keep on hand so they can identify vehicles and their owners and their license plates. Keep in mind that the design shown is a choice; there are other options for how it could be organized.
 
 \begin{center}
 	\textbf{CAR}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{id} & \texttt{string(40) not null, primary key}\\ \hline
 		\textbf{year} & \texttt{integer not null}\\ \hline
 		\textbf{make} & \texttt{string(64) not null}\\ \hline
 		\textbf{model} & \texttt{string(64) not null}\\ \hline		
-		\textbf{VIN} & \texttt{string(17) not null}\\ \hline		
+		\textbf{VIN} & \texttt{string(17) not null, INDEX\_VIN}\\ \hline		
 		\textbf{license\_plate\_id} & \texttt{string(40)}\\ \hline		
 	\end{tabular}
 	
 	\textbf{LICENSE\_PLATE}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{id} & \texttt{string(40) not null, primary key}\\ \hline
 		\textbf{number} & \texttt{string(8) not null}\\ \hline
 		\textbf{owner\_address\_id} & \texttt{string(40) not null}\\ \hline		
 	\end{tabular}
 	
 		\textbf{OWNER\_ADDRESS}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null}\\ \hline
+		\textbf{id} & \texttt{string(40) not null,  primary key}\\ \hline
 		\textbf{name} & \texttt{string(64) not null}\\ \hline
 		\textbf{street} & \texttt{string(64) not null}\\ \hline
 		\textbf{city} & \texttt{string(32) not null}\\ \hline
@@ -80,18 +80,23 @@ A schema may look something like the below data, which represents some motor veh
 	\end{tabular}
 \end{center}
 
-There are some immediate observations. The first is these three types (car, license plate, and owner address) are all intended to represent some analogue to a real life thing in the same way that objects in an object-oriented programming language. Each entity is broken down into some number of fields, and each field has a name and a type. There are potentially restrictions on a type, such as the ``not null'' requirement. Field names must be relatively unique but do not have to be globally unique. There also appear to be references to other entities, but we will return to that subject later.
+There are some immediate observations. The first is these three structures (car, license plate, and owner address) are all intended to represent some analogue to a real life thing in the same way that objects in an object-oriented programming language do (or structures in a language like C). Each entity is broken down into some number of fields, and each field has a name and a type. Types have some meaning, so a year must be an integer, like ``2016'', and cannot be a string or contain a decimal. There are potentially restrictions on a type, such as the ``not null'' requirement. Field names must be relatively unique but do not have to be globally unique. There also appear to be data elements that share some names with other data elements or other entities. That is a subject we will return to later.
 
-If we create a new database and apply this schema, we created a new instance but it is empty. This is the initial state of the database and each modification to the database creates a new state of the database. At any time, we can take a snapshot of the current database (export all its data). This is a common operation for taking backups, for example, of the data, or just make a copy.
+There are also some items of meta-data (data about data) in the shown schema. For example, \texttt{id} is shown as ``primary key'', which provides additional information and additional restrictions. There are also indexes\footnote{Actually, indices is the correct plural, but ``indexes'' is used very commonly in English} that are used in searches. They can be added, removed, and modified, without affecting the underlying data.
 
-The most common type of modification would be to manipulate data in it: add an item (e.g., a new car is purchased and the data gets entered), modify an item (e.g., someone moves and their address needs to get updated), or delete an item (e.g., a license plate is retired from service).
+No information is shown here about how the physical schema looks; how is this data stored in a practical sense? From the logical view it is irrelevant. If we wish, we can move some frequently accessed data to a faster device (SSD?) without affecting the logical schema and therefore without affecting any program that relies on this data. 
 
-That is not the only kind of change, however, because the schema can and does change. Textbook authors like in~\cite{fds} sometimes tell you that schema changes will be rare, but much depends on your application. If it is a stable application then schema changes are rare; if it is a startup company or an app with ever-expanding functionality then the the schema will change regularly.
+If we create a new database and apply this schema, we created a new instance but it is empty. This is the initial state of the database and each modification to the database creates a new state of the database. At any time, we can take a snapshot of the current database (export all its data). This is a common operation for taking backups, for example, of the data, or just to make a copy to use on another test system.
+
+The most common type of modification would be to manipulate data in it: add an item (e.g., a new car is purchased and the data gets entered), modify an item (e.g., someone moves and their address needs to get updated), or delete an item (e.g., a license plate is retired from service). This kind of change does not modify the schema, but it does modify the data. If we attempt to modify the data in a way that is not consistent with the schema (e.g., try to put ``ABC'' in an integer field), that modification will be rejected. Nevertheless, care must be taken in what data updates are issued, otherwise we may overwrite or delete important data. An incorrectly-crafted update command can easily cause unintended damage such as setting all VINs to be the same value. Careful schema design, as we will see, will prevent that sort of error, such as introducing a requirement that VINs be unique. If that rule exists, the update is rejected. Design cannot prevent all such errors, unfortunately. There can be two people with the name ``Thomas Anderson''\footnote{Whoah.}, so no rule of unique names can be introduced, and an erroneous update command could set all names to exactly that even if the schema is designed perfectly.
+
+Data modification is not the only kind of change, however, because the schema can and does change. Textbook authors like in~\cite{fds} sometimes tell you that schema changes will be rare, but much depends on your application. If it is a stable application then schema changes are rare; if it is a startup company or an app with ever-expanding functionality then the the schema will change regularly. Schema changes are design changes, though, and they do not typically happen in the normal operation, but instead happen during version upgrades. 
+
+Modifications to the schema can be made in a way that does not affect the data or require changes to applications that access it. If a new field ``country'' is added to the address entity, then something that looks only for the name will not be affected. Similarly, a new entity, unrelated to these, such as ``Service Ontario locations'' (places where drivers need to wait in agonizing lines to register vehicles, for example) can be created with no impact on the existing data.
 
 Modifying a schema, can, of course, be dangerous. If we decide to remove a data element, such as the province from the address, then data may be lost. If we add another property, such as a country, by default it contains nothing -- and if this property is to be defined as ``not null'' then a default value is needed.
 
-The database server can, of course, have multiple instances, and multiple schemas\footnote{In a technical sense the plural of schema is schemata, but schemas is common in English.} all of which are independent of one another. Two databases may use the same schema but contain completely different data. Two databases can begin with the same schema but evolve in different directions over time based on the changes that are made. A change in the schema may result in changes to some data (e.g., data is truncated when a field is made smaller) but does not have to (e.g., a field is made larger and the existing data is unchanged).
-
+The database server can, of course, have multiple instances, and multiple schemas\footnote{The plural of schema is schemata, but I think we know how this goes by now.} all of which are independent of one another. Two databases may use the same schema but contain completely different data. Two databases can begin with the same schema but evolve in different directions over time based on the changes that are made. A change in the schema may result in changes to some data (e.g., data is truncated when a field is made smaller) but does not have to (e.g., a field is made larger and the existing data is unchanged).
 
 The entities (car, license plate, owner address) themselves are only a part of the picture. There are also the relationships between these, which are partially reflected in the fields like \texttt{owner\_address\_id}. This takes us to our next subject, which is to examine the relational model in more detail.
 
