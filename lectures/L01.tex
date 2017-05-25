@@ -49,28 +49,26 @@ A database is typically accessed via a database server. Thus we see the client-s
 A database \textit{schema} defines the structure of the database, including what data is  to be stored in what format. An instance of a database reflects both the schema and the particular content of that database. If this analogy helps, you may think of a schema as being like a class file definition in an object-oriented programming language. Except the schema can define multiple types of object and the database instance includes instances of many different types.
 
 A (logical) schema may look something like the example below, which represents some motor vehicle registration data. This is the sort of thing that ministries of transport keep on hand so they can identify vehicles and their owners and their license plates. Keep in mind that the design shown is a choice; there are other options for how it could be organized.
-
+\vspace{1em}
 \begin{center}
-	\textbf{CAR}\\
+	\textbf{VEHICLE}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null, primary key}\\ \hline
+		\textbf{VIN} & \texttt{string(17) not null, primary key}\\ \hline		
 		\textbf{year} & \texttt{integer not null}\\ \hline
 		\textbf{make} & \texttt{string(64) not null}\\ \hline
 		\textbf{model} & \texttt{string(64) not null}\\ \hline		
-		\textbf{VIN} & \texttt{string(17) not null, INDEX\_VIN}\\ \hline		
-		\textbf{license\_plate\_id} & \texttt{string(40)}\\ \hline		
+		\textbf{license\_plate\_number} & \texttt{string(8) not null}\\ \hline		
 	\end{tabular}
 	
 	\textbf{LICENSE\_PLATE}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null, primary key}\\ \hline
-		\textbf{number} & \texttt{string(8) not null}\\ \hline
-		\textbf{owner\_address\_id} & \texttt{string(40) not null}\\ \hline		
+		\textbf{number} & \texttt{string(8) not null, primary key}\\ \hline
+		\textbf{owner\_address\_id} & \texttt{integer not null}\\ \hline		
 	\end{tabular}
 	
 		\textbf{OWNER\_ADDRESS}\\
 	\begin{tabular}{|l|l|}\hline
-		\textbf{id} & \texttt{string(40) not null,  primary key}\\ \hline
+		\textbf{id} & \texttt{integer not null,  primary key}\\ \hline
 		\textbf{name} & \texttt{string(64) not null}\\ \hline
 		\textbf{street} & \texttt{string(64) not null}\\ \hline
 		\textbf{city} & \texttt{string(32) not null}\\ \hline
@@ -80,7 +78,7 @@ A (logical) schema may look something like the example below, which represents s
 	\end{tabular}
 \end{center}
 
-There are some immediate observations. The first is these three structures (car, license plate, and owner address) are all intended to represent some analogue to a real life thing in the same way that objects in an object-oriented programming language do (or structures in a language like C). Each entity is broken down into some number of fields, and each field has a name and a type. Types have some meaning, so a year must be an integer, like ``2016'', and cannot be a string or contain a decimal. There are potentially restrictions on a type, such as the ``not null'' requirement. Field names must be relatively unique but do not have to be globally unique. There also appear to be data elements that share some names with other data elements or other entities. That is a subject we will return to later.
+There are some immediate observations. The first is these three structures (vehicle, license plate, and owner address) are all intended to represent some analogue to a real life thing in the same way that objects in an object-oriented programming language do (or structures in a language like C). Each entity is broken down into some number of fields, and each field has a name and a type. Types have some meaning, so a year must be an integer, like ``2016'', and cannot be a string or contain a decimal. There are potentially restrictions on a type, such as the ``not null'' requirement. Field names must be relatively unique but do not have to be globally unique. There also appear to be data elements that share some names with other data elements or other entities. That is a subject we will return to later.
 
 There are also some items of meta-data (data about data) in the shown schema. For example, \texttt{id} is shown as ``primary key'', which provides additional information and additional restrictions. There are also indexes\footnote{Actually, indices is the correct plural, but ``indexes'' is used very commonly in English} that are used in searches. They can be added, removed, and modified, without affecting the underlying data.
 
@@ -98,7 +96,7 @@ Modifying a schema, can, of course, be dangerous. If we decide to remove a data 
 
 The database server can, of course, have multiple instances, and multiple schemas\footnote{The plural of schema is schemata, but I think we know how this goes by now.} all of which are independent of one another. Two databases may use the same schema but contain completely different data. Two databases can begin with the same schema but evolve in different directions over time based on the changes that are made. A change in the schema may result in changes to some data (e.g., data is truncated when a field is made smaller) but does not have to (e.g., a field is made larger and the existing data is unchanged).
 
-The entities (car, license plate, owner address) themselves are only a part of the picture. There are also the relationships between these, which are partially reflected in the fields like \texttt{owner\_address\_id}. This takes us to our next subject, which is to examine the relational model in more detail.
+The entities (vehicle, license plate, owner address) themselves are only a part of the picture. There are also the relationships between these, which are partially reflected in the fields like \texttt{owner\_address\_id}. This takes us to our next subject, which is to examine the relational model in more detail.
 
 
 
