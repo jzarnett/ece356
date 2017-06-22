@@ -1,0 +1,151 @@
+\include{header}
+
+\begin{document}
+
+\lecture{ 4 --- Relational Query Languages \& SQL, Continued }{\term}{Jeff Zarnett}
+
+\section*{Relational Query Languages, Continued}
+
+When we left off we had covered the operations of selection, projection and union. Not we will continue with set difference, cartesian product, and rename, followed by the shortcut operations. 
+
+\paragraph{Difference.} The set difference operation works more or less as you would expect: it takes a relation and removes from it any tuples that are in the second relation. After taking away things we do not want, then we are left with the things we do want. Its input is therefore two relations and it produces a new relation as its output.
+
+The mathematical symbol is $-$ (the minus or subtraction operator). The notation is then $r_{1} - r_{2}$ where $r_{1}$ and $r_{2}$ are relations. This produces a relation $r_{3}$ that contains all tuples in $r_{1}$ that are not in $r_{2}$. It is possible to chain the subtraction operators, but like regular mathematical subtraction, it does not commute: the order matters a lot. 
+
+ The query $\sigma_{make = ''Honda''}( vehicle ) -  \sigma_{year < ''2010''}( vehicle )$ produces the results: 
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|} \hline
+	\textbf{VIN} & \textbf{year} & \textbf{make} & \textbf{model} & \textbf{license\_plate\_number} \\ \hline
+	1GYS3BKJ5FR338462 & 2016 & Honda & Civic & YYYY 585 \\ \hline	
+\end{tabular}
+\end{center}
+
+Just like the union operation, the sets must be compatible. The same rules from union apply: 
+
+\begin{enumerate}
+	\item The relations must have the same number of attributes.
+	\item The domain of attribute $i$ in the first relation must be the same as the domain of attribute $i$ in the second relation, for all $i$. 
+\end{enumerate}
+
+In SQL the keyword we need for this is \texttt{EXCEPT}\footnote{Although Oracle uses \texttt{MINUS} instead.}. Like the union operation, parenthesis prevent confusion and/or make your database server less sad.
+
+\texttt{(SELECT make, model FROM vehicle WHERE make = 'Volkswagen')\\
+EXCEPT\\
+(SELECT make, model, FROM vehicle WHERE year < 2016);}
+
+Produces as output: 
+
+\begin{center}
+\begin{tabular}{|l|l|} \hline
+\textbf{make} & \textbf{model} \\ \hline
+	Volkswagen & Jetta  \\ \hline
+\end{tabular}
+\end{center}
+
+Again, you say, wait, this is silly, you could cut this down with a select query with two clauses. Yes, that is also true. Those with experience in databases may also be asking about the use of \texttt{EXCEPT} vs another construct \texttt{NOT IN}. The \texttt{EXCEPT} keyword encompasses both the \texttt{DISTINCT} and \texttt{NOT IN} behaviour, so duplicates are eliminated. My typical use of the not-in behaviour usually refers to referencing a unique key column in the database, such as:
+
+\texttt{SELECT make, model FROM vehicle WHERE make = 'Volkswagen' AND 
+VIN NOT IN\\ (SELECT VIN FROM vehicle WHERE year < 2016);}
+
+This demonstrates a subquery: the first query selects a relation with one attribute.  
+
+\paragraph{Cartesian Product.} The cartesian product combines information from two relations. It is often the case that the data we need is in more than one relation. That might be a design problem, but good design means data is in there only once and sometimes we do need to combine relations. Suppose we wanted to send reminder notices to people whose license plates will expire next month. We need to combine license plate data with address data. 
+
+The mathematical symbol for cartesian product is $\times$, the multiplication symbol. The cartesian product $r_{1} \times r_{2}$ forms a third relation $r_{3}$. The new relation has all the attributes of both the relations that went into it (in the order specified). An example would clarify.
+
+Let us pretend our license plate relation contains exactly two tuples:
+
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+	\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} \\ \hline
+	ZZZZ 123 & 2018-09-30 & 24601 \\ \hline
+	AAAA 855 & 2019-04-01 & 12949 \\ \hline
+\end{tabular}
+\end{center}
+
+And our owner address set is also two tuples: 
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|}\hline
+		\textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+
+Then the query $license\_plate \times owner\_address$ produces:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+ZZZZ 123 & 2018-09-30 & 24601 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+This is all possibilities (and that's why we restricted these tables to 2 entries, just so we don't waste too much space). Each tuple from the first relation is paired with each tuple from the second. So if $r_{1}$ contains $x$ tuples and $r_{2}$ contains $y$ tuples, there will be $x*y$ tuples in the resulting relation... the vast majority of which are garbage! 
+
+Garbage, you say? The second and third tuples in the relation shown immediately above don't make any sense: plate ZZZZ 123 is associated with the owner address with ID 24601, but it looks like it's also associated with address with ID 12949. Whom does the plate belong to, Jean Valjean or Alice Jones? Well, we know it's Valjean, but the cartesian product can suggest wrong things (and produces a very big relation). Even more illogical results arise if we try to take the cartesian product of one relation with itself.
+
+This problem did not occur with our particular example because all attribute names are distinct, but if we had two names that were the same, we would need a way to differentiate them. Suppose that two relations, one called \texttt{book} and one called \texttt{author}, each having an attribute \texttt{id}. The convention is to prefix the attribute with the name of the relation from which it came. Thus, in the cartesian product the two columns would be \texttt{book.id} and \texttt{reader.id}.
+
+In SQL it is very simple to get the cartesian product: \texttt{SELECT * FROM license\_plate, owner\_address;} -- that is to say we just separate the tables we wish to appear in the cartesian product with a comma in between.
+
+We can always combine more if we needed: imagine we need to notify all current owners of Volkswagen vehicles that there is a recall: this requires us to look at both the vehicle relation and the owner address relation. To connect those we also need the license plate relation (this escalated quickly).
+
+Typically get our data to make sense we need to restrict our query with a selection predicate. If the two relations are connected by some ID in in common, we need that. In this case, the \texttt{id} attribute in the address matches \texttt{owner\_address\_id} in the license plate relation. So $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$. Or in SQL: \texttt{SELECT * FROM license\_plate, owner\_address where owner\_address\_id = id;} This may seem unclear so we might prefer to prefix these with their names: \texttt{SELECT * FROM license\_plate, owner\_address where license\_plate.owner\_address\_id = owner\_address.id;} 
+
+If we add that restriction:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+Now our data makes sense! In the future we will get to the same place through an easier operation, the join.
+
+\paragraph{Rename.} The rename operation is used to both change the name of existing attributes/relations and assign names to ones that have no name. 
+
+The mathematical notation is $\rho$ (rho). If applied to a relation, it is $\rho_{x}(E)$ where it renames the relation to $x$. Or it can be applied to the name of the attributes: $\rho_{x(a_{1}, a_{2}, a_{3}, a_{4}...)}(E)$ which renames the relation to $x$ and then the attributes $a_{1}$...
+
+In SQL we can use the \texttt{AS} keyword. That is not super interesting on a simple query to rename a table: \texttt{SELECT * FROM vehicle AS autos;} renames the relation result to ``autos'' but that does not do very much for us individually. It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names (e.g., change \texttt{book.id} to \texttt{textbook.id}). 
+
+A more likely use is to rename the attributes of a relation. We can apply it to as few or as many attributes as we like: \texttt{SELECT make, model, year AS modelYear FROM vehicle;} will produce a relation with the make, model, and year, but the year attribute will be called ``modelYear'' as we have asked.
+
+The motivation for the rename operation right now probably seems weak. There are some situations where we will need to use the rename operation. And I do mean need, when we do not have an AS clause on certain operations the SQL server will decline to carry out the query.
+
+\subsection*{Additional Operations}
+Having reached the end of the basic operations, there are a few operations that we have discussed that are not fundamental: they can be derived from the six operations we have already introduced. They are, however, notationally convenient. These are from~\cite{dsc}:
+
+\paragraph{Set Intersection.} Set intersection is exactly what it sounds like based on our understanding of mathematical sets. The symbol for it is $\cap$ and it is equivalent to $r_{1} - (r_{1} - r_{2})$.
+
+In SQL they keyword is \texttt{INTERSECT}. Its use is limited, however, in a way similar to union. If we want to use intersection on two queries of the same relation, we could just as easily set it up as a selection with a compound predicate. But a short example:
+
+\texttt{(SELECT name, street, city, province, postal\_code FROM owner\_address)\\ 
+INTERSECT\\ 
+(SELECT name, street, city, province, postal\_code FROM employee);}
+
+This would produce the set of addresses that are both in the owner address relation and in the employee relation.
+
+\paragraph{Assignment.} The assignment operation allows us to take the result of an expression and put it in a temporary variable. The mathematical symbol for this is $\leftarrow$. This is just notational convenience for the benefit of the reader. Instead of a complicated expression that requires several sets of parenthesis and is hard to follow, we could break up the query into parts and then use those parts. So instead of something $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$. we could write: 
+
+$temp \leftarrow license\_plate \times owner\_address\\
+\sigma_{owner\_address\_id = id}( temp ) $.
+
+This may improve (or decrease) readability if used well (or badly).
+
+SQL does have an assignment operator: \texttt{:=}. I will, however, discourage you from using it. There are advanced situations where the use of this is appropriate, such as manipulating a counter. Eventually we will learn how to modify the data in our database and not just look at it and when we do, an assignment will take place, but we are unlikely to write it explicitly. The reason I discourage the use of assignment is the need to get away from the C-like thinking with counters and iteration; operations take place on a set of operations and we should think in a set based mindset.
+
+\input{bibliography.tex}
+
+\end{document}
