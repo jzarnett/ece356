@@ -88,13 +88,13 @@ ZZZZ 123 & 2018-09-30 & 24601 & 12949 & Alice Jones & 4 Generic Place & Kenora &
 \end{center}
 }
 
-This is all possibilities (and that's why we restricted these tables to 2 entries, just so we don't waste too much space). Each tuple from the first relation is paired with each tuple from the second. So if $r_{1}$ contains $x$ tuples and $r_{2}$ contains $y$ tuples, there will be $x*y$ tuples in the resulting relation... the vast majority of which are garbage! 
+This is all possibilities (and that's why we restricted these relations to 2 entries, just so we don't waste too much space). Each tuple from the first relation is paired with each tuple from the second. So if $r_{1}$ contains $x$ tuples and $r_{2}$ contains $y$ tuples, there will be $x*y$ tuples in the resulting relation... the vast majority of which are garbage! 
 
 Garbage, you say? The second and third tuples in the relation shown immediately above don't make any sense: plate ZZZZ 123 is associated with the owner address with ID 24601, but it looks like it's also associated with address with ID 12949. Whom does the plate belong to, Jean Valjean or Alice Jones? Well, we know it's Valjean, but the cartesian product can suggest wrong things (and produces a very big relation). Even more illogical results arise if we try to take the cartesian product of one relation with itself.
 
 This problem did not occur with our particular example because all attribute names are distinct, but if we had two names that were the same, we would need a way to differentiate them. Suppose that two relations, one called \texttt{book} and one called \texttt{author}, each having an attribute \texttt{id}. The convention is to prefix the attribute with the name of the relation from which it came. Thus, in the cartesian product the two columns would be \texttt{book.id} and \texttt{reader.id}.
 
-In SQL it is very simple to get the cartesian product: \texttt{SELECT * FROM license\_plate, owner\_address;} -- that is to say we just separate the tables we wish to appear in the cartesian product with a comma in between.
+In SQL it is very simple to get the cartesian product: \texttt{SELECT * FROM license\_plate, owner\_address;} -- that is to say we just separate the relations we wish to appear in the cartesian product with a comma in between.
 
 We can always combine more if we needed: imagine we need to notify all current owners of Volkswagen vehicles that there is a recall: this requires us to look at both the vehicle relation and the owner address relation. To connect those we also need the license plate relation (this escalated quickly).
 
@@ -118,7 +118,7 @@ Now our data makes sense! In the future we will get to the same place through an
 
 The mathematical notation is $\rho$ (rho). If applied to a relation, it is $\rho_{x}(E)$ where it renames the relation to $x$. Or it can be applied to the name of the attributes: $\rho_{x(a_{1}, a_{2}, a_{3}, a_{4}...)}(E)$ which renames the relation to $x$ and then the attributes $a_{1}$...
 
-In SQL we can use the \texttt{AS} keyword. That is not super interesting on a simple query to rename a table: \texttt{SELECT * FROM vehicle AS autos;} renames the relation result to ``autos'' but that does not do very much for us individually. It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names (e.g., change \texttt{book.id} to \texttt{textbook.id}). 
+In SQL we can use the \texttt{AS} keyword. That is not super interesting on a simple query to rename a relation: \texttt{SELECT * FROM vehicle AS autos;} renames the relation result to ``autos'' but that does not do very much for us. It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names (e.g., change \texttt{book.id} to \texttt{textbook.id}). 
 
 A more likely use is to rename the attributes of a relation. We can apply it to as few or as many attributes as we like: \texttt{SELECT make, model, year AS modelYear FROM vehicle;} will produce a relation with the make, model, and year, but the year attribute will be called ``modelYear'' as we have asked.
 
@@ -145,6 +145,112 @@ $temp \leftarrow license\_plate \times owner\_address\\
 This may improve (or decrease) readability if used well (or badly).
 
 SQL does have an assignment operator: \texttt{:=}. I will, however, discourage you from using it. There are advanced situations where the use of this is appropriate, such as manipulating a counter. Eventually we will learn how to modify the data in our database and not just look at it and when we do, an assignment will take place, but we are unlikely to write it explicitly. The reason I discourage the use of assignment is the need to get away from the C-like thinking with counters and iteration; operations take place on a set of operations and we should think in a set based mindset.
+
+\paragraph{Join.} We have already seen the cartesian product operation tends to produce a lot of rows, some of which are illogical. By combining that with a restriction, i.e., a selection, we throw away the tuples that don't make sense and are left with only those where there is some meaning. One is hard pressed to think of a situation where this is not needed. Thus, a little notational shorthand is in order. 
+
+The mathematical symbol for the \textit{natural join} is $\Join$ (cute little bowtie). It combines the cartesian product with a selection, forcing equality. A natural join combined with a selection is a theta join $\Join_{\theta}$ where $\theta$ is the selection predicate. Note that it is associative: so we can chain it as we need: $vehicle \Join license\_plate \Join owner\_address$ is equivalent to  $(vehicle \Join license\_plate) \Join owner\_address$  and $vehicle \Join (license\_plate \Join owner\_address)$~\cite{dsc}. 
+
+Except, this probably doesn't work the way we hope on our sample data because the fields are not named the same thing. If both fields are called \texttt{id}, the database server will try to match on those. But this is not going to work for our data since they all have different names. 
+
+In SQL the keyword we need for this is \texttt{NATURAL JOIN}. So we would do: \texttt{SELECT * FROM vehicle NATURAL JOIN license\_plate;} Again, though, this is not going to cooperate for us because our names don't match.
+
+What do we do then? We need to expand our concept of the join operation. The default type is the \texttt{INNER JOIN} and it's what you get if you just write \texttt{JOIN} instead of being specific. It requires us to use the \texttt{ON} clause to specify how we relate one side to the other.
+
+\texttt{SELECT * FROM license\_plate JOIN owner\_address ON owner\_address\_id = id;} produces:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+My general recommendation is always to use the \texttt{ON} clause rather than \texttt{NATURAL JOIN}. Oftentimes you need it and when you don't you sometimes get the wrong behaviour because a natural join takes the unique ID field from each relation and not the field that actually links them. If the license plate relation called the plate number ``id'' instead of ``number'', the natural join operation would run but produce no results. Be explicit about how the join should work.
+
+If there is an inner join, there is obviously an outer join. Actually, there are three of them! They are, however, all very similar.  
+
+Suppose we have a license plate that does not correspond to any address: 
+
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+	\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} \\ \hline
+	ZZZZ 123 & 2018-09-30 & 24601 \\ \hline
+	AAAA 855 & 2019-04-01 & 12949 \\ \hline
+	BBCC 394 & 2019-02-12 & null \\ \hline
+\end{tabular}
+\end{center}
+
+and an address that does not correspond to any license plate:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|}\hline
+		\textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4\\ \hline
+	\end{tabular}
+\end{center}
+
+The inner join of license plate with owner address would look like this: 
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+... that is to say, no different from how it was before. Because there is no match for license plate ``BBCC 394'' it does not appear in the output relation when the natural join is used. The same applies to address with ID ``86753''; it has no match in the license plate relation. 
+
+If we use the left outer join, which has the symbol {\tiny \textifsym{d|><|}}, we get a tuple in the result for each entry in the left (first) table, even if it has no match in the second. For such a tuple, all attributes from the right (second) table will simply be ``null''. If a tuple in the right table has no match in the left table, it does not appear at all. The SQL for this is, of course, \texttt{LEFT OUTER JOIN}. So \texttt{SELECT * FROM license\_plate LEFT OUTER JOIN owner\_address ON owner\_address\_id = id;} returns:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		BBCC 394 & 2019-02-12 & null & null & null & null & null & null & null \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+The right outer join, symbol, {\tiny \textifsym{|><|d}} (\texttt{RIGHT OUTER JOIN}) is the mirror image operation of the left outer join. We get a tuple in the result for each entry in the right (second) table, even if it has no match in the first. For such a tuple, all attributes from the left (first) table will simply be ``null''. If a tuple in the left table has no match in the right table, it does not appear at all.\texttt{SELECT * FROM license\_plate RIGHT OUTER JOIN owner\_address ON owner\_address\_id = id;} returns:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		null & null & null & 86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4 \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+In both the left and right outer join, it is important to note the order in which the relations appear. The operation thinks of the left and right side from the perspective of the placement of the operator (as one would expect).
+
+Finally, there is the full outer join, with the symbol {\tiny \textifsym{d|><|d}} does both the left and right outer join operations, including tuples from each relation that do not match the other: 
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		BBCC 394 & 2019-02-12 & null & null & null & null & null & null & null \\ \hline
+		null & null & null & 86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4 \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+It might be tempting to combine tuples from one relation with those from another where there are suitable null attributes, but this is misleading: the license plate BBCC 394 is NOT associated with the address of Sherlock Holmes and it does not make sense to combine these.
 
 \input{bibliography.tex}
 
