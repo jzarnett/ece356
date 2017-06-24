@@ -57,14 +57,14 @@ A (logical) schema may look something like the example below, which represents s
 		\textbf{year} & \texttt{integer not null}\\ \hline
 		\textbf{make} & \texttt{string(64) not null}\\ \hline
 		\textbf{model} & \texttt{string(64) not null}\\ \hline		
-		\textbf{license\_plate\_number} & \texttt{string(8) not null}\\ \hline		
+		\textbf{license\_plate\_number} & \texttt{string(8)}\\ \hline		
 	\end{tabular}
 	
 	\textbf{LICENSE\_PLATE}\\
 	\begin{tabular}{|l|l|}\hline
 		\textbf{number} & \texttt{string(8) not null, primary key}\\ \hline
 		\textbf{expiry} & \texttt{date} \\ \hline
-		\textbf{owner\_address\_id} & \texttt{integer not null}\\ \hline		
+		\textbf{owner\_address\_id} & \texttt{integer}\\ \hline		
 	\end{tabular}
 	
 		\textbf{OWNER\_ADDRESS}\\
