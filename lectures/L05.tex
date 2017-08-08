@@ -7,16 +7,112 @@
 \section*{SQL: the Sequel}
 With some theoretical understanding of the relational algebra that makes up the basis for SQL we can now take some time to learn a little more of the practical ins and outs of the language that will allow us to do the things we need our database to do. 
 
-String Operations
+\paragraph{String Operations.} String operations are complicated in any language and SQL is no exception. We have used some string matching already so we have a pretty good idea how it works: by default a string is enclosed in single-quote characters such as \texttt{'AAAA 111'}. Double quotes can also be used, especially if you need to enclose a single-quote literal in your string such as: \texttt{"Burk's Falls"}.
 
-Null Values
+The SQL standard says that string comparison with \texttt{=} is case sensitive, but MySQL (and some others) do not respect this and perform case-insensitive comparison~\cite{dsc}. Standards are optional, I guess? MySQL has gotten better and made this a configurable parameter, but it's still something to be wary of.
 
-Aggregate functions
-	Grouping/Having
+Some functions familiar from C-like languages exist: \texttt{UPPER()}, \texttt{LOWER()}, \texttt{TRIM()}, et cetera. Pattern matching can be done using \texttt{LIKE} which takes two special characters as wildcards: \texttt{\%} (match any substring) and \texttt{\_} (match any single character)~\cite{dsc}.  If you need those characters explicitly, they are escaped using the \textbackslash~ as one might expect. The backslash itself can also be escaped using the backslash.
+
+Some examples might clarify how it works: the clause \texttt{LIKE 'Marc\%'} would match the strings ``Marc'', ``Marco'', ``Marcelline'', and so on. The clause \texttt{LIKE 'Marc\_'} would match only ``Marco'' from that previous set (exactly one character is required). 
+
+
+\paragraph{Null Values.} If you have programmed with Java or C\# or similar then you probably know that the existence of \texttt{null} sometimes complicates your life (\texttt{NullPointerException} anyone?). A null attribute indicates a lack of a value and it causes a certain chaos with some of our operations.
+
+Arithmetic expressions involving null (e.g., addition, subtraction, etc) always results in null if any one of the operands is null. Comparisons involving null are also a hassle; saying whether 1 is ``less than'' null is not sensible so the value will be ``unknown''~\cite{dsc}.
+
+Use of ``unknown'' values in boolean operators is also complicated~\cite{dsc}:
+
+\begin{itemize}
+	\item  AND: Comparing true AND unknown results in unknown; false AND unknown results in false; unknown AND unknown results in unknown.	\item OR: Comparing true OR unknown results in true; false OR unknown results in unknown; unknown OR unknown results in unknown.	\item NOT unknown also results in unknown.
+\end{itemize}
+
+If a where clause for a particular tuple evaluates to false, it is not added to the tuples to be returned or changed. 
+
+It is possible, though, to test whether something is null, or is not null. As you might expect, those are \texttt{IS NULL} and \texttt{IS NOT NULL}. Example: \texttt{SELECT * from VEHICLE WHERE year IS NULL;} finds all tuples in the vehicle relation where the year attribute is null. It is correct to use the \texttt{IS NULL} or \texttt{IS NOT NULL} constructions rather than something like \texttt{= null} or \texttt{<> null}.
+
+
+\paragraph{Ordering.} Thus far if multiple tuples are returned by a query, we get them in no specified order. You may see consistent behaviour across repeated queries, but n promises are made about the order in which they are delivered. We can change that, if we want, through the use of an \texttt{ORDER BY} clause. We specify the attribute to sort by, and we can choose ascending (\texttt{ASC}) or descending (\texttt{DESC}). An example: \texttt{SELECT * FROM VEHICLE ORDER BY make ASC}.
+
+We may specify multiple attributes in the \texttt{ORDER BY} clause, such as \texttt{ORDER BY make DESC, model DESC}. This sorts by the ``make'' attribute (descending), and if the values of two tuples are equal in that attribute, then by ``model'' (descending). If no two tuples have the same first sort attribute then the second sort does nothing (why should it?). And you can, if desired, choose divergent directions: mixing ascending and descending. They are always handled from left to right so they cannot conflict.
+
+The field used to order the tuples does not have to be returned in in the result set you have selected. The order will still be imposed but it may not be obvious from looking at the result relation what the ordering actually is.
+
+\paragraph{Aggregate Functions.} Aggregate functions perform a reduction on the data. Reduction is something you've done a lot of, most likely, without knowing it: if you are given an array of integers and asked to sum it up, that's a reduction. You condense an array of values into a single one. That's a subject that gets some more attention in ECE~459: Programming for Performance. But the database can do some of these things for us!
+
+The aggregate functions in SQL mostly are~\cite{dsc}:
+\begin{enumerate}
+	\item \texttt{AVG}: Average 
+	\item \texttt{MAX}: Maximum
+	\item \texttt{MIN}: Minimum
+	\item \texttt{SUM}: Sum (total)
+	\item \texttt{COUNT}: Count (obviously)
+\end{enumerate}
+
+These work more or less like you would expect: you can \texttt{SELECT SUM( salary ) FROM employee;} to get the total salary of all employees, or \texttt{SELECT AVG( salary ) FROM employee;} to get the average salary of all employees. Maximum and minimum are also pretty self-explanatory. Sum and average work only on numbers, but non-numeric types can be used for maximum and minimum. 
+
+\texttt{SELECT COUNT( salary ) FROM employee;} tells you the number of entries in the table where there is a salary. More commonly you would see \texttt{SELECT COUNT(*)} to count the number of entries in the relation. You could also put the primary key in the parenthesis instead of the asterisk if the asterisk gives you worries about performance nightmares.
+
+One can also put \texttt{DISTINCT} in the count expression. If you wished to count the number of distinct model names, you could write \texttt{SELECT COUNT( DISTINCT make ) FROM vehicle;} which would remove duplicates.
+
+According to~\cite{dsc} SQL does not permit combination of \texttt{DISTINCT} and \texttt{COUNT(*)}. Although it seems like this is accepted by MySQL, it is nonstandard behaviour if it does work. 
+
+It is nice to be able to sum up or average over all tuples matching some clause, but we can get grouping if we want as well. It might be interesting to know there are 150 different models of car, and if we are curious we can add a where clause to find out how many are made by Audi, and then another one where we find out how many are made by BMW... But that is inefficient. The solution is grouping:
+
+Example: \texttt{SELECT make, COUNT(model) FROM vehicle GROUP BY make;} might produce a result like the table shown below:
+
+\begin{center}
+\begin{tabular}{|l|l|}\hline
+	\textbf{make} & \textbf{count(model)} \\ \hline
+	Honda & 1  \\ \hline
+	Ford & 1  \\ \hline
+	Volkswagen & 2  \\ \hline
+	Totoya & 1  \\ \hline
+	Chevrolet & 1  \\ \hline
+	Genesis & 1  \\ \hline
+\end{tabular}
+\end{center}
+
+One may of course use the \texttt{AS} keyword to rename the count attribute if desired or restrict the query with a where clause. We could group by more than one criterion, such as grouping by both make and model, in which case we would could get a count of the number of Honda Civics on the database, for example. Grouping works as you would generally expect. 
+
+The select statement, obviously, selects over some attributes of the relation and they must be either (1) in the group by clause or (2) aggregated in some way. The statement \texttt{SELECT make, COUNT(model), year FROM vehicle GROUP BY make;} is invalid because the attribute ``year'' is not in the group by clause nor is it aggregated. This is sensible: there are multiple values for the ``year'' attribute and we would have no way of knowing which is the correct value to output here.
+
+
+That's nice, but what if we wanted to return only those rows where a certain property holds, such as count is greater than 1? For that there is the \texttt{HAVING} clause which would be applied as follows: \texttt{SELECT make, COUNT(model) FROM vehicle GROUP BY make HAVING COUNT(model) > 1;} This would return only the one tuple (Volkswagen).
+
+The textbook~\cite{dsc} gives the following evaluation order for such a query:
+
+\begin{enumerate}
+	\item The \texttt{FROM} clause is evaluated to get the relation.
+	\item The \texttt{WHERE} clauses is evaluated on the tuples in the relation specified in the \texttt{FROM} clause.
+	\item Tuples matching the \texttt{WHERE} clause are placed into groups according to the \texttt{GROUP BY} clause (if this is absent, then it's all one big group).
+	\item The \texttt{HAVING} clause, if any, is evaluated and removes groups that don't meet the having condition.
+	\item The \texttt{SELECT} operation is performed, producing the tuple for each group.
+\end{enumerate}
+
+In general, aggregate operations on null values tend to ignore any nulls they encounter: if the SQL query sums salaries and there is a null value it will not affect the sum (i.e. it will be treated like zero). The \texttt{COUNT} function does not, however. As usual, nulls have the potential to cause chaos.
 	
-Set Comparison
+\paragraph{Subqueries \& Set Comparison.}
+We can have subqueries (nested queries) where the result of one query is used as input to another query in a single statement. The keyword we are going to use extensively here is \texttt{IN}.  
 
-Unique
+The first use of a set comparison we might think of involves replacing a query that looks like this: \texttt{SELECT * FROM employee WHERE id = 2419 OR id = 2917 OR id = 4058 OR id = 5911;} with: \texttt{SELECT * FROM employee WHERE id IN (2419, 2917, 4058, 5911);}. This is more compact and easier to read; in a simple example like this there is not much possibility of confusion of the OR clauses, but in a query with multiple parts joined by AND and OR clauses, parenthesis are soon needed to avoid confusion. 
+
+Instead of an explicit list, the list could be generated by a query. Suppose the ministry of transport has discovered that license plates in the range CCCC 001 through CCCC 999 were manufactured incorrectly and are prone to falling apart easily. The ministry can send an e-mail to everyone affected to tell them of the problem and offer a free replacement. \texttt{SELECT name, street, city, province, postal\_code FROM owner\_address WHERE id IN (SELECT owner\_address\_id FROM license\_plate WHERE number LIKE 'CCCC\%');}
+
+
+Let us pretend that an auto manufacturer has a recall, say, they faked the emissions tests data. The ministry of transport could send letters to everyone who owns such a vehicle to let them know that if they do not get the dealer repair they will be unable to renew their license plates. In that case we need to have three tables linked and we can do that with subqueries.
+
+\begin{verbatim}
+SELECT name, street, city, province, postal_code 
+FROM owner_address WHERE id IN 
+  (SELECT id FROM license_plate WHERE number IN 
+    (SELECT license_plate_number FROM vehicle WHERE make = 'Volkswagen' AND model = 'Golf')
+  );
+\end{verbatim}
+
+We can usually replace a subquery with a join query, and vice versa. In many cases it is a question of taste, but sometimes a subquery is easier to read and understand (especially if it is complex). 
+
+\paragraph{Other Things.}
+This has by no means been an exhaustive list of all the SQL keywords one could possibly use (e.g., \texttt{UNIQUE}, \texttt{WITH}, et cetera). We may introduce additional syntax later if it is relevant to some other operation. For the moment, however, we have enough syntax covered to continue on to modification as well as design. 
 
 \subsection*{Modification}
 
@@ -32,7 +128,7 @@ The insert statement creates a new tuple and adds it to the relation, or creates
 
 If we are creating just one, then the simple, manual approach is sufficient. In SQL the keywords are \texttt{INSERT INTO} and \texttt{VALUES}. To add a new license plate we would write: \texttt{INSERT INTO license\_plate( number, expiry, owner\_address\_id ) VALUES( 'HOLMES01', '2018-12-10', 86753 );} 
 
-Observations: we specify the relation and then we give a list of attributes that we want  to assign, followed by the values that we wish to be assigned. In some situations we can leave off the parenthesis-enclosed list of attributes but that is not recommended. The SQL server will try to carry out the assignment of values in the order that the attributes are defined in the database and this may result in undesired behaviour. I therefore insist that the use of the order of attributes is important. 
+Observations: we specify the relation and then we give a list of attributes that we want  to assign, followed by the values that we wish to be assigned. In some situations we can leave off the parenthesis-enclosed list of attributes but that is not recommended. The SQL server will try to carry out the assignment of values in the order that the attributes are defined in the database and this may result in undesired behaviour. I therefore insist that the use of the order of attributes is important and you should use it everywhere; doing less is just bad practice. 
 
 Furthermore, we can put the attributes to be inserted in any order as long as the value types match: \texttt{INSERT INTO license\_plate( expiry, number, owner\_address\_id ) VALUES( '2018-12-10', 'HOLMES01', 86753 );}  is completely equivalent to the previous statement.
 
@@ -57,9 +153,20 @@ In relational algebra then the relation $r$ is modified by a deletion with predi
 Deletion should be used very carefully. When data is removed from the database, it's gone and not coming back (except, well, from backups... You do take backups, right?). Sometimes rather than actually deleting things you may be well advised to ``deactivate'' them, whether by having a boolean attribute for ``deactivated'' or having a second relation as a sort of ``recycle bin''/``trash can'' where tuples to be removed will eventually go.
 
 \paragraph{Update.} 
-The update statement changes one or more attributes of the tuple without changing all the values in the tuple. 
+The update statement changes one or more attributes of the tuple without changing all the values in the tuple. The update statement, like the delete operation, operates on a set of tuples: one may specify the predicate with the \texttt{WHERE} clause just as before. 
 
-We could model this as simultaneous deletion of the old tuple and insertion of the new one.
+In SQL the keywords we need are \texttt{UPDATE} and \texttt{SET}.  To update someone's address: \texttt{UPDATE OWNER\_ADDRESS SET postal\_code = 'B1B 2B2` WHERE id = '24601';}. 
+
+By now there should be nothing unexpected in this statement: we specify what fields to assign, their new values, and we limit the tuples to be affected by use of the \texttt{WHERE} clause and its predicate. 
+
+It is necessary to specify at least one attribute to change, although it is possible that no tuples are changed becausee none match the where-predicate. Similarly, an update may fail if we try to violate one of the rules: if the new text is too long for the attribute, for example. There are also some rules about updating an identifier for this relation. 
+
+In \cite{dsc} there is an example involving salaries where the statement runs along the following lines: \texttt{UPDATE employee SET salary = salary * 1.05 WHERE id = 1;}. This takes the current value of salary for the employee with id ``1'' and increases it by 5\% (the CEO is ever so generous to the CEO, no?). In this case the attribute salary is both read and written. It is perfectly alright to use and update a value like this, in much the same way that it is permissible to write a statement like \texttt{ x = x + 5; } in a C-like language; the assignment takes place after the right hand side expression has been evaluated.
+
+Similarly, if the statement is \texttt{UPDATE employee SET salary = salary * 1.05 WHERE salary > 100000;}, the behaviour is like deletion in that the set of salaries to update is determined before any modifications begin. The whole statement, no matter how many tuples it affects, is viewed as a transaction. 
+
+
+We could model this in relational calculus as simultaneous deletion of the old tuple and insertion of the new one. 
 
 
 \input{bibliography.tex}
