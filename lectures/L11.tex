@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 11 --- Storage and File Structure }{\term}{Jeff Zarnett}
+\lecture{ 11 --- Storage and Block Structure }{\term}{Jeff Zarnett}
 
 \section*{Physical Storage}
 
@@ -116,6 +116,8 @@ Then how do we put the variable length records into a block? For that, the strat
 Records themselves are contiguous in the block and free space exists, perhaps counter-intuitively, between the end of the array and the first record. When a new record is added, it goes at the end of free space and the array gets a little bit bigger (so the free space is reduced at both ends)~\cite{dsc}. 
 
 Deletion requires a bit more work: if an entry is deleted the data is removed and any records between that record and the free space area are moved so that all free space remains contiguous. If a record needs to grow or shrink due to an update statement, then we have to repeat the same procedures and move the records around to ensure that all free space remains contiguous~\cite{dsc}. 
+
+Reorganization following deletion does not have to take place immediately; it is possible to do periodic reorganization when it is a convenient time.
 
 \paragraph{Performance Considerations.}
 
