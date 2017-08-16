@@ -113,9 +113,56 @@ The secondary index has provided quick introduction to the idea of an index with
 
 Regardless of the type of index, whenever a record is inserted or deleted, the index needs to be updated. If an update affects an indexed field, then it must also be updated. Calling back to updating a relation, an update can be modelled as a deletion and an insertion, which means we no longer need to consider update separately.
 
+We will therefore consider two simple algorithms for insertion and deletion from~\cite{dsc}:
+
 \paragraph{Insertion.}
+If the index is dense, then:
+\begin{enumerate}
+	\item If the search key does not appear in the index, insert an index entry at the appropriate position.
+	\item If the search key is found then:
+		\begin{enumerate}
+			\item If the index stores pointers to all records with the same search key value, add a pointer to the new record in the index entry.
+			\item Otherwise the index entry stores a pointer to the first record with that value; place the record being inserted after the other records with the same key.
+		\end{enumerate}
+\end{enumerate}
+
+If the index is sparse then:
+
+\begin{enumerate}
+	\item If a new block is created, insert the first search key value from the new block into the index.
+	\item Otherwise, no new block is created and:
+		\begin{enumerate}
+			\item If the new record is the lowest record in the block, update the index entry for that block.
+			\item If the new record is not the lowest, no change to the index occurs.
+		\end{enumerate}
+\end{enumerate}
 
 \paragraph{Deletion.}
+
+For deletion, the system must search to find the item to be deleted. If it's not there, of course, there's nothing to do. 
+
+If the index is dense, then:
+\begin{enumerate}
+	\item If the deleted record was the only one with its value, delete that search key from the index.
+	\item Otherwise:
+		\begin{enumerate}
+			\item If the index stores pointers to all records with the same search key value, delete the pointer to the deleted record.
+			\item Otherwise: if the deleted record is the first in the group, update the pointer to be the next item; if it is not then there is no change to make.
+		\end{enumerate}
+\end{enumerate}
+
+If the index is sparse then:
+
+\begin{enumerate}
+	\item If the index does not contain an entry with the deleted value, there is nothing to change.
+	\item Otherwise:
+		\begin{enumerate}
+			\item If the deleted record is the only one with its search key, replace it with the next search key and record pointer; unless that is already in the index, in which case just delete the entry.
+			\item If it is not the only one with its search key, then update the pointer to point to the next record with that same value.
+		\end{enumerate}
+\end{enumerate}
+
+These algorithms are generally extensible to multi-level indexes as well: update the lowest level index and the changes will cascade upwards if needed. From the point of view of the second level, the lower level is the same as if it is a file containing records. But, as we will see, this is something we are about to examine.
 
 
 \input{bibliography.tex}
