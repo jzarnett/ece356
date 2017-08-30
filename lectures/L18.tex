@@ -45,7 +45,13 @@ Some of these values can be computed, notably $l_{r}$ is the number of blocks ti
 
 There are obviously tradeoffs when it comes to maintaining metadata. The more often it is updated, the more effort is spent updating it. If every insertion or update or deletion resulted in an update, that may mean a nontrivial amount of time is spent updating this data. If we only do periodic updates, it likely means that the statistic data will be outdated when we go to retrieve it for use in a query optimization context. Perhaps some amount of balance is necessary: updates can be done during times of lower system load with some maximum limit for how long an update can wait before it gets enough priority. This is, in some small way, a callback to scheduling algorithms you have surely learned about in an OS class. 
 
-A database may also be interested in keeping some statistical information in a histogram. The values are divided into ranges and we have some idea of how many tuples are in those ranges. You have almost certainly seen a histogram before in something like a population pyramid diagram. That should also tell you that they do not necessarily have an even distribution. A histogram does not take up a lot of space and it can help us to figure out certain problems: if we have a histogram of salaries and the largest bucket is 100~000+ and there are 10 people in this category, and there is a query asking how many employees have a salary greater than or equal to \$100~000 we will know at least that the number of tuples to be returned is 10. Nice.
+A database may also be interested in keeping some statistical information in a histogram. The values are divided into ranges and we have some idea of how many tuples are in those ranges. You have almost certainly seen a histogram before in something like a population pyramid diagram. An example from~\cite{dsc}:
+
+\begin{center}
+\includegraphics[width=0.4\textwidth]{images/histogram}
+\end{center}
+
+That should also tell you that they do not necessarily have an even distribution. A histogram does not take up a lot of space and it can help us to figure out certain problems: if we have a histogram of salaries and the largest bucket is 100~000+ and there are 10 people in this category, and there is a query asking how many employees have a salary greater than or equal to \$100~000 we will know at least that the number of tuples to be returned is 10. Nice.
 
 The above numbers are exact values which we can know and, hopefully, trust although they could be slightly out of date depending on when exactly metadata updates are performed. The more exact values we have, the better our guesses. But things start to get interesting when, in the previous example, we ask something that does not have a category, such as how many people have a salary larger than \$150~000, where there isn't an obvious answer found in the metadata?
 
@@ -61,12 +67,40 @@ We will start with select operations.
 If values are evenly distributed, then we can expect that $n_{r}/V(A, r)$ tuples should be returned. If there are ten possible values and everything is approximately evenly distributed then a select is expected to produce approximately 10\% of the tuples as its result. The uniform distribution may not be accurate, but if it is a reasonable approximation of the data, it is simple and fast. If a histogram is available, we can look in the range that contains that search value and guess based on the frequency count for that range instead.
 
 \paragraph{Single Comparison Predicate.} 
-The next case is when we have a comparison like the salary greater than or equal to \$150~000 then we can 
+The next case is when we have a comparison like the salary greater than or equal to \$150~000 then we can, using the known maximum and minimum values of this attribute, take a guess. If the requested value $v$ is less than the minimum, we expect no rows returned; if the requested value is greater than the max also zero. Otherwise, the formula to estimate, where $m$ is the minimum value and $M$ is the maximum value: $n_{r} \times \dfrac{v - m}{M - m}$
+
+Of course, if a histogram is available, we would prefer to use that. 
 
 \paragraph{Complex Predicates.}
+For conjunction as well as disjunction, we will use a new symbol, $s$, which represents the selectivity of the a particular selection: how likely it is that a particular tuple matches a condition. The probability that a tuple satisfies $\theta_{i}$ is $s_{i}/n_{r}$.
 
+For conjunctive selection, we want the probability that a certain tuple meets all of the critera. So the formula to estimate is:
+
+$n_{r} \times \dfrac{s_{1} \times s_{2}... \times s_{k}}{(n_{r})^{k}}$.
+
+For disjunctive selection it is the probability of matching an one of those conditions. The calculation will be simplified by trying to compute 1 minus the probability it satisfies none of the conditions: 
+
+$1 - (1 - \dfrac{s_{1}}{n_{r}}) \times (1 - \dfrac{s_{2}}{n_{r}}) \times ... \times (1 - \dfrac{s_{k}}{n_{r}})$
+
+Negation is pretty simple: if we have a predicate $\neg\theta$ then the number of tuples likely to meet that is the number of tuples in the relation subtract those that do match $\theta$.
 
 \subsection*{Estimating Join Size}
+
+If we are computing a join where the relations have no attributes in common, then the ``join'' is really the cartesian product and the number of tuples in the output will be the number of tuples in $r_{1}$ multiplied by the number of tuples in $r_{2}$. That's a lot.
+
+If the intersection of $r_{1}$ and $r_{2}$ is a key (unique value) for $r_{1}$ then we know that a tuple in $r_{2}$ can match with at most one in $r_{1}$ so the maximum number of tuples that could occur is the number of tuples in $r_{2}$. If the intersection is also defined as a foreign key on $r_{2}$ then it is exactly the number of tuples in $r_{2}$. This also applies symmetrically (so you can swap $r_{1}$ and $r_{2}$ in the previous statements).
+
+The difficult case occurs if the intersection of two relations is not a key in either of those two relations. In that case, looking at the attributes in the relation, which we will call $A$, then the number of tuples in the join relation are:
+
+$\dfrac{n_{r_{2}}}{ V(A, r_{2})} $. 
+
+In other words, the average number of values in $r_{2}$ that have a given value of $A$. Since we expect that they match with $r_{1}$ then we estimate that there will be:
+
+$\dfrac{n_{r_{1}} \times n_{r_{2}}}{ V(A, r_{2})} $. 
+
+Now wait, you might say, because the denominator here depends only on $r_{2}$, and if you switched the positions of $r_{1}$ and $r_{2}$ we could get a different answer if $V(A, r_{1})$ is not identical to $V(A, r_{2})$. Quite right. Those two values may be different if not all entries in one of the tables can be joined with an entry in the other. That is unusual but not impossible. If that is the case, we would choose the smaller of the two estimates since the smaller relation will limit what we can do.
+
+The previous calculation does assume, of course, that all values are equally likely. If they are not, then applying a histogram will give a more accurate prediction. 
 
 \subsection*{Other Operations}
 
