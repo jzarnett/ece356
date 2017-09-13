@@ -102,7 +102,54 @@ T2.8 Unlock S
 
 There are no free lunches, though: the risk of longer-held locks is that there can be, as you guessed... \textit{deadlock}! Deadlock, as you will recall, is what happens when two or more transactions (formerly processes) are permanently blocked waiting for one another. As before, an unfortunate interleaving of lock and unlock statements can mean that the transactions get stuck. Deadlock is bad, but not as bad (we think) as inconsistent states being shown (or worse, saved!). If a deadlock occurs, we can detect it and then can do something about it; if an inconsistent state is shown then we may never know about it.
 
-There are often rules in the system for how transactions behave with respect to locks called the \textit{locking protocol}. The locking protocol sets up some rules about when items may be locked and unlocked which reduces the number of possible schedules such that the only allowed schedules are conflict-serializable schedules~\cite{dsc}.
+There are often rules in the system for how transactions behave with respect to locks called the \textit{locking protocol}. The locking protocol sets up some rules about when items may be locked and unlocked which reduces the number of possible schedules such that the only allowed schedules are conflict-serializable schedules~\cite{dsc}. A schedule is considered legal if it follows all the rules of the locking protocol.
+
+Alongside the risk of deadlock, there is also the possibility of starvation. As you will recall, a transaction (thread) starves when, even though it is ready to run, it never gets a turn because the other transactions (threads) are using the resource(s) that it needs. The more locks a particular transaction requires, the more likely it is to have to wait and the higher the risk of starvation. 
+
+One possible solution to preventing starvation as suggested by~\cite{dsc} is to introduce a new rule about when a lock request is granted. The new rule is that the locks should be granted in order of request, meaning that a transaction $T_{i}$ will never have to wait for a transaction $T_{j}$ that requested that lock later. This is, obviously, in addition to the usual rule that the lock can only be granted when the requested lock mode is compatible with the existing locks, if any. 
+
+This new rule differs, in some way, from the kind of logic we have discussed in concurrency. In concurrency we have said that there is no guarantee as to what order waiting threads will be unblocked when the resource they are waiting for becomes available. 
+
+You will also recall the idea of two phase locking: we try to acquire locks and if we are unsuccessful, release any that we have acquired and try again from the beginning. The database two phase locking protocol is a little bit different. In this there are two distinct phases: growing and shrinking. In the growing phase a transaction may acquire locks; in the shrinking phase a transaction may release locks but may not obtain any new ones. The initial state is the growing phase and as soon as the first lock is released then it is not permitted to obtain any new ones~\cite{dsc}.
+
+Any two phase locking protocol gives us, automatically, conflict serializability. For any transaction, there exists the point where the last lock as been obtained, and this is called the \textit{lock point}~\cite{dsc}. We can order transactions based on their lock points and it gives a serial ordering of the transactions. But that's all it gives us: not any sort of freedom from deadlocks or starvation.
+
+There exist two more restrictive locking protocols in~\cite{dsc}. The fist is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed. This guarantees that no intermediate states are ever made visible. The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit. With rigorous two phase locking, transactions are easily serialized by commit order.
+
+We can try to squeeze out some more parallelism by allowing locking to have two more operations: a transition from shared to exclusive and from exclusive to shared. We still need exclusive lock to modify a value, but we can allow some values to be shared during the execution of the transaction. Still, moving from a shared to exclusive lock is called an upgrade, and that can only be done during the lock acquisition phase. Moving from exclusive down to shared is called a downgrade and it can only be done in the shrinking phase. An upgrade is like trying to acquire a lock, so it can result in blocking of a transaction.
+
+As you might imagine, when presented with a list of instructions, a human can consider the transaction (or transactions) presented and make some sort of hopefully good decisions about how to put the lock and unlock statements in the transaction. Doing so algorithmically fairly simple. The algorithm from~\cite{dsc} below, with some modifications for clarification, will ensure that the lock and unlock instructions are created:
+
+\begin{enumerate}
+	\item Scan the transaction from the beginning moving one statement at a time.
+	\item If the next instruction is a read of of an item $i$ and there is no lock on $i$ already, insert an instruction to lock $i$ in shared mode before the read.
+	\item Otherwise, if the next instruction is a write of an item $i$ and the item $i$ is not already locked exclusively:
+		\begin{enumerate}
+			\item If the item is locked in shared mode, insert an instruction to upgrade the lock on $i$ to exclusive mode before the write.
+			\item Otherwise the item is not locked, insert an instruction to lock $i$ in exclusive mode before the write.
+		\end{enumerate}
+	\item At the end of the transaction (commit or abort), insert instructions to unlock all locks that were locked (regardless of mode).
+\end{enumerate}
+
+Following this systematic approach will ensure that locks are shared when they can be, never permit intermediate state to be visible, and ensure that transactions can be serialized.
+
+\paragraph{Implementation of the Lock Manager.} The lock manager is the mysterious part of the database that decides when to grant lock requests, and when to deny them. In fact, the lock manager receives the requests to lock and unlock commands. The lock manager may return a grant of the lock when it is received, or a denial message. But that answer might not come right away: if a grant cannot be completed right now we can delay it until it can be granted. Rejection, however, is fatal to the requester: a rejection means the requesting transaction must be rolled back. The unlock requests do not strictly speaking require a response, but it is noteworthy for the lock manager since it allows other transactions to be unblocked.
+
+We will cover two approaches: lock tables (a linked-list approach) and a graph algorithm.
+
+The linked list approach means that each data element is associated with a linked list. In that linked list is the current transaction owning that lock as well as any other transactions that are waiting for that particular item. The image below shows a lock table example from~\cite{dsc} in which there are locks for five different data items numbered 4, 7, 123, 144, and 912:
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/lock-table}
+\end{center}
+
+The rules for constructing and manipulating such a lock table are pretty simple and comprehensible from the diagram. Each (lockable) data item is associated with a linked list. Entries in that linked list contain the transaction identifier and an flag to indicate granted or waiting.
+
+If a request arrives for a data item for which there is no lock, then an entry is created and the request be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait. 
+
+When there is an unlock request, the entry for that transaction and data item are removed and, if possible, further requests are granted. If a transaction aborts, any locks (granted or not) are removed from the lock table.
+
+This algorithm avoid the possibility of starvation, because the linked list imposes order on the request such that later requests always are enqueued after earlier ones~\cite{dsc}.
 
 \input{bibliography.tex}
 
