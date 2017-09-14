@@ -151,6 +151,10 @@ When there is an unlock request, the entry for that transaction and data item ar
 
 This algorithm avoid the possibility of starvation, because the linked list imposes order on the request such that later requests always are enqueued after earlier ones~\cite{dsc}.
 
+The graph based protocol in~\cite{dsc} is has to do with establishing a lock based protocol that uses a tree. TO make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
+
+You might recall this sort of protocol from the general discussion of deadlock in a concurrency context. In the examples, a simple deadlock is created when one thread locks \texttt{a} and then \texttt{b} and the other thread locks \texttt{b} and then \texttt{a}. The solution was to establish an ordering
+
 \input{bibliography.tex}
 
 \end{document}
