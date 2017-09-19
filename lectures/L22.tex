@@ -151,9 +151,35 @@ When there is an unlock request, the entry for that transaction and data item ar
 
 This algorithm avoid the possibility of starvation, because the linked list imposes order on the request such that later requests always are enqueued after earlier ones~\cite{dsc}.
 
-The graph based protocol in~\cite{dsc} is has to do with establishing a lock based protocol that uses a tree. TO make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
+The graph based protocol in~\cite{dsc} is has to do with establishing a lock based protocol that uses a tree. To make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
 
-You might recall this sort of protocol from the general discussion of deadlock in a concurrency context. In the examples, a simple deadlock is created when one thread locks \texttt{a} and then \texttt{b} and the other thread locks \texttt{b} and then \texttt{a}. The solution was to establish an ordering
+You might recall this sort of protocol from the general discussion of deadlock in a concurrency context. In the examples, a simple deadlock is created when one thread locks \texttt{a} and then \texttt{b} and the other thread locks \texttt{b} and then \texttt{a}. The solution was to establish an ordering on the lockable elements (in that case, the alphabetical ordering seemed logical enough, but reverse alphabetical would work too). That works okay for names, but not everything has a name, and anything relatively simple like memory location of file location would work to impose an ordering.
+
+The tree protocol is an example in~\cite{dsc} that works only for exclusive locks with four rules:
+
+\begin{enumerate}
+	\item The first lock by a transaction $T_{1}$ may be on any data item.
+	\item Any other data item $d$ may be locked by $T_{i}$ only if the parent of $d$ is currently locked by $T_{i}$.
+	\item Items may be unlocked at any time.
+	\item A data item that has been locked and then unlocked by $T_{i}$ cannot later be locked again by $T_{i}$.
+\end{enumerate}
+
+The diagram below illustrates a potential ordering of data elements:
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{images/tree-lock}\\
+Tree structured ordering of data elements~\cite{dsc}
+\end{center}
+
+It is simple enough, when looking at this graph, to think of some schedules that are legal or illegal under this protocol. It can be shown that this protocol ensures freedom from deadlock. The reasoning is a fairly simple proof by contradiction: assume that a deadlock exists and then show a contradiction.
+
+In~\cite{osc} is a proof that ordering the resources prevents deadlock in processes, and it is simple enough to modify for transactions. Let us say there is a function $f()$ that takes a data element and returns a unique identifier used for ordering. Assume a circular wait is present. Let the set of processes in the circular wait be $\{T_{0}, T_{1}, ... T_{n}\}$ and the set of resources (data elements locked) be $\{R_{0}, R_{1}, ... R_{n}\}$. The cycle is formed as: $T_{i}$ is waiting for resource $R_{i}$ and that resource is held by $T_{i+1}$. The exception is the case of $T_{n}$, which is waiting for resource $R_{n}$ that is held by $T_{0}$ (completing the cycle by wrapping around). Since Process $T_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction, meaning a circular wait cannot occur.
+
+Use of the tree structured protocol does not, however, ensure recoverability or prevent cascades from occurring~\cite{dsc}. That means we need to also take steps, as earlier, to ensure that the schedule conforms to our other properties. The other negative here is that the database server might need to lock items other than the ones strictly necessary in the transaction.
+
+Consider an example in the tree lock diagram above; if data elements $A$ and $J$ are needed, then items $B$, $D$, and $H$ also need to be locked to make this work. Moreover, it is very likely that we are going to lock the root of the tree, meaning that (most) transactions are effectively serialized. This is probably not a good thing.
+
+The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not e very good solution given the tradeoffs. It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
 
 \input{bibliography.tex}
 
