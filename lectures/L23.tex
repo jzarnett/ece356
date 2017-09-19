@@ -99,6 +99,57 @@ The goal of the partial rollback is to rollback the transaction back only as muc
 
 \section*{Lock Granularity}
 
+We have choices about the granularity of locking, and it is a trade-off (like always). Locks' extents constitute their {\it granularity}: that is, how much data is being protected by such a lock.
+
+\textit{Coarse-grained} locking is easier to implement, but it can significantly reduce opportunities for parallelism. \textit{Fine-grained locking} requires more careful design, increases locking overhead and is more prone to bugs (deadlock etc).  
+In coarse-grained locking, you lock large sections of your data with a big lock; in fine-grained locking, you divide the locks and protect smaller sections with multiple smaller locks.
+
+In the database we could define multiple levels of granularity. As in the diagram below:
+
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/granularity-hierarchy}\\
+Granularity hierarchy showing four levels~\cite{dsc}
+\end{center}
+
+In this diagram, there are four levels of the hierarchy. At the lowest level, individual records may be lockable. Above that, it may be at file level (i.e., relation level). The third level from the bottom is an ``area'' -- this is usually a grouping of one or more relations that form a logical group. The root of the tree is the database itself: the entire database can be locked if needed. A lock of a node in this hierarchy also implicitly locks all descendants of that node.
+
+This leads to a fair amount of headaches: if a transaction $T_{i}$ wants to lock a node $x$ then all the children of $x$ must be examined to see if they are locked. Also, we have to look to see if any of the nodes between the root and $x$ are locked (including the root). And this applies every time an item is to be locked! This is painful. 
+
+The more efficient route recommended by~\cite{dsc} is called \textit{intention lock modes}, which are put on the ancestors of a node before the node is locked. These intention locks can be checked while traversing the tree. The following modes are possible:
+
+\begin{itemize}
+	\item \textbf{Shared} (S) - This is as before, directly locking an item in shared mode.
+	\item \textbf{Exclusive} (X) - Directly locking an item in exclusive mode.
+	\item \textbf{Intention Shared} (IS) - There is at least one shared lock at a lower level of the tree, but no exclusive locks.
+	\item \textbf{Intention Exclusive} (IX) - There is least one exclusive lock at a lower level of tree, and there can be shared ones as well.
+	\item \textbf{Shared Intention Exclusive} (SIX) - The current node is locked in shared mode, and there is at least one exclusive lock at a lower level (and maybe shared ones too).
+\end{itemize} 
+
+Then a transaction must follow the six rules below~\cite{dsc}:
+
+\begin{enumerate}
+	\item All attempts to lock must observe the table (below) as to whether they are permitted to proceed (or wait).
+	\item The transaction must lock the root of the tree first (in any mode, but it must pick one).
+	\item A node $n$ can be locked in \textbf{S} or \textbf{IS} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{IS} mode.
+	\item A node $n$ can be locked in \textbf{X}, \textbf{SIX}, or \textbf{IX} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{SIX} mode.
+	\item A node $n$ may only be locked if the transaction has not previously unlocked any nodes.
+	\item A node $n$ may only be unlocked if none of the children of $n$ are locked by this transaction.
+\end{enumerate}
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|} \hline
+	Compatibility & \textbf{IS} & \textbf{IX} &\textbf{S} &\textbf{SIX} &\textbf{X}\\ \hline
+\textbf{IS} & \checkmark &\checkmark  & \checkmark & \checkmark & $\times$ \\ \hline
+\textbf{IX} & \checkmark & \checkmark & $\times$ & $\times$ & $\times$	\\ \hline
+\textbf{S} & \checkmark & $\times$ & \checkmark & $\times$ & $\times$ \\ \hline
+\textbf{SIX} & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+\textbf{X} & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+	
+\end{tabular}
+\end{center}
+
+It is noteworthy that locks must be acquired in a top-down manner and then released in a bottom-up manner. 
+
 \input{bibliography.tex}
 
 \end{document}
