@@ -104,18 +104,33 @@ There is the possibility of deadlock in this protocol, but we know how to deal w
 
 The second technique we will talk about requires a modification of the B$^{+}$-trees called \textit{B-Link} trees. These have the added restriction that says every node (really, all of them) have a pointer to its sibling to the right. This helps in case a search is taking place at a time when a node is being split and it can continue. The locking protocol is then different for all operations as described below~\cite{dsc}:
 
-\textbf{Lookup}: Each node must be locked in shared mode before it is requested. 
+\textbf{Lookup}: Each node must be locked in shared mode before it is requested. A lock on any non-leaf node is released before a lock on any other node is requested. If a split takes place while a lookup is happening, then we might need to look in the sibling to find something (which is why there are sibling pointers). Leaf nodes are locked using the two phase protocol.
 
 \textbf{Insertion/Deletion}: The rules for lookup are followed to find the leaf node where the records will be inserted or deleted. The lock for the leaf is upgraded to exclusive, and the insertion or deletion is performed. Two phase locking is used to avoid the phantom phenomenon.
 
 If as a result of insertion or deletion, a split or coalescence is needed, the steps described below are followed to make that happen.
 
-\textbf{Split}: If a node is split, we follow the usual locking 
+\textbf{Split}: If a node is split, a new node is created as per normal for a B-Tree and it becomes the right sibling of the original node (and the previous right sibling of the original is now the right sibling of the new node). Then the original node is released and an exclusive lock on the parent is requested to insert a pointer to that new node.
 
 \textbf{Coalescence}: If a node need to be coalesced, then the node it will be merged with must be locked in exclusive mode. Then the parent node of the newly-created node must be locked exclusively so that the deleted node can be removed. The parent may be coalesced as well if necessary, otherwise it is released.
 
+It's worth noting that it's possible that an insertion locks a node, unlocks it, and re-locks it again.  Below is an example (from~\cite{dsc}) of insertion of ``Chemistry'' into a B-Link tree. 
 
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/b-link1}
+	\includegraphics[width=0.9\textwidth]{images/b-link2}\\
+	Insertion of ``Chemistry'' into a B-Link tree (before above, after below).~\cite{dsc}
+\end{center}
 
+So, running through the example: the insertion operation runs and it finds the destination where ``Chemistry'' should be inserted, which results in splitting the node  at the bottom left and the creation of a new one.  
+
+Now let's see what happens if there is a lookup while this is going on at this point. The lookup gets blocked at the bottom-left leaf node because it is exclusively locked by the insertion. The lookup holds no locks at this point.
+
+The insertion operations complete and relocks the parent node in exclusive mode, completing the insertion. This completely screws up the lookup operation because it is now holding a pointer to the wrong node. That's okay, because the lookup can start moving to the right through the sibling nodes until it finds the correct one. That seems a little bit painful, but it does mean it will succeed.
+
+If instead of a split there was a coalescence, a lookup might be left holding the pointer to a node that no longer exists. That's okay, this lookup just needs to restart from the beginning. It's not ideal, but it does happen. To reduce the amount of times this happens, we might try to leave some nodes uncoalesced even when that would be the normal procedure; this breaks the rules about B-Trees, but it might be very brief if there are many more insertions than deletions.
+
+\paragraph{Key-Value Locking.} Key-value locking allows locking individual key values allowing other operations to take place on values within the same leaf node and potentially increasing concurrency. The problem is that we could still have the phantom phenomenon, so the strategy of \textit{next key locking} is employed: not only lock the keys that are in the range/search result but also whichever one is next~\cite{dsc}. This prevent something from being inserted, altered, or deleted inside the search range. 
 
 \input{bibliography.tex}
 
