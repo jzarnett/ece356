@@ -2,153 +2,184 @@
 
 \begin{document}
 
-\lecture{ 23 --- Deadlock, Lock Granularity }{\term}{Jeff Zarnett}
+\lecture{ 23 --- Concurrency Control }{\term}{Jeff Zarnett}
 
-\section*{Deadlock}
+\section*{Concurrency Control}
 
-You should recall from learning about concurrency what deadlock is about, and therefore a brief review only is in order. Those in need of a refresher are advised to take a look through previous courses' material to get caught up. Others may find this to be review material, but it does deviate in some significant ways from the discussion of deadlocked processes.
+Having discussed in some detail the idea of transaction isolation, we now need to turn our attention to the question of how the database will control the various concurrent elements to make sure that execution goes as planned. There are a variety of schemes, but at this point the ones we will examine will always assume that failure does not happen. Once we understand the concurrency control mechanisms we can then build on them to include failure recovery.
 
-We have already introduced the subject of deadlock and gave an informal definition as all transactions being ``stuck'' (unable to proceed). A more formal definition is given in~\cite{osi} (but modified for a database): ``the \textit{permanent} blocking of a set of transactions that either compete for system resources or communicate with each other''. There is emphasis on permanent. It may be possible for all transactions to be stuck temporarily, because one is waiting for some event (e.g., a read from disk), but this situation will resolve itself and is not deadlock. A set of transactions is truly deadlocked when each transaction in the set is blocked on some event that can only be triggered by another blocked transaction in the set. In this case it is permanent, because none of the events can take place.
+\subsection*{No Concurrency Control}
 
-Remember, there are four conditions necessary for a deadlock to take place:
+It is possible from the point of view of the database to simply choose not to implement concurrency control of any sort. This is easy for the database designers and effectively means putting the problem of concurrency management in the hands of the users of the database (application developers). 
 
-\begin{enumerate}
-	\item \textbf{Mutual Exclusion}: A resource belongs to, at most, one transaction at a time.
-	\item \textbf{Hold-and-Wait}: A transaction that is currently holding some resources may request additional resources and may be forced to wait for them.
-	\item \textbf{No Preemption}: A resource cannot be ``taken'' from the transaction that holds it; only the transaction currently holding that resource may release it.
-	\item \textbf{Circular-Wait}: A cycle in the resource allocation graph.
-\end{enumerate}
+This is not as insane as it sounds, since the application itself could have its own sort of concurrency control mechanisms and it would be fine to just let the application manage that. The solution is, however, inadequate for commercial databases since they can allow multiple applications to run at once and do not trust that application developers do things the ``right'' way at all times. 
 
-We could choose not to handle deadlock. This option is certainly convenient for database system designers: we simply pretend that deadlock can never happen, or if it does happen, it is the application developers' fault. While it is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. If two transactions get deadlocked, the user may simply see no progress and just feel bad about it. But sad users are not a good thing, now, are they?
+\subsection*{Lock-Based Protocols}
 
-Although in theory it would be nice to prevent deadlock from ever occurring, in practice it is probably more likely that we will simply try to detect it and deal with it if it occurs. But prevention is worth looking at.
+As you will recall from learning about concurrency and synchronization, our typical ``go-to'' strategy for dealing with concurrency problems is locking of some sort. You are surely familiar with locks and locking so we will not need to repeat any of the material on that subject from earlier. 
 
-\subsection*{Deadlock Prevention}
+For performance reasons we will assume that we use reader/writer type locks, meaning that there are accordingly two modes in which a data element may be locked: shared mode, and exclusive mode. In keeping with~\cite{dsc} the shared mode lock is denoted by $S$ and exclusive by $X$. If transaction $T_{i}$ has a shared lock on some data element $e$ then it may read but not write it; if the transaction has an exclusive lock then it may both read and write. Exclusive is exactly what it sounds like in that no other transaction may have any sort of lock if one transaction has an exclusive lock.
 
- The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening. If we prevent the circular wait from occurring, we are still in a world where deadlock can occur but we cleverly avoid it taking place based on how we allow locks to occur.
+Every transaction must request a lock before accessing a data item, and the sort of lock it will request depends on what it would like to do. The request is made of the concurrency control system and it will either grant the request or delay that transaction until the request is granted. This you will recognize as being the same sort of behaviour of the mutex and semaphore: a requestor may proceed or will be blocked for some period of time.
 
-\paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution.
+As for whether the request can be granted, this is pretty simple. If there are no locks for that item, then the request may be granted. If the request is exclusive and there exists any lock on that data item, the request must wait. If the request is for a read and there exists an exclusive lock on the item, the request must wait. If the request is for a read and there exist only read locks on the item, the read may proceed. If the request can be granted, that might not guarantee it will be granted immediately.
 
-\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. One plausible solution is that the transaction must request all resources at the beginning of the program. So if the program is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program, all three must be requested right at the beginning and held throughout the transaction. No further resources may be requested at any time during execution~\cite{osc}.
+If there are more lock modes (which we will not consider in this course, at least) then we would need to check to see whether a new request's locking mode is compatible with the existing ones. The compatibility rule for reader-writer locks is pretty simple as above, but in the more general approach it is necessary to check all the locks currently held for that item and see if they are compatible. If they are all compatible, the lock may be granted.
 
-When talking about processes, actually we said this requires some amount of clairvoyance: a process has to know in advance all of the resources that it will need. Remember that a file is a resource, and even a simple program like a text editor can be used by the user to open an arbitrary file; how do we know in advance which will be requested? But with database transactions, actually, we can actually evaluate what data items are needed. That might not be trivial, but at least for databases it is possible.
+As with the kinds of locks we are accustomed to from C-like languages, there is also an unlock operation to, well, unlock that item. Unlocking an item will allow some other waiting transaction (or transactions) to be able to then lock that item.
 
-This also has performance implications: a transaction cannot start until it has all the resources it will ever need, even if it will not need them until much later. Thus, transactions might spend a lot of time waiting before starting; something that users may not tolerate. In theory, a transaction might never start if one or more of the resources it needs is always in use (so this is vulnerable to starvation).
- 
+The standard advice in concurrency is to unlock items as soon as possible (but no sooner). The sooner a transaction unlocks things it is finished with, the sooner another transaction may be unblocked and may proceed. But there is such a thing as unlocking too soon. Why? Serializability may not be ensured: it is possible that an early unlocking allows some intermediate state to be read. Let's do an example from~\cite{dsc}.
 
+Let us suppose there are two concurrent transactions going on. $T_{1}$ is to transfer \$50 from chequing (account C) to savings (account S). The second is to show your total net worth which is computed by summing C and S (and we will ignore any other details like credit card debts, loans, investments, etc). Let's look at the statements needed to get this done:
 
-\paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a transaction. In the database context, if we have to preempt a transaction, it means the transaction in question is rolled back and then restarted. To work out an ordering, transactions are assigned a timestamp. If a transaction is rolled back, its timestamp remains the same~\cite{dsc}. There are two approaches for what happens if we need to do pre-emption:
+\begin{multicols}{2}
+\textbf{Transaction $T_{1}$}
+\begin{verbatim}
+T1.1 Exclusive lock C
+T1.2 Read C
+T1.3 C = C - 50
+T1.4 Write C
+T1.5 Unlock C
+T1.6 Exclusive Lock S
+T1.7 Read S
+T1.8 S = S + 50
+T1.9 Write S
+T1.10 Unlock S
+\end{verbatim}
 
-The first is called \textit{wait-die}: if a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. $T_{i}$ will be allowed to wait if it is older (i.e. its timestamp is a smaller number) than $T_{j}$, otherwise it ``dies'' (is rolled back). 
-
-The second is \textit{wound-wait}: if a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. If $T_{i}$ is the younger transaction (its timestamp is larger), then $T_{i}$ can wait. Otherwise, $T_{j}$ is ``wounded'' by $T_{i}$ and $T_{j}$ is rolled back.
-
-So, in case of a conflict, one of the two transactions is going to be rolled back. And it is always the younger one. This is not because older transactions vote in higher numbers, but because it tends to be more expensive to restart an older transaction. A transaction that has been running for a long time, if it is restarted, has to do a lot more work to get to the point where it was terminated than a younger transaction. Another reason: if the oldest transaction were constantly the one selected, that transaction itself might never get to run to completion (starvation) because it is constantly killed before it finishes. A third reason is somewhat more subtle: if the killing transaction is very aggressive then perhaps no tasks run to completion because each transaction, shortly after becoming the oldest, is claimed by the deadlock recovery transaction. Therefore, young transactions tend to be the ones selected.
-
-In either approach there may be unnecessary rollbacks~\cite{dsc}.
-
-Instead we could also have locks that have timeouts: when a lock is requested there is a defined maximum time the transaction is willing to wait. If that time limit is reached, the transaction rolls back automatically and begins again. The obvious difficulty lies in choosing the length of time that the transactions will wait: too long and a deadlock persists for a lengthy period of time; too short and transactions do not complete because they are rolled back repeatedly. And that is generally unfortunate. This sort of approach is not especially recommended. 
-
-\paragraph{Circular Wait.}
-We have already discussed the idea of using two phase locking to put an ordering on the locks and we need not repeat that yet again. 
-
-\subsection*{Deadlock Detection}
-
-In previous courses you may have covered algorithms like the banker's algorithm and the graph algorithm for detecting deadlock. It is the second one that is interesting in the database.
-
-A quick review of the graph algorithm follows, then. If resources have only a single instance, we may reduce the graph to a simplified version called the \textit{wait-for} graph. This removes the resource boxes from the diagram and indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that happens to be held by $P_{j}$. An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$~\cite{osc}. Consider the example below:
-
-\begin{center}
-\includegraphics[width=0.5\textwidth]{images/rag-waitfor.png}\\
-(a) A resource allocation graph and (b) its corresponding wait-for graph~\cite{osc}.
-\end{center}
-
-Because locks are unique (there is always only one instance) then there is no need to use the resource allocation graph and we can always use the simplified wait-for graph for transactions as below:
-
-\begin{center}
-\includegraphics[width=0.25\textwidth]{images/transaction-waitfor.png}\\
-Transaction wait-for graph~\cite{dsc}.
-\end{center}
+\columnbreak
+\textbf{Transaction $T_{2}$}
+\begin{verbatim}
+T2.1 Shared lock C
+T2.2 Read C
+T2.3 Unlock C
+T2.4 Shared Lock S
+T2.5 Read S
+T2.6 Unlock S
+T2.7 TEMP = A + B
+T2.8 Print TEMP
 
 
-Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work. We must execute an algorithm to determine if there is a cycle. A cycle exists in the wait for graph if and only if a deadlock exists in the system. Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph. Though not a formal proof and probably not acceptable to write on a data structures and algorithms examination, the premise of the algorithm is: for each node $n$ in the graph, examine each possible path from that node. If a node is reached from which no further path is available, examine the next path. If node $n$ is reached on the current path, a cycle is detected and the algorithm terminates. 
+\end{verbatim}
+\end{multicols}
 
-The runtime characteristic of the simple deadlock detection algorithm was identified as $\Theta(n^{2})$. This means that the deadlock detection routine is expensive to execute.
+If executed serially we have no problem; we will always get consistent results. No matter what order we execute the transactions, the result will be the same since any amount moved from $C$ to $S$ does not affect the total. If they are, respectively \$100 and \$200 then the total must remain \$300. This is fine. But if the transactions are executed incorrectly, we will print a result of \$250. How?  Think back to earlier courses on concurrency: try to find an interleaving of statements that could lead to this inconsistent result.
 
-This prompts a question: how often should the deadlock detection algorithm be run? One strategy is to run it every time a resource is requested. Running the algorithm might be rather expensive, so perhaps this is too often. An obvious optimization: it should only run every time a resource request cannot be granted (that is, a transaction is waiting). Another idea: run it periodically instead.
+A quick analysis says this can happen if $T_{2}$ reads the values of \texttt{C} and \texttt{S} after the decrease has been completed but before the increase. One such possible ordering places all of $T_{2}$ between statements \texttt{T1.5} and \texttt{T1.6}, but you can likely find other orders that reproduce this problem. As we know, any such order with a problem means we need to make some changes to prevent this problem.
 
-When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs. If deadlock happens a lot, checking for deadlock often will make sense. If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible.
+How can we fix this? In short, the unlocking of elements needs to be delayed appropriately to ensure serializability: that is to say that partial state should not become visible. A modified version of $T_{1}$ and $T_{2}$ shown below that avoids the problem altogether.
 
-\subsection*{Deadlock Recovery}
+\begin{multicols}{2}
+\textbf{Transaction $T_{1}'$}
+\begin{verbatim}
+T1.1 Exclusive lock C
+T1.2 Read C
+T1.3 C = C - 50
+T1.4 Write C
+T1.5 Exclusive Lock S
+T1.6 Read S
+T1.7 S = S + 50
+T1.8 Write S
+T1.9 Unlock C
+T1.10 Unlock S
+\end{verbatim}
 
-It is clear that our recovery strategy in the database context is rollback. But rather than just simply rolling transactions back and restarting them. 
+\columnbreak
+\textbf{Transaction $T_{2}'$}
+\begin{verbatim}
+T2.1 Shared lock C
+T2.2 Read C
+T2.3 Shared Lock S
+T2.4 Read S
+T2.5 TEMP = A + B
+T2.6 Print TEMP
+T2.7 Unlock C
+T2.8 Unlock S
 
-On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide, but there exist a number of other possible criteria~\cite{dsc}:
 
-\begin{enumerate}
-\item How long the process has been executing.
-	\item How long is remaining in execution (see the estimates from the execution plan).
-	\item What resources the process has used.
-	\item Future resource requests, if known.
-	\item How many times, if any, the process has been selected as a victim (to prevent starvation).
-\end{enumerate}
+\end{verbatim}
+\end{multicols}
 
-After a victim has been selected, we might reason, it's pretty easy from here: simple roll that transaction back. That would be a total rollback: undo all the steps of the transaction and start from the beginning once again. There exists, however, the ability to do a \textit{partial rollback}. 
+There are no free lunches, though: the risk of longer-held locks is that there can be, as you guessed... \textit{deadlock}! Deadlock, as you will recall, is what happens when two or more transactions (formerly processes) are permanently blocked waiting for one another. As before, an unfortunate interleaving of lock and unlock statements can mean that the transactions get stuck. Deadlock is bad, but not as bad (we think) as inconsistent states being shown (or worse, saved!). If a deadlock occurs, we can detect it and then can do something about it; if an inconsistent state is shown then we may never know about it.
 
-The goal of the partial rollback is to rollback the transaction back only as much as is necessary to break the deadlock;  this is accomplished by maintaining the sequence of lock requests and grants. By finding the lock(s) that are implicated in the deadlock, we can roll back a transaction to where it obtained the first of such locks~\cite{dsc}. This can be beneficial if the amount of work saved is large enough to outweigh the effort required to determine where the lock conflict occurs. For small transactions, a full restart is probably sensible; for longer ones it might be worth it to try to do a partial rollback instead.
+There are often rules in the system for how transactions behave with respect to locks called the \textit{locking protocol}. The locking protocol sets up some rules about when items may be locked and unlocked which reduces the number of possible schedules such that the only allowed schedules are conflict-serializable schedules~\cite{dsc}. A schedule is considered legal if it follows all the rules of the locking protocol.
 
-\section*{Lock Granularity}
+Alongside the risk of deadlock, there is also the possibility of starvation. As you will recall, a transaction (thread) starves when, even though it is ready to run, it never gets a turn because the other transactions (threads) are using the resource(s) that it needs. The more locks a particular transaction requires, the more likely it is to have to wait and the higher the risk of starvation. 
 
-We have choices about the granularity of locking, and it is a trade-off (like always). Locks' extents constitute their {\it granularity}: that is, how much data is being protected by such a lock.
+One possible solution to preventing starvation as suggested by~\cite{dsc} is to introduce a new rule about when a lock request is granted. The new rule is that the locks should be granted in order of request, meaning that a transaction $T_{i}$ will never have to wait for a transaction $T_{j}$ that requested that lock later. This is, obviously, in addition to the usual rule that the lock can only be granted when the requested lock mode is compatible with the existing locks, if any. 
 
-\textit{Coarse-grained} locking is easier to implement, but it can significantly reduce opportunities for parallelism. \textit{Fine-grained locking} requires more careful design, increases locking overhead and is more prone to bugs (deadlock etc).  
-In coarse-grained locking, you lock large sections of your data with a big lock; in fine-grained locking, you divide the locks and protect smaller sections with multiple smaller locks.
+This new rule differs, in some way, from the kind of logic we have discussed in concurrency. In concurrency we have said that there is no guarantee as to what order waiting threads will be unblocked when the resource they are waiting for becomes available. 
 
-In the database we could define multiple levels of granularity. As in the diagram below:
+You will also recall the idea of two phase locking: we try to acquire locks and if we are unsuccessful, release any that we have acquired and try again from the beginning. The database two phase locking protocol is a little bit different. In this there are two distinct phases: growing and shrinking. In the growing phase a transaction may acquire locks; in the shrinking phase a transaction may release locks but may not obtain any new ones. The initial state is the growing phase and as soon as the first lock is released then it is not permitted to obtain any new ones~\cite{dsc}.
 
-\begin{center}
-\includegraphics[width=0.7\textwidth]{images/granularity-hierarchy}\\
-Granularity hierarchy showing four levels~\cite{dsc}
-\end{center}
+Any two phase locking protocol gives us, automatically, conflict serializability. For any transaction, there exists the point where the last lock as been obtained, and this is called the \textit{lock point}~\cite{dsc}. We can order transactions based on their lock points and it gives a serial ordering of the transactions. But that's all it gives us: not any sort of freedom from deadlocks or starvation.
 
-In this diagram, there are four levels of the hierarchy. At the lowest level, individual records may be lockable. Above that, it may be at file level (i.e., relation level). The third level from the bottom is an ``area'' -- this is usually a grouping of one or more relations that form a logical group. The root of the tree is the database itself: the entire database can be locked if needed. A lock of a node in this hierarchy also implicitly locks all descendants of that node.
+There exist two more restrictive locking protocols in~\cite{dsc}. The fist is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed. This guarantees that no intermediate states are ever made visible. The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit. With rigorous two phase locking, transactions are easily serialized by commit order.
 
-This leads to a fair amount of headaches: if a transaction $T_{i}$ wants to lock a node $x$ then all the children of $x$ must be examined to see if they are locked. Also, we have to look to see if any of the nodes between the root and $x$ are locked (including the root). And this applies every time an item is to be locked! This is painful. 
+We can try to squeeze out some more parallelism by allowing locking to have two more operations: a transition from shared to exclusive and from exclusive to shared. We still need exclusive lock to modify a value, but we can allow some values to be shared during the execution of the transaction. Still, moving from a shared to exclusive lock is called an upgrade, and that can only be done during the lock acquisition phase. Moving from exclusive down to shared is called a downgrade and it can only be done in the shrinking phase. An upgrade is like trying to acquire a lock, so it can result in blocking of a transaction.
 
-The more efficient route recommended by~\cite{dsc} is called \textit{intention lock modes}, which are put on the ancestors of a node before the node is locked. These intention locks can be checked while traversing the tree. The following modes are possible:
-
-\begin{itemize}
-	\item \textbf{Shared} (S) - This is as before, directly locking an item in shared mode.
-	\item \textbf{Exclusive} (X) - Directly locking an item in exclusive mode.
-	\item \textbf{Intention Shared} (IS) - There is at least one shared lock at a lower level of the tree, but no exclusive locks.
-	\item \textbf{Intention Exclusive} (IX) - There is least one exclusive lock at a lower level of tree, and there can be shared ones as well.
-	\item \textbf{Shared Intention Exclusive} (SIX) - The current node is locked in shared mode, and there is at least one exclusive lock at a lower level (and maybe shared ones too).
-\end{itemize} 
-
-Then a transaction must follow the six rules below~\cite{dsc}:
+As you might imagine, when presented with a list of instructions, a human can consider the transaction (or transactions) presented and make some sort of hopefully good decisions about how to put the lock and unlock statements in the transaction. Doing so algorithmically fairly simple. The algorithm from~\cite{dsc} below, with some modifications for clarification, will ensure that the lock and unlock instructions are created:
 
 \begin{enumerate}
-	\item All attempts to lock must observe the table (below) as to whether they are permitted to proceed (or wait).
-	\item The transaction must lock the root of the tree first (in any mode, but it must pick one).
-	\item A node $n$ can be locked in \textbf{S} or \textbf{IS} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{IS} mode.
-	\item A node $n$ can be locked in \textbf{X}, \textbf{SIX}, or \textbf{IX} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{SIX} mode.
-	\item A node $n$ may only be locked if the transaction has not previously unlocked any nodes.
-	\item A node $n$ may only be unlocked if none of the children of $n$ are locked by this transaction.
+	\item Scan the transaction from the beginning moving one statement at a time.
+	\item If the next instruction is a read of of an item $i$ and there is no lock on $i$ already, insert an instruction to lock $i$ in shared mode before the read.
+	\item Otherwise, if the next instruction is a write of an item $i$ and the item $i$ is not already locked exclusively:
+		\begin{enumerate}
+			\item If the item is locked in shared mode, insert an instruction to upgrade the lock on $i$ to exclusive mode before the write.
+			\item Otherwise the item is not locked, insert an instruction to lock $i$ in exclusive mode before the write.
+		\end{enumerate}
+	\item At the end of the transaction (commit or abort), insert instructions to unlock all locks that were locked (regardless of mode).
 \end{enumerate}
 
+Following this systematic approach will ensure that locks are shared when they can be, never permit intermediate state to be visible, and ensure that transactions can be serialized.
+
+\paragraph{Implementation of the Lock Manager.} The lock manager is the mysterious part of the database that decides when to grant lock requests, and when to deny them. In fact, the lock manager receives the requests to lock and unlock commands. The lock manager may return a grant of the lock when it is received, or a denial message. But that answer might not come right away: if a grant cannot be completed right now we can delay it until it can be granted. Rejection, however, is fatal to the requester: a rejection means the requesting transaction must be rolled back. The unlock requests do not strictly speaking require a response, but it is noteworthy for the lock manager since it allows other transactions to be unblocked.
+
+We will cover two approaches: lock tables (a linked-list approach) and a graph algorithm.
+
+The linked list approach means that each data element is associated with a linked list. In that linked list is the current transaction owning that lock as well as any other transactions that are waiting for that particular item. The image below shows a lock table example from~\cite{dsc} in which there are locks for five different data items numbered 4, 7, 123, 144, and 912:
+
 \begin{center}
-\begin{tabular}{|c|c|c|c|c|c|} \hline
-	Compatibility & \textbf{IS} & \textbf{IX} &\textbf{S} &\textbf{SIX} &\textbf{X}\\ \hline
-\textbf{IS} & \checkmark &\checkmark  & \checkmark & \checkmark & $\times$ \\ \hline
-\textbf{IX} & \checkmark & \checkmark & $\times$ & $\times$ & $\times$	\\ \hline
-\textbf{S} & \checkmark & $\times$ & \checkmark & $\times$ & $\times$ \\ \hline
-\textbf{SIX} & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
-\textbf{X} & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
-	
-\end{tabular}
+	\includegraphics[width=0.4\textwidth]{images/lock-table}
 \end{center}
 
-It is noteworthy that locks must be acquired in a top-down manner and then released in a bottom-up manner. 
+The rules for constructing and manipulating such a lock table are pretty simple and comprehensible from the diagram. Each (lockable) data item is associated with a linked list. Entries in that linked list contain the transaction identifier and an flag to indicate granted or waiting.
+
+If a request arrives for a data item for which there is no lock, then an entry is created and the request be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait. 
+
+When there is an unlock request, the entry for that transaction and data item are removed and, if possible, further requests are granted. If a transaction aborts, any locks (granted or not) are removed from the lock table.
+
+This algorithm avoid the possibility of starvation, because the linked list imposes order on the request such that later requests always are enqueued after earlier ones~\cite{dsc}.
+
+The graph based protocol in~\cite{dsc} is has to do with establishing a lock based protocol that uses a tree. To make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
+
+You might recall this sort of protocol from the general discussion of deadlock in a concurrency context. In the examples, a simple deadlock is created when one thread locks \texttt{a} and then \texttt{b} and the other thread locks \texttt{b} and then \texttt{a}. The solution was to establish an ordering on the lockable elements (in that case, the alphabetical ordering seemed logical enough, but reverse alphabetical would work too). That works okay for names, but not everything has a name, and anything relatively simple like memory location of file location would work to impose an ordering.
+
+The tree protocol is an example in~\cite{dsc} that works only for exclusive locks with four rules:
+
+\begin{enumerate}
+	\item The first lock by a transaction $T_{1}$ may be on any data item.
+	\item Any other data item $d$ may be locked by $T_{i}$ only if the parent of $d$ is currently locked by $T_{i}$.
+	\item Items may be unlocked at any time.
+	\item A data item that has been locked and then unlocked by $T_{i}$ cannot later be locked again by $T_{i}$.
+\end{enumerate}
+
+The diagram below illustrates a potential ordering of data elements:
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{images/tree-lock}\\
+Tree structured ordering of data elements~\cite{dsc}
+\end{center}
+
+It is simple enough, when looking at this graph, to think of some schedules that are legal or illegal under this protocol. It can be shown that this protocol ensures freedom from deadlock. The reasoning is a fairly simple proof by contradiction: assume that a deadlock exists and then show a contradiction.
+
+In~\cite{osc} is a proof that ordering the resources prevents deadlock in processes, and it is simple enough to modify for transactions. Let us say there is a function $f()$ that takes a data element and returns a unique identifier used for ordering. Assume a circular wait is present. Let the set of processes in the circular wait be $\{T_{0}, T_{1}, ... T_{n}\}$ and the set of resources (data elements locked) be $\{R_{0}, R_{1}, ... R_{n}\}$. The cycle is formed as: $T_{i}$ is waiting for resource $R_{i}$ and that resource is held by $T_{i+1}$. The exception is the case of $T_{n}$, which is waiting for resource $R_{n}$ that is held by $T_{0}$ (completing the cycle by wrapping around). Since Process $T_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction, meaning a circular wait cannot occur.
+
+Use of the tree structured protocol does not, however, ensure recoverability or prevent cascades from occurring~\cite{dsc}. That means we need to also take steps, as earlier, to ensure that the schedule conforms to our other properties. The other negative here is that the database server might need to lock items other than the ones strictly necessary in the transaction.
+
+Consider an example in the tree lock diagram above; if data elements $A$ and $J$ are needed, then items $B$, $D$, and $H$ also need to be locked to make this work. Moreover, it is very likely that we are going to lock the root of the tree, meaning that (most) transactions are effectively serialized. This is probably not a good thing.
+
+The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not e very good solution given the tradeoffs. It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
 
 \input{bibliography.tex}
 
