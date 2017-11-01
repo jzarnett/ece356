@@ -73,7 +73,7 @@ The diagram below shows the asymmetric fragment-and-replicate join; the general 
 Fragment and Replicate~\cite{dsc}.
 \end{center}
 
-A quick rundown, then on how parallelism affects operations other than selection and join~\cite{dsc}:
+A quick rundown on how parallelism affects operations other than selection and join~\cite{dsc}:
 \begin{itemize}
 \item \textbf{Duplicate Elimination}: Duplicates are typically removed by sorting, which itself is something we could do in parallel. Also, if we partition a relation on an attribute, each processor can easily remove duplicates of that attribute.
 \item \textbf{Projection}: Projection can be done as each item is read from disk; just take what you need.
@@ -82,6 +82,10 @@ A quick rundown, then on how parallelism affects operations other than selection
 \end{itemize}
 
 \paragraph{Interoperation Parallelism.}
+
+We already discussed the idea of pipelining: the partial result of one step can be moved on to the next stage and processing in that next stage will be able to begin processing. This, unfortunately, does not scale well: a pipeline with 4 stages cannot really take advantage of 16 processors.
+
+The next way that we can use parallelism between various operations: if we are to join four tables, we could compute two pairs of joins in parallel and then combine them in a third operation for the last step. You probably will not want to join more than a few tables in any single query so the amount that this can scale is also limited.
 
 \input{bibliography.tex}
 
