@@ -34,6 +34,8 @@ When the relation is spread over several disks, if things are not spread out eve
 
 To balance this out, one suggested strategy is the histogram approach. Suppose there are, for example, 5 disks and 100 possible values. The simple range approach is 20 values in each partition. If the data has a normal distribution however (in the statistical sense of the normal distribution, the bell curve). Rather than 20 values per disk we would try to cut it so there are about 20\% of tuples in each partition.
 
+An alternative approach is to cut it all up more. More? Suppose there are $n$ processors and the work is divided up into $5n$ ranges. If the data is evenly distributed, each CPU will do 5 chunks. If the work is unevenly divided, however, some CPUs will do a smaller number of large chunks and others will do a large number of smaller chunks and some will be in between. The uneven distribution of values is then spread out over several processors. 
+
 Admittedly, in a single server database this is not likely to happen even when there are multiple disks. Usually the disks are arranged in a RAID array and that is done outside the purview of the database server... It is either managed by the operating system or by the hardware (even better). So why did we learn about this? Because it will be useful in a distributed database system, where there are multiple disks available to the database system. That is a subject we will return to soon.
 
 \subsection*{Intraquery Parallelism}
@@ -49,14 +51,14 @@ When we have a single operation that can be, in some way, divided up (partitione
 	\item Calculation (e.g., compute partial sums and combine)
 \end{itemize}
 
-To give a specific example, we will look at parallel join, in particular a partitioned join, as in~\cite{dsc}. Let's assume we want to join relations $r$ and $s$ and we have two processors. If the join is an equality condition such as one attribute in $r$ equalling another in $s$ then we can divide this up to multiple processors. If there are $n$ processors we could divide each relation into $n$ pieces and send each processor $P_{i}$ its piece of $r$ and $s$. That processor then compute its part. These parts are then combined at the end to produce the correct data. Keep in mind that we do probably want to partition things with a histogram approach so each processor has roughly equal work.
+\paragraph{Partitioned Join. }To give a specific example, we will look at parallel join, in particular a partitioned join, as in~\cite{dsc}. Let's assume we want to join relations $r$ and $s$ and we have two processors. If the join is an equality condition such as one attribute in $r$ equalling another in $s$ then we can divide this up to multiple processors. If there are $n$ processors we could divide each relation into $n$ pieces and send each processor $P_{i}$ its piece of $r$ and $s$. That processor then compute its part. These parts are then combined at the end to produce the correct data. Keep in mind that we do probably want to partition things with a histogram approach so each processor has roughly equal work.
 
 \begin{center}
 \includegraphics[width=0.3\textwidth]{images/partitioned-parallel-join}\\
 Partitioned Parallel Join~\cite{dsc}.
 \end{center}
 
-Partitioning is not suitable for all types of joins, however; because we put in the restriction that there is a join on an equality condition. A more general approach is the \textit{asymmetric fragment-and-replicate join} which has three steps~\cite{dsc}:
+\paragraph{Fragment and Replicate.} Partitioning is not suitable for all types of joins, however; because we put in the restriction that there is a join on an equality condition. A more general approach is the \textit{asymmetric fragment-and-replicate join} which has three steps~\cite{dsc}:
 
 \begin{enumerate}
 \item Partition one of the relations ($r$) and hand out the partitions to the processors.
@@ -73,6 +75,17 @@ The diagram below shows the asymmetric fragment-and-replicate join; the general 
 Fragment and Replicate~\cite{dsc}.
 \end{center}
 
+\paragraph{Partitioned Parallel Hash Join.} 
+Recall from much earlier the hash join: we can parallelize it. If we have $n$ processors labelled $P_{0}, P_{1}, ... P_{n}$ and we have two relations $r$ and $s$ such that they are spread out across multiple disks. Remember that we want to choose the smaller relation as the ``build'' relation, so choose $s$ as the smaller one. The algorithm is then~\cite{dsc}:
+
+\begin{enumerate}
+	\item Choose a hash function $h1()$ that takes the join attribute value of each tuple in $r$ and maps the tuples to one of the $n$ processors. The subset of tuples of $r$ that are mapped to $P_{i}$ are called $r_{i}$; the tuples of $s$ are similarly divided across the processors and the divisions are called $s_{i}$. Each processor $P_{i}$ reads the tuples of $s$ on its disk and sends them to the appropriate processor based on $h1()$.
+	\item As a processor receives the tuples from $s_{i}$, it further partitions them by a second hash function $h2()$ which is used to compute the hash join locally. This step can be done independent of other processors.
+	\item Once the tuples of $s$ have been distributed, then $r$ is distributed to the processors based on $h1()$; when it gets there it is repartitioned by $h2()$.
+	\item Each processor then executes the build and probe phases of the hash-join algorithm on the local partitions $r_{i}$ and $s_{i}$ to produce part of the final result.
+	\item As the last step, the results need to be recombined to produce the final result.
+\end{enumerate}
+
 A quick rundown on how parallelism affects operations other than selection and join~\cite{dsc}:
 \begin{itemize}
 \item \textbf{Duplicate Elimination}: Duplicates are typically removed by sorting, which itself is something we could do in parallel. Also, if we partition a relation on an attribute, each processor can easily remove duplicates of that attribute.
@@ -86,6 +99,30 @@ A quick rundown on how parallelism affects operations other than selection and j
 We already discussed the idea of pipelining: the partial result of one step can be moved on to the next stage and processing in that next stage will be able to begin processing. This, unfortunately, does not scale well: a pipeline with 4 stages cannot really take advantage of 16 processors.
 
 The next way that we can use parallelism between various operations: if we are to join four tables, we could compute two pairs of joins in parallel and then combine them in a third operation for the last step. You probably will not want to join more than a few tables in any single query so the amount that this can scale is also limited.
+
+\subsection*{Change is Hard}
+
+We would normally expect that when changes are made to the database schema such as data migration, changing column structure, or adding an index are made, the database is taken temporarily off the line (out of production) so the changes can be made while nothing else is going on. You have surely experienced this when you've tried to use an application on the web that tells you it's currently offline for maintenance. Such maintenance is usually planned for what are considered ``off hours'' (when utilization is low) and some downtime window is planned. Oftentimes when the downtime is significant it's because a database change needs to be made. And all things considered, when you have the option to do the change offline, you probably should.
+
+Sometimes we don't have the option to take things offline for an extended period. The system is critical or there are other business reasons why you can't just turn things off. If the change is small it's not really a big problem. But we can do online migration if we must. 
+
+If a new index is to be constructed, for example, we can't just lock the relation in shared mode and we have to allow insertion, deletion, and update while the index is being added. This is usually done by just keeping track of all the changes as they come in and adjusting the index when generated to account for all the changes that happened while it was being built.
+
+\section*{Parallel Database Architectures}
+
+Now if we have a parallel database, we should consider the architecture> how it is set up. We will consider three possible options: shared memory, shared disk, and shared nothing.
+
+\paragraph{Shared Memory.} This is our typical multicore or multi-CPU architecture we have likely already become familiar with when discussing concurrency. There are multiple processors (or multiple cores, processing units -- as far as we are concerned all we want is workers). Memory is shared between the various processors and they have a common set of disks. There is no redundancy, however, as it is all wrapped up into one machine.
+
+This means that communication can take place between the threads using shared memory. Every processor has its own cache and cache coordination is a factor, but the hardware helps us out there (for more details take ECE~459!). We should already be familiar with this sort of coordination from earlier: semaphores, mutexes, and the like, are used to achieve the coordination we need.
+
+\paragraph{Shared Disk.} In this architecture all processors can access disks directly, but every processor has its own memory. This has some degree of redundancy as we might be able to keep working if something goes wrong at one of the systems. If one of the systems crashes, every system can continue executing without any problem, at some reduced performance level. 
+
+The tradeoff is that communication has to take place using the disk. So to coordinate (e.g., lock an item) the lock information has to be written to disk and that means that disk access is likely to be a serious bottleneck in the system.
+
+\paragraph{Shared Nothing.} In a shared nothing system, well, it's exactly what it sounds like: nothing is shared between the systems. If they wish to communicate, then communication takes place over the network. This means the systems are as redundant as possible: if any one system goes down we might be able to carry on. 
+
+This sort of architecture isn't so much parallel as it actually is \textit{distributed} and it comes with its own problems, such as what happens if we need data that is on the disk of some other system, since it does, after all, take longer to get data from a remote location than if it is locally available...
 
 \input{bibliography.tex}
 
