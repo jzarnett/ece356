@@ -81,7 +81,7 @@ If we expect that reads are more frequent than writes (this is very likely) then
 
 Why would we choose sites to have different weights? We might have some sites that are remote and have poor internet connections, thus waiting for them might not be sensible. We may also have sites that have poor reliability, in which case we don't want to count on them to respond. In any case, choosing the values of $r$ and $w$ allow choosing how much agreement we need that locks have been acquired before we are allowed to proceed.
 
-\paragraph{Timestamp Protocol.} In the timestamp protocol, every transaction is assigned a unique timestamp. Systems never agree on what time it is, so to make timestamps are unique, they are concatenated with the site identifier as shown below:
+\paragraph{Timestamp Protocol.} In the timestamp protocol, every transaction is assigned a unique timestamp. Each system uses its own local timestamp. Systems never agree on what time it is, so to make timestamps are unique, they are concatenated with the site identifier as shown below:
 
 \begin{center}
 \includegraphics[width=0.5\textwidth]{images/ddb-timestamp}\\
@@ -89,6 +89,34 @@ Generating unique timestamps in distributed databases~\cite{dsc}.
 \end{center}
 
 The placement of the site identifier in the concatenation is important; if we put it at the beginning then the timestamps at site $k$ would always appear to be after those of $k-1$ and before those of $k+1$, which would not be correct. 
+
+A problem can still occur if the system timestamps are very far out of sync: if one site thinks it is one minute into the future it will always appear that its unique timestamps are after those of other locations. Fortunately, clock synchronization is usually a job of the operating system using NTP (the network time protocol). NTP allows the systems to synchronize their clocks in a reliable way; the protocol has been around for more than 30 years and we can realistically consider the problem (mostly) solved.
+
+\paragraph{Lazy Replication.} As a performance enhancement, databases may allow lazy replication: instead of having to do the write at all locations, we do write only at some location(s) and then the transactions get eventually transmitted to other sites.
+
+If we do updates at one location, the primary site, and they are eventually sent out to the other locations. Updates to an item are ordered serially because all updates to a single item take place at the same location; but other problems can occur such as a an out-of-date value being used in a read as input to a write~\cite{dsc}. The alternative is worse: if we allow updates performed anywhere and sent to all replicas then we can have concurrent updates of the same data at two locations.
+
+\paragraph{Deadlock Detection.}
+
+When we have a distributed database, a deadlock can occur but be difficult to detect using the wait-for graph algorithm, because nobody has the complete picture, meaning everyone has an incomplete wait-for graph. Each site may have its own local wait-for graph but that is not enough information to know if a deadlock has occurred (unless the local wait-for graph itself has a cycle). Consider the local wait-for graph situation shown below:
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{images/waitfor-local}\\
+Local Wait-For Graph~\cite{dsc}.
+\end{center}
+
+With only a partial view, looking only at site 1 or looking only at site 2, we do not see any problem. But if we combine the information we have the graph below, which does have a cycle:
+
+\begin{center}
+\includegraphics[width=0.25\textwidth]{images/waitfor-global}\\
+Global Wait-For Graph~\cite{dsc}.
+\end{center}
+
+Our approach for solving this is the centralized approach: one location is designated as deadlock coordinator and it is responsible for getting information from all other sites and aggregating it. The deadlock coordinator can then check this state and determine if there is a deadlock (and if so, use one of our resolution techniques to solve it).
+
+It is noteworthy that the actual state of the system is not necessarily the same as the one seen by the deadlock coordinator; because there is a potential communication delay between the various sites so the information reaching the coordinator can be out of date~\cite{dsc}. If the information is out of date we might accidentally signal a rollback on a transaction that is not deadlocked! Whoops. This can happen, but a transaction that is rolled back and restarted is really just delayed. We can live with a miscarriage of justice as long as our approach for recovering from this (e.g., restarting the transaction) is good.
+
+Constantly checking the wait-for graph may be wasteful of resource if deadlock is rare. In fact, we might not even constantly send the wait-for graph information to the coordinator unless the coordinator asks for it. If a transaction has been waiting for a while, we might conclude that it has become stuck. That might prompt a site to send a message to the global coordinator asking it to run the deadlock detection algorithm. Or, the coordinator may choose to do so periodically, or when other conditions are fulfilled (e.g., some threshold number of locked data items has been reached). 
 
 \subsection*{Transaction Management}
 
