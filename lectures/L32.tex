@@ -31,16 +31,64 @@ If it helps with understanding, the definition of the table is the same at both 
 
 In relational algebra representation, a fragment $r_{i}$ is created by a selection with a predicate. So a fragment $r_{i} = \sigma_{P_{i}}(r)$ and the entire relation can be reconstructed as a union of the sets~\cite{dsc}. This works only if the sets are disjoint -- no tuples are duplicated. If we have non-disjoint fragments then we might have the possibility of duplicate data, so we would need some sort of de-duplication to produce $r$ again in a consistent way.
 
+\textit{Derived horizontal fragmentation} applies the partitioning of a relation rules to some secondary tables that are related by a foreign key~\cite{fds}. Imagine you have a relation that is a shipment and there is a related relation of containers. Some number of containers are associated with the shipment (in the logic of the application); it would therefore make sense to split up the container relation based on their relationship to the shipment relation... If a shipment is at location 1, its associated containers should also be at that location.
+
 \paragraph{Vertical Fragmentation.} Vertical integration is splitting up by attributes rather than tuples. 
 
 In relational algebra fragmentation is done using projection: $r_{i} = \Pi_{R_{i}}
-(r)$ and they are recombined using the natural join~\cite{dsc}.  For 
+(r)$ and they are recombined using the natural join~\cite{dsc}.  For recombination to work, of course, we need a key in each part of the relation. If there are no attributes in common we have no way of recombining. Thus, at least some of the data will be repeated in the various partitions. In horizontal fragmentation the sets can be completely disjoint, but that is not the case in vertical fragmentation. 
 
 Now, the tables have different definitions -- and there are some columns for each row in one database and some in the other. 
 
 
+\paragraph{Hybrid (Mixed) Fragmentation.} This is the all-of-the-above sort of fragmentation, where both horizontal and vertical fragmentation are applied. Recombination of the relation is accomplished by performing the union and outer join operations in the appropriate order~\cite{fds}. 
+
 \subsection*{Replication}
 
+Replication is making copies of the data available in different database servers. This may be to improve availability or reliability of data. At the one extreme, all data is replicated to all sites in the distributed system, meaning every location has all the data. This has its advantages and disadvantages, as we'll examine. 
+
+The simplest way to replicate is to not do it at all: there are no duplicate copies of the data and whatever fragment is at each location is the only copy. This means to get the full data, all systems must be online and available. 
+
+If we do choose to replicate all of the data, then this is a fully-replicated distributed database. The system can continue to function as long as any one location is operational, and it can improve performance of retrieval of data since we can always query the closest database~\cite{fds}. Unfortunately it means much more work on an update since all locations have to be updated. In fact, getting everyone to agree on what happened (or didn't) is a problem that is big enough to have its own minor topic. 
+
+In between is partial replication: some data is replicated over multiple sites and or all data is replicated in some way (e.g., any one piece of data is on at least three servers but may not be on all servers). A special case is when mobile workers go out into the field in areas where there is no internet connection, carrying a copy of the database, and have to synchronize when they get WiFi with some central server(s)~\cite{fds}.
+
+Wherever data is replicated, we can choose one of the replicas to be the primary copy~\cite{dsc}. If the whole database is replicated then one database site is the primary site and has the primary copy of all the data. 
+
+In databases under heavy load, replication is one of the keys to improving performance. A very common strategy is for reads to be done on replicas, with one database designated as the write master and all writes are done on the write master. The changes are then propagated to all replicas once the write is completed. This improves performance because we avoid the two problems we are going to talk about next: distributed locking and distributed transaction management.
+
+\subsection*{Distributed Locking}
+
+If we take the single lock manager approach, there is one single lock manager and one site is chosen as the leader. All requests are sent to that one site and that system tells the other system whether the request is granted, denied, or delayed. A read can be done at any one site that has the data, but a write requires all sites that have that data to participate~\cite{dsc}.
+
+The single lock manager approach is simple in that there are only requests and responses and everything is managed centrally so there is no need to invest effort to make sure that different lock managers agree. But there is the risk of failure at this one location causing the whole system to stop or misbehave.
+
+If we choose instead to let all sites be involved in lock management, we have distributed lock management and the function is distributed. Immediately we can imagine this introduces the possibility that a disagreement arises about what data is locked and whether a lock can be granted. But it does mean that we no longer are constrained by the single site. We do have ways of handling the complexity.
+
+\paragraph{Primary Copy.}A simple approach to distributed locking is using the primary copy as controlling: if a site wishes to lock an item, it has to acquire the lock at the primary site. Thus, each site is responsible for keeping control over the data it is the primary for. The obvious downside is that if a site goes down, the data for which it is the primary is inaccessible even though there is a replica of it (until some other site takes over primary ownership)~\cite{dsc}.
+
+\paragraph{Majority Rules.} The next level up is to use a majority protocol: if a data item $i$ is at $n$ different sites, then a lock message has to be sent to (at least) $\lceil n/2 \rceil$ locations to lock $i$. If a site finds according to its own local situation that the lock can be granted, it returns a yes answer immediately; otherwise the response is delayed until the lock can be acquired. A transaction on $i$ cannot proceed until a lock has been acquired on a majority of the lock messages~\cite{dsc}.
+
+This routine requires a lot of messages: to lock an item requires $\lceil n/2 \rceil$ outgoing requests and also  $\lceil n/2 \rceil$ responses; to unlock an item then another $\lceil n/2 \rceil$ messages.
+
+There is also the possibility of deadlock in this situation. As you know, this occurs when there is a cycle in the resource requests. A transaction $T_{1}$ requests some item $i_{i}$ and then $i_{2}$ and a transaction $T_{2}$ requests $i_{2}$ then requests $i_{1}$. Under normal circumstances we can just require that data elements have to be requested in some predetermined order (e.g., ascending order), that is to say, with lock ordering. Unfortunately for us, in distributed systems this is not a guarantee. A database can send out a request for $i_{1}$ then $i_{2}$ but because of the vagaries of the network the request for $i_{2}$ might arrive first. So we might need to rearrange some requests upon arrival or restart some operations.
+
+\paragraph{Biased Protocol.} Rather than treating every lock and unlock the same, we could make a distinction on shared vs. exclusive locks. In the biased protocol, to get a shared lock, we just need to request a shared lock on an item from any one site that has a replica of that item. To get an exclusive lock, a lock is requested from all sites that have the item~\cite{dsc}.
+
+If we expect that reads are more frequent than writes (this is very likely) then this is a performance increase. Reading any copy of the data can be done with just two messages, although a write requires $2n$ messages for each site where the data is stored. The request ordering problem is still at issue and the risk of deadlock still exists.
+
+\paragraph{Quorum Consensus Protocol.} In the quorum consensus protocol, every site is assigned a weight (non-negative) and then to perform an operation enough sites need to agree (that is, we must have a quorum). To execute a read, enough sites must agree such that their weights reach some threshold $r$; to execute a write enough sites must agree such that their weights reach a threshold $w$. The values for $r$ and $w$ can be the same or they can be set independently~\cite{dsc}.
+
+Why would we choose sites to have different weights? We might have some sites that are remote and have poor internet connections, thus waiting for them might not be sensible. We may also have sites that have poor reliability, in which case we don't want to count on them to respond. In any case, choosing the values of $r$ and $w$ allow choosing how much agreement we need that locks have been acquired before we are allowed to proceed.
+
+\paragraph{Timestamp Protocol.} In the timestamp protocol, every transaction is assigned a unique timestamp. Systems never agree on what time it is, so to make timestamps are unique, they are concatenated with the site identifier as shown below:
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{images/ddb-timestamp}\\
+Generating unique timestamps in distributed databases~\cite{dsc}.
+\end{center}
+
+The placement of the site identifier in the concatenation is important; if we put it at the beginning then the timestamps at site $k$ would always appear to be after those of $k-1$ and before those of $k+1$, which would not be correct. 
 
 \subsection*{Transaction Management}
 
