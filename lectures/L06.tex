@@ -62,9 +62,12 @@ CREATE TABLE student
 
 On some attributes an additional qualifier \texttt{not null} was added, and this means that a value of \texttt{null} is forbidden from being assigned to that attribute. This is, in a way, a form of integrity constraint. Like all integrity constraints, it means an insert or update statement that tries to set such an attribute to an impermissible value will be rejected. 
 
+The department ID attribute has a default value; if an insert statement does not specify the value for that attribute, rather than leaving it null, it will be the default value (here, 0) instead. A common case where not null and a default value could be combined is a boolean value, where the field may not be null and is by default ``false''.
+
 The primary-key definition in this case specifies that \texttt{id} is the primary key for the relation which imposes requirements that the attribute cannot be null and must also be unique. In this situation we have defined the primary key as exactly one attribute, but a relation's primary key may be formed by the combination of several attributes. 
  
 The last sort of constraint that is shown in the example is the foreign key constraint that mentions the department ID. It means that for each student, the department id value must either be null or the value must match to the id value of a department tuple. If the types of the attributes don't match (e.g., department is defined with varchar for its id rather than integer) then adding this foreign key constraint will fail. 
+
 
 It is not shown in the diagram but we can override the default behaviour for what happens if the foreign key constraint is violated. Rather than rejecting the update we could choose if we want (1) to cascade the changes (alter the content of another table to make sure the rules are followed), or (2) setting null if the value is invalid, or (3) setting some default value. My personal preference is that we stick with rejection: it is better to prevent insertion of wrong data (and fix it at the source) rather than let it proceed and cover it up by putting a null in there. In the words of my friend Tuomo Jorri, if the date calculation is consistently off by 42 days, instead of a statement that says (date = date - 42), you should figure out why the date is off by 42 and fix that.
 
@@ -72,7 +75,7 @@ Not shown in the example above is the unique constraint: this requires simply th
 
 It is possible (although rare, at least in my experience) to also add a \textit{check} clause as a constraint. The check clause takes a predicate and any insertion or update is is evaluated to see if it is consistent with this constraint. A check that says \textit{salary > 0} ensures that an employee cannot be put into the database with a negative salary amount, for example~\cite{dsc}. A check constraint predicate can be arbitrarily restrictive, allowing business logic to be embedded in the database (although it is unclear if this is desirable or not).
 
-We did not do this in the above case, but we can put a name to foreign keys or other constraints. The name must be unique in the database schema, 
+We did not do this in the above case, but we can put a name to foreign keys or other constraints. The name must be unique in the database schema. We'll look at adding names when we talk about altering tables. Names can be useful though, because a well-named constraint can tell you what has gone wrong: if its name tells you what relations are being referenced (e.g., the key indicates it links students with departments) then if the constraint is violated on an insert or update then you know immediately what rule was being broken.
 
 Another way that adding a foreign key might fail is if the target relation does not exist. This means we would have to create relations in some order that means the foreign keys are all satisfied at the time of the creation. That might not be realistic, though, based on the desired schema. Fortunately, we can add them in later.
 
@@ -80,13 +83,22 @@ Another way that adding a foreign key might fail is if the target relation does 
 
 In addition to adding in some integrity constraints we can change the table definition, or remove constraints. The command for this is \texttt{ALTER TABLE} and we will need to specify the table to be modified as well as the change that we would like to make. 
 
-If we want to add a new column to the table, then 
+If we want to add a new column to the table, then the alter table syntax requires us to specify the name of the new attribute to be added and the type See below:
 
-Drop column
+\texttt{ALTER TABLE students ADD COLUMN email VARCHAR(128);}
+
+Subsequent to that we can make additional changes, such as adding an index, putting in a reference constraint. At the time of creation we can set a default value or set an attribute to be not null, however.
+
+The mirror operation to that is to drop a column: 
+
+\texttt{ALTER TABLE students DROP COLUMN email;}
+
+This deletes the attribute from the database and all the data that is in there, permanently. Dropping the column can fail if the column is used in a foreign key or other constraint. It may also be necessary to 
 
 Change the definition of a column
 
-Add an index
+To add an index to a table, we need a name for the index, and specify the relation and attribute(s) it should be created on.
+
 
 Drop an index
 
@@ -113,6 +125,19 @@ Obligatory XKCD ( \url{https://xkcd.com/327/} ).
 \end{center}
 
 \subsection*{Triggers}
+
+It is possible to define an operation in the database that will take place automatically when some other modification of the database takes place. As you might imagine from the name, it follows a logic of ``if x happens, then do y''. 
+
+To define a trigger we need to define~\cite{dsc}:
+\begin{itemize}
+	\item An event that causes the trigger to be checked.
+	\item A condition that must be satisfied for actions to be taken.
+	\item The actions to be taken.
+\end{itemize}
+
+Triggers are useful in a few scenarios. They can be used to cause some events to occur such as updating related data, checking an integrity constraint that would be too difficult to check any other way, or alerting humans that some condition is satisfied. I generally discourage the first use: application logic should probably be the one that modifies the data. Checking integrity is a good use. Alerting humans is usually something like sending an email... No program is complete unless it sends e-mail.
+
+
 
 \input{bibliography.tex}
 
