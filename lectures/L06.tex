@@ -35,7 +35,7 @@ Attributes have types, and the SQL standard includes the following built in type
 \subsection*{Schema Definition - Create Table} 
 If we wish to define a SQL relation, the syntax for this is to create a relation (table) is called (unsurprisingly), \texttt{create table}. The syntax for this command requires a name as well as a listing of the attributes (fields) and their types (definitions). It is also customary to include at least one constraint, the primary key. As before we put a semicolon at the end of the statement to designate the end of the statement. 
 
-
+{\small
 \begin{verbatim}
 CREATE TABLE r
  (A1 D1, A2 D2, ... An Dn,
@@ -43,9 +43,10 @@ CREATE TABLE r
  ...
   integrity-constraint-k);
 \end{verbatim}
+}
 
 A more concrete example: 
-
+{\small
 \begin{verbatim}
 CREATE TABLE student
  (id varchar(8),
@@ -58,6 +59,7 @@ CREATE TABLE student
   FOREIGN KEY( department_id ) REFERENCES department( id )
  );
 \end{verbatim}
+}
 
 
 On some attributes an additional qualifier \texttt{not null} was added, and this means that a value of \texttt{null} is forbidden from being assigned to that attribute. This is, in a way, a form of integrity constraint. Like all integrity constraints, it means an insert or update statement that tries to set such an attribute to an impermissible value will be rejected. 
@@ -130,9 +132,9 @@ It is possible to write procedures in SQL (which is what we'll do in this course
 
 It is worth noting that we can also define functions, which are similar to procedures but not identical. To reduce confusion and keep it simple we will focus just on procedures. 
 
-When we want to create a procedure, we need to give it a name, define the parameters and make a statement about whether the procedure is deterministic. You will notice that nothing was said about return value. That's because a procedure does not have one: parameters are defined as \texttt{IN}, \texttt{OUT}, or \texttt{INOUT}. In parameters are the default and it means of course that it is an input parameter and changes are not made to the original input; out means it is a returned value so its initial value in the procedure is null until assigned; inout means it is taken as input and (possibly) modified before being returned.
+When we want to create a procedure, we need to give it a name, define the parameters and make a statement about whether the procedure is deterministic. Then there is the body of the procedure.
 
-
+You will notice that nothing was said about return value. That's because a procedure does not have one: parameters are defined as \texttt{IN}, \texttt{OUT}, or \texttt{INOUT}. In parameters are the default and it means of course that it is an input parameter and changes are not made to the original input; out means it is a returned value so its initial value in the procedure is null until assigned; inout means it is taken as input and (possibly) modified before being returned.
 
 On the subject of whether the procedure is deterministic, the mysql manual\footnote{\url{https://dev.mysql.com/doc/refman/5.7/en/create-procedure.html}} says the following:
 
@@ -142,7 +144,128 @@ A routine is considered ``deterministic'' if it always produces the same result 
 Assessment of the nature of a routine is based on the ``honesty'' of the creator: MySQL does not check that a routine declared \texttt{DETERMINISTIC} is free of statements that produce nondeterministic results. However, misdeclaring a routine might affect results or affect performance. Declaring a nondeterministic routine as \texttt{DETERMINISTIC} might lead to unexpected results by causing the optimizer to make incorrect execution plan choices. Declaring a deterministic routine as \texttt{NONDETERMINISTIC} might diminish performance by causing available optimizations not to be used.
 \end{quote}
 
+Enough introduction: let's look at a very simple example from~\cite{dsc}:
 
+{\small
+\begin{verbatim}
+CREATE PROCEDURE dept_count_proc( IN dept_name VARCHAR(20), OUT d_count INTEGER )
+BEGIN
+  SELECT COUNT(*) INTO d_count
+  FROM instructor
+  WHERE instructor.dept_name = dept_count_proc.dept_name
+END
+\end{verbatim}
+}
+
+To create a procedure, the keywords are unsurprisingly \texttt{CREATE PROCEDURE}, followed by the name of the procedure. We observe that there is one in parameter and one out parameter. The order does not have to be in parameters before out parameters. The body of the function is bracketed with the \texttt{BEGIN} and \texttt{END} statements that are like the opening and closing braces on a function in a C-like language.
+
+In a practical sense we probably want to have multiple statements and when we are giving in the create procedure statement we do not want a semicolon to result in detecting the end of the statement too early. The common solution to this is to bracket the create procedure statement with statements that change the delimiter (end of statement code). The syntax is \texttt{DELIMITER //} which then changes, from that point on, the delimiter to be \texttt{//}. Then at the end, we change it back to a semicolon with \texttt{DELIMITER ;}. The double slash delimiter is just convention, it could be anything, and some texts use \texttt{\$\$} instead.
+
+{\small
+\begin{verbatim}
+DELIMTER //
+CREATE PROCEDURE proc () 
+DETERMINISTIC
+BEGIN
+  DECLARE a INT;
+  SET a = 42;
+  INSERT INTO table1 ( a );
+END//
+DELIMITER ;
+\end{verbatim}
+}
+
+The procedure above shows the use of the delimiter changing syntax as well as putting DETERMINISTIC and a multi line procedure, and some new things we haven't seen before such as declaring variables and assigning them. To provide a quick summary of the syntax from~\cite{storedproc} we can do the following things: declare variables, assign them, and use flow control structures like if-statements, and we can iterate with a cursor.
+
+Declaration of a variable is pretty simple, you simply declare the variable using \texttt{DECLARE} with a name and data type (and an optional default value) such as the statement above. To assign it, use \texttt{SET} as above. 
+
+To understand how if-statements work, we'll do a comparison against a typical C like language:
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+if ( x == 0 ) {
+  y = 1;
+} 
+\end{lstlisting}
+\columnbreak
+\begin{verbatim}
+IF x = 0 THEN
+  SET y = 1;
+END IF;
+\end{verbatim}
+\end{multicols}
+
+Aside from the fact that the if condition is no longer in brackets and the equality is tested with a single equals sign, the big difference is the presence of the \texttt{THEN} as well as \texttt{END IF} keywords, in place of the usual curly braces. We can extend that with an else block as well:
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+if ( x == 0 ) {
+  y = 1;
+} else {
+  y = 2;
+}
+\end{lstlisting}
+\columnbreak
+\begin{verbatim}
+IF x = 0 THEN
+  SET y = 1;
+ELSE
+  SET y = 2;
+END IF;
+\end{verbatim}
+\end{multicols}
+
+There are of course loops (and there's a goto statement, but please don't...). We'll cover the while-loop, but it's not the only kind there could be; there are also other keywords...
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+while ( y > 0 ) {
+  y = y - 1;
+} 
+\end{lstlisting}
+\columnbreak
+\begin{verbatim}
+WHILE y > 0 DO
+  SET y = y - 1;
+END WHILE;
+\end{verbatim}
+\end{multicols}
+
+If you want to iterate over rows returned by a query and perform some action on them, then the command for that is \texttt{CURSOR}. Use of a cursor is complex and there are several parts we need to do.
+
+{\small
+\begin{verbatim}
+DECLARE e VARCHAR(128);
+DECLARE quit BOOLEAN;
+
+DECLARE cursor1 CURSOR FOR 
+  SELECT email FROM USERS;
+DECLARE CONTINUE HANDLER FOR NOT FOUND
+  SET quit = TRUE;  
+OPEN cursor1;
+
+loopname: LOOP
+  IF quit = TRUE THEN
+    LEAVE loopname;
+  END IF;
+
+  FETCH cursor1 INTO e;
+  # do something useful with e
+
+END LOOP loopname;
+CLOSE c1;
+\end{verbatim}
+}
+
+Creation of a cursor is done with the \texttt{DECLARE} statement as shown; it takes the result of a select statement. That is the set that we will iterate over. Then we need to indicate our ending condition, what to do when we get to the end of the data set. The usual correct answer for that is to break out of the loop and go on to the next step, as is done here. Then the \texttt{OPEN} command actually carries out the select statement and loads the data for the cursor to iterate over. Then we have our loop; we use the \texttt{FETCH} command to load the next variable into e; after which we can do something useful with it (not shown here for space reasons). It's worth noting that the loop has a name (loopname) which we use to break out of the loop if the quit condition is fulfilled. After the loop there is a close statement which frees up the memory allocated for the cursor.
+
+Cursors don't update their data set if the underlying table is changed in the meantime; that's why the open statement exists and why its placement can matter. Open it at the last minute to get the most up to date data. Cursors are read only, and they always advance from one item to the next and never go backwards or skip anything.
+
+By default, the procedure you create has autocommit set to ``on'' so any changes made are performed immediately, even if you have a multi line statement. That is not necessarily what you want; it may be that you want the whole block of statements to be processed as a single transaction (yes!). If that is the case then some additional syntax should be added. At the beginning of the transaction, add \texttt{START TRANSACTION;}. If everything goes well and you are ready for your changes to be saved, use the statement \texttt{COMMIT;}. If for some reason you need to cancel your changes and don't want them to be saved, then use \texttt{ROLLBACK;} instead of the commit statement. As fun as it might be to go through a detailed example, that might give away a little too much for one of the labs...
+
+To trash a procedure, the syntax is just \texttt{DROP PROCEDURE dept\_count\_proc;}. There does exist a limited ability to alter a procedure, but don't do it; if you need to change a procedure, it is best to drop and re-create it.
+
+Finally, to call a stored procedure, the keyword is \texttt{CALL} followed by the procedure name, and, obviously, the arguments the procedure needs in parenthesis. If there are no arguments needed, empty parenthesis are used.
 
 \subsection*{Triggers}
 
@@ -157,7 +280,34 @@ To define a trigger we need to define~\cite{dsc}:
 
 Triggers are useful in a few scenarios. They can be used to cause some events to occur such as updating related data, checking an integrity constraint that would be too difficult to check any other way, or alerting humans that some condition is satisfied. I generally discourage the first use: application logic should probably be the one that modifies the data. Checking integrity is a good use. Alerting humans is usually something like sending an email... No program is complete unless it sends e-mail.
 
+Let's do an example from~\cite{trigger} where there is a ``blog'' table with blog posts (sure, why not) and an audit table that stores deleted entries so they can be recovered if we want.
 
+{\small
+\begin{verbatim}
+DELIMITER $$
+CREATE TRIGGER blog_after_insert 
+  AFTER INSERT 
+  ON blog
+  FOR EACH ROW 
+  BEGIN
+  
+  IF NEW.deleted THEN
+    SET @changetype = 'DELETE';
+  ELSE
+    SET @changetype = 'NEW';
+  END IF;  
+  INSERT INTO audit (blog_id, changetype) VALUES (NEW.id, @changetype);
+		
+  END$$
+DELIMITER ;
+\end{verbatim}
+}
+
+There are further options, of course, and this is only a specific example. The \texttt{AFTER INSERT} statement tells us the time (either before or after) and the event is one of \texttt{INSERT}, \texttt{UPDATE}, or \texttt{DELETE}. If there are multiple triggers on the same condition we can specify an order on them by name, saying that it \texttt{PRECEDES} or \texttt{FOLLOWS} some other trigger. And then we have the trigger body which starts with the for-each row and begin statements. The operations of the body are done on each row that satisfies the conditions of the trigger
+
+In the body, the row being inserted is pointed to by the \texttt{NEW} keyword. In an update there is also the \texttt{OLD} keyword to reference the old row. A delete has only the \texttt{OLD} row and there is no \texttt{NEW}.
+
+The example does not have a \texttt{WHEN} condition, but it is possible to have one which allows to specify a condition that limits when this trigger performs the action (without an if block where one branch is blank). 
 
 
 \input{bibliography.tex}
