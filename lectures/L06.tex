@@ -36,13 +36,13 @@ Attributes have types, and the SQL standard includes the following built in type
 If we wish to define a SQL relation, the syntax for this is to create a relation (table) is called (unsurprisingly), \texttt{create table}. The syntax for this command requires a name as well as a listing of the attributes (fields) and their types (definitions). It is also customary to include at least one constraint, the primary key. As before we put a semicolon at the end of the statement to designate the end of the statement. 
 
 
-\begin{lstlisting}
+\begin{verbatim}
 CREATE TABLE r
  (A1 D1, A2 D2, ... An Dn,
  integrity-constraint-1,
  ...
   integrity-constraint-k);
-\end{lstlisting}
+\end{verbatim}
 
 A more concrete example: 
 
@@ -83,30 +83,29 @@ Another way that adding a foreign key might fail is if the target relation does 
 
 In addition to adding in some integrity constraints we can change the table definition, or remove constraints. The command for this is \texttt{ALTER TABLE} and we will need to specify the table to be modified as well as the change that we would like to make. 
 
-If we want to add a new column to the table, then the alter table syntax requires us to specify the name of the new attribute to be added and the type See below:
+If we want to add a new column to the table, then the alter table syntax requires us to specify the name of the new attribute to be added and the type. \texttt{ALTER TABLE students ADD COLUMN email VARCHAR(128);} Subsequent to that we can make additional changes, such as adding an index, or putting in a reference constraint (which we will see how to do soon). At the time of creation, we can set a default value or set an attribute to be not null, however. Note that is is possible to add multiple elements in a single statement. 
 
-\texttt{ALTER TABLE students ADD COLUMN email VARCHAR(128);}
+The mirror operation to that is to drop a column: \texttt{ALTER TABLE students DROP COLUMN email;} This deletes the attribute from the database and all the data that is in there, permanently. Dropping the column can fail if the column is used in a foreign key or other constraint. It may also be necessary to remove an index... 
 
-Subsequent to that we can make additional changes, such as adding an index, putting in a reference constraint. At the time of creation we can set a default value or set an attribute to be not null, however.
+If we wish to rename a table, the keyword we need is \texttt{RENAME}: \texttt{ALTER TABLE students RENAME users;} This would change the name of the students relation to be \texttt{users}. It is not very exciting.
 
-The mirror operation to that is to drop a column: 
+To change the definition of a column, we can use \texttt{MODIFY} or \texttt{CHANGE} depending on what we want to do: \texttt{ALTER TABLE users MODIFY email VARCHAR(255);} changes the definition of the email attribute; if we use \texttt{CHANGE} we have to specify the new definition including the name.
 
-\texttt{ALTER TABLE students DROP COLUMN email;}
+To add an index to a table, we (may) need a name for the index, and specify the relation and attribute(s) it should be created on: \texttt{CREATE INDEX idx\_lastname ON users (lastname);}. But we don't have to, we could use a slightly different syntax: \texttt{ALTER TABLE users ADD INDEX (lastname);} which creates an index without needing to give it a name. In truth, it will be given a default name, but you at least don't need to make one up. Management of an index is not specified in the SQL standard so there's a fair amount of difference between the various vendors.
 
-This deletes the attribute from the database and all the data that is in there, permanently. Dropping the column can fail if the column is used in a foreign key or other constraint. It may also be necessary to 
+To remove an index, \texttt{ALTER TABLE users DROP INDEX lastname;}. If we didn't explicitly give the index a name it is likely the name of the column itself. If we really have no idea what the name of an index is, we can use \texttt{SHOW INDEX FROM users;} to ask the server to give us the information we need.
 
-Change the definition of a column
+To add a foreign key, it gets complex: we need to define both tables first. Suppose there is a login session for an application and it is associated with a user's id attribute. To add a constraint we need to:
 
-To add an index to a table, we need a name for the index, and specify the relation and attribute(s) it should be created on.
+\begin{verbatim}
+ALTER TABLE sessions
+ADD CONSTRAINT FK_SESSION_USER
+FOREIGN KEY (userid) REFERENCES users(id);
+\end{verbatim}
 
+There is alternative syntax along the lines of \texttt{ADD FOREIGN KEY} but as a design decision I discourage it. In the above example the foreign key gets a name \texttt{FK\_SESSION\_USER} which is helpful in debugging. Adding the foreign key constraint in this way will fail if the two attributes (userid and id) do not have the same domain (e.g., they are not both varchar with length 8). Worse than that, if one of the tables is defined in one character encoding (UTF-8) and the other is defined in a different encoding (UTF-8mb4) then adding the constraint will fail and it might seem like a mystery as to why!
 
-Drop an index
-
-Add foreign key
-
-Drop foreign key
-
-Create assertion 
+To remove a foreign key: \texttt{ALTER TABLE users DROP FOREIGN KEY FK\_SESSION\_USER;}
 
 
 \subsection*{Truncate Table}
@@ -124,6 +123,27 @@ If we wish to remove a relation from the schema, the syntax for this is \texttt{
 Obligatory XKCD ( \url{https://xkcd.com/327/} ).
 \end{center}
 
+\subsection*{Stored Procedures}
+It is possible to define our own procedures in database server and save them and embed them into the database. Rather than having application logic stored solely in the application program we can embed some of it in the database. It can also enforce some separation of the logic: rather than the application program manipulate tables directly, the application calls the stored procedures and the procedures manipulate the database tables.
+
+It is possible to write procedures in SQL (which is what we'll do in this course) but there may be support for writing it in another programming language (e.g., C or Java). One objective of this course is to be proficient in SQL so delegating everything to another programming language is undesirable. More than that, though, it is important to use procedures judiciously: simple SQL statements or even complex ones may be sufficient to get the job done; if everything is done in procedures then we miss out on the opportunity to learn to think about accomplishing the goal in the correct way. 
+
+It is worth noting that we can also define functions, which are similar to procedures but not identical. To reduce confusion and keep it simple we will focus just on procedures. 
+
+When we want to create a procedure, we need to give it a name, define the parameters and make a statement about whether the procedure is deterministic. You will notice that nothing was said about return value. That's because a procedure does not have one: parameters are defined as \texttt{IN}, \texttt{OUT}, or \texttt{INOUT}. In parameters are the default and it means of course that it is an input parameter and changes are not made to the original input; out means it is a returned value so its initial value in the procedure is null until assigned; inout means it is taken as input and (possibly) modified before being returned.
+
+
+
+On the subject of whether the procedure is deterministic, the mysql manual\footnote{\url{https://dev.mysql.com/doc/refman/5.7/en/create-procedure.html}} says the following:
+
+\begin{quote}
+A routine is considered ``deterministic'' if it always produces the same result for the same input parameters, and ``not deterministic'' otherwise. If neither \texttt{DETERMINISTIC} nor \texttt{NOT DETERMINISTIC} is given in the routine definition, the default is \texttt{NOT DETERMINISTIC}. To declare that a function is deterministic, you must specify \texttt{DETERMINISTIC} explicitly.
+
+Assessment of the nature of a routine is based on the ``honesty'' of the creator: MySQL does not check that a routine declared \texttt{DETERMINISTIC} is free of statements that produce nondeterministic results. However, misdeclaring a routine might affect results or affect performance. Declaring a nondeterministic routine as \texttt{DETERMINISTIC} might lead to unexpected results by causing the optimizer to make incorrect execution plan choices. Declaring a deterministic routine as \texttt{NONDETERMINISTIC} might diminish performance by causing available optimizations not to be used.
+\end{quote}
+
+
+
 \subsection*{Triggers}
 
 It is possible to define an operation in the database that will take place automatically when some other modification of the database takes place. As you might imagine from the name, it follows a logic of ``if x happens, then do y''. 
@@ -136,6 +156,7 @@ To define a trigger we need to define~\cite{dsc}:
 \end{itemize}
 
 Triggers are useful in a few scenarios. They can be used to cause some events to occur such as updating related data, checking an integrity constraint that would be too difficult to check any other way, or alerting humans that some condition is satisfied. I generally discourage the first use: application logic should probably be the one that modifies the data. Checking integrity is a good use. Alerting humans is usually something like sending an email... No program is complete unless it sends e-mail.
+
 
 
 
