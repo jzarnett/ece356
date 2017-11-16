@@ -85,7 +85,9 @@ The basic E-R model that we have discussed up to this point covers almost all of
 
 The mirror image operation of this is generalization, which is analogous to extracting a superclass in object-oriented programming. In that case we would identify some common attributes between certain entities and decide to consolidate the common attributes in a single entity from which the other ones are derived.
 
-Obviously, this only works if we have attribute inheritance: sub-entities receive the attributes of their super-entities, in the same way that subclasses receive the attributes of their superclasses. As you are familiar with the ideas of object oriented programming (... right?) we don't have to actually go into any detail on that subject.
+Obviously, this only works if we have attribute inheritance: sub-entities receive the attributes of their super-entities, in the same way that subclasses receive the attributes of their superclasses. As you are familiar with the ideas of object oriented programming (... right?) we don't have to actually go into any detail on that subject. 
+
+In OOP there are notations about declaring a property as private, protected, package-private, or public; these are irrelevant in the case of an E-R diagram. Actually, in a language like Java if an attribute is private it isn't accessible in a subclass. Those sorts of information hiding (encapsulation) principles aren't present in the database design.
 
 \begin{center}
 \includegraphics[width=0.35\textwidth]{images/specialization-generalization}\\
@@ -102,11 +104,21 @@ We can also have the idea of an ``abstract class'': we could write in some rules
 
 Aggregation allows us to treat a grouping of entities that are related as a single block. This can simplify the diagram and show us a relationship between relationships. Aggregation may not seem very useful in the context of a database schema that can be handily represented on a piece of paper, but for a large database it can be a good way to sequester parts of the design in a different area so the diagram is comprehensible.
 
+The scenario we'll do has to do with a four-way relationship between instructor, student, project, and evaluation. In this scenario, hopefully a realistic one, there is a student project that is supervised and evaluated by an instructor. The evaluation belongs to the relationship ``project guide'', which is defined by the three elements of (instructor, student, project). Actually, the name project guide is probably unclear. If it were up to me I would call the ``project'' relation ``topic'' and the ``proj\_guide'' relationship would be ``project''. 
+
 \begin{center}
 \includegraphics[width=0.45\textwidth]{images/unaggregated}
 \includegraphics[width=0.42\textwidth]{images/aggregation}\\
 E-R diagram with complex relationship without (left) and with (right) aggregation~\cite{dsc}.
 \end{center}
+
+It looks like the relationship \textit{eval\_for} and \textit{proj\_guide} can be combined because they seem to connect the same three things. But we may not want to do that if some sets of (instructor, student, project) do not have an associated evaluation. Now possibly the data is redundant; if the evaluation is a simple enough element (e.g., it is an enumeration or an integer letter grade) then it could be an attribute of the \textit{proj\_guide} relationship. But this option is not suitable if the evaluation relation is used in some other relationship or in some other context. We  also might not be able to combine it if there are multiple evaluations on a project...~\cite{dsc}.
+
+Conceptually we might prefer to think of \textit{proj\_guide} as a higher level entity,  leaving a binary relationship between that aggregated entity and the evaluation relation.
+
+It is worth noting that the textbook contains a couple of alternative diagram notations. You may encounter them in the real world, but we will not invest any time discussing them as they could be confusing.
+
+Given a good understanding of how diagrams are formed, we will next think about how to turn models into tables, and what makes up a good design.
 
 \input{bibliography.tex}
 
