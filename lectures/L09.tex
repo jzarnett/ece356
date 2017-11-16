@@ -99,6 +99,41 @@ Recall: the relation in the diagram in the previous subsection to represent \tex
 How do we know the new definition of \textit{dept\_advisor} is in 3NF? We know that the current definition has a functional dependency that does not meet condition 1 or 2, otherwise it would be in BCNF. So the rule we will check is the third rule and we'll find that this is valid because \textit{instructor\_id} is contained in a candidate key: \textit{(student\_id, instructor\_id)} is a candidate key, because it is minimal and sufficient to identify any row. If the student with ID x999chan is supervised by Professor Sedra, we have enough information to figure out that the department is ECE.
 
 \subsection*{Higher Normal Forms}
+This isn't even my final form! In addition to the first, second, third, and BCNF normal forms there are more... Fourth, fifth, and beyond. The 
+
+The fourth normal form is built upon the third normal form, so the first requirement for something being in 4NF is that it is in BCNF. The new requirement is that a record type cannot have more than one multivalued dependency. A multivalued dependency exists between two attributes if, for each value of the first attribute $\alpha$ there is more than one value of the second attribute $\beta$~\cite{fournorm}. 
+
+Consider the following table representing students. It lists their department and their research areas. 
+
+\begin{center}
+\begin{tabular}{|l|l|l|} \hline
+	\textbf{id} & \textbf{department} & \textbf{research\_area} \\ \hline
+	20000001 & ECE & Security \\ \hline
+	20000002 & CS & Software \\ \hline
+    20000003 & ECE & Circuits \\ \hline
+    20000004 & SYDE & HCI \\ \hline
+    20000005 & ECE & Networks \\ \hline
+    20000005 & CS & Security \\ \hline
+\end{tabular}
+\end{center}
+
+In this table there are two multivalued dependencies:  \textit{id} $\rightarrow$ \textit{department} and \textit{id} $\rightarrow$ \textit{research\_area}. To put this table into 4NF, we need to split it up into two tables, one with attributes \textit{(id, department)} and one with attributes \textit{(id, research\_area)}. Multivalued dependencies are usually written $\alpha \rightarrow\rightarrow \beta$.
+
+The formal 4NF decomposition algorithm looks something like this~\cite{dsc}:
+
+\begin{enumerate}
+	\item Compute $D^{+}$ (the implied set of constraint for the schema)
+	\item Check all relations to see if they are in 4NF.
+	\item If all relations are in 4NF with respect to the constraints, the algorithm terminates.
+	\item Otherwise let $\alpha \rightarrow\rightarrow \beta$ be a multivalued dependency in the relation $R_{i}$ that has two or more multivalued dependencies. 
+	\item Split the relation into two new ones, $(R_{i} - \beta)$ and $(\alpha, \beta)$.
+	\item Go back to step 2.
+\end{enumerate}
+
+
+We have likely thus far observed that the process of putting a relation into a higher normal form means we break things up into more, smaller tables. The trend continues into higher normal forms.
+
+The fifth normal form, as described in the MariaDB documentation, is one where you can't make tables any smaller with different keys. People have also tried to design sixth normal forms and there's some talk in the literature about domain key normal form but these are mostly of theoretical or academic research interest only. So we will focus on BCNF and 3NF mostly, perhaps with a little bit of 4NF. Our next step will be to examine functional-dependency theory and reason a bit more formally about the subject.
 
 \input{bibliography.tex}
 
