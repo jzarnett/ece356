@@ -2,127 +2,131 @@
 
 \begin{document}
 
-\lecture{ 31 --- Parallel Databases }{\term}{Jeff Zarnett}
+\lecture{ 31 --- Recovery: Repair, Probability} {\term}{Jeff Zarnett}
 
-\section*{Parallelism in Databases}
-
-Although this is not a course on concurrency, parallelism, and synchronization, we will take some small amount of time to discuss how these impact on database implementation.  Let's assume that we have a multicore system available because, let's face it, it's not 1999 anymore.
-
-The first way that we could achieve parallelism or concurrency is based on how we decide to implement the server. If each incoming transaction to be processes is assigned a thread, then we could have $n$ worker threads and a transaction gets picked up by a worker. Keeping in mind that locking and coordination are needed, but the maximum theoretical speedup is limited by the number of processors. Alternatively there could be a more segmented approach where rather than a worker that takes a job from start to finish there are different ``segments'' of a pipeline and those run in parallel. But that sort of thing is what we have covered in previous discussions. 
+\section*{Probabilistically Answering Queries}
 
 
-\subsection*{I/O Parallelism} If the database is aware of the various disks available in the system, we can speed up performance via I/O parallelism. If we need to read some blocks from disk, we could let multiple requests run in parallel. If there are three blocks we need, and three disks, we could get all three results at (roughly) the same time. 
+Residues and repairs are not the only way to return consistent answers. When there are several options, as in Table~\ref{inconsistent1}, we can examine these options and make a determination of which is more likely. We form candidates - pretenders to the throne of the correct database -  by breaking up the possibilities for repair into all of their possible variants; in each candidate database, one tuple from each cluster is selected. We see that in the example of Table~\ref{inconsistent1}, both candidate databases will receive a probability of being the ``correct" database.
 
-We'll consider three basic partitioning strategies assuming we have $n$ disks available~\cite{dsc}:
-\begin{itemize}
-	\item \textbf{Round-Robin}: When data is being written, the $i$th tuple is sent to disk $i$ modulo $n$. This gives very even distribution of tuples.
-	\item \textbf{Hash Partitioning}: Each tuple is passed through some hash function that produces a result in the range $[0, n-1]$ and each tuple of the relation is sent to the disk that matches the hash function.
-	\item \textbf{Range Partitioning}: Assigns ranges of tuples to various disks. For example, is the values can be A, B, C, or D and there are two disks, we might assign A and C to disk 0 and B and D to disk 1 (or any other combination we like).
-\end{itemize}
+\begin{table}[h]\begin{center}
+        \begin{tabular}{r | c  c} 
+					salaries & employee\_name & salary \\ \hline
+	           		 & J. Page  & 50 000 \\ 
+	         		 & J. Page  & 80 000 \\ 
+					 & V. Smith & 35 000 \\ 
+					 & M. Stowe & 75 000 \\ 
+        \end{tabular}
+        \caption[Inconsistent Salaries Table]{Inconsistent Salaries Table~\cite{CQ}\label{inconsistent1}}
+\end{center}\end{table}
 
-These techniques as described in the book ignore some other potential ways to decide, such as thinking how often tuples are accessed. Putting frequently used ones near one another might be sensible... or it might make more sense to put them on different disks so they can be retrieved in parallel.
+\paragraph{Finding Consistent Answers}
+Andritsos, Fuxman, and Miller in \cite{CA} take the approach of examining various probabilities of each tuple in a cluster being the correct answer. In the simplest solution, the database will just answer queries and attach the probability of the answer's correctness as another attribute of the tuple. Referring back to the salary example, below in Table~\ref{inconsistent2} is Table~\ref{inconsistent1} modified with the respective probabilities of each item:
 
-Different approaches are good for different things. A quick recap from~\cite{dsc} follows. There are three operations we consider likely to happen: scanning the entire relation, locating a tuple with some specific attribute equal to a certain value, and range queries (where we have a range of acceptable values of the attribute).
 
-Round Robin is good for when we have to read the whole relation. but no advantage is gained when a specific query or range query is done as we have to search over everything anyway.
+\begin{table}[h]\begin{center}
+        \begin{tabular}{r | c  c  c} 
+					salaries & employee\_name & salary & probability\\ \hline
+	           		 & J. Page  & 50 000 & 0.1 \\ 
+	         		 & J. Page  & 80 000 & 0.9 \\ 
+					 & V. Smith & 35 000 & 0.4 \\ 
+					 & M. Stowe & 75 000 & 1 \\ 
+        \end{tabular}
+        \caption[Inconsistent Salaries Table with Probabilities]{Inconsistent Salaries Table with Probabilities \cite{CQ} \cite{CA}\label{inconsistent2}}
+\end{center}\end{table}
 
-Hash partitioning is advantageous when we do specific queries. This is only beneficial, of course, if the items are partitioned based on that particular attribute. In theory it search time could be reduced to $1/n$ of the original time; otherwise no advantage is gained over round robin. This is also not especially suitable for range queries.
+If the query being asked were all the names of all employees making more than \$70~000, a probabilistic assessment would be performed to decide what certainty we could indicate the answers with. In the trivial case, M. Stowe's salary is certainly greater than \$70~000, since its probability is 1 (completely certain). Uncertainty enters the picture when examining the J. Page tuples. We note probability of his salary being \$80~000 is 0.9, so we include him in the return set and indicate the attached probability. If the query were names of employees making more than \$45~000, then we would return J. Page with probability 1, since the sum of the probabilities of the tuples wherein his salary exceeds \$45~000 is 1. 
 
-Range partitioning is good for specific as well as range queries on a particular attribute. A nice advantage of this is if we know that a query will be only on one disk, it's possible to send the query to just one disk and the other disks are available to perform other operations.
+Andritsos, Fuxman, and Miller simply modify the requested queries to include the probability attributes. If the original query was:\\
+\texttt{SELECT s.employee\_name FROM salaries s WHERE s.salary > 70~000}\\
+then the only changes are the addition of\texttt{SUM(s.probability)} and \texttt{GROUP BY s.employee\_name}, so that the rebuilt query reads:\\
+\texttt{SELECT s.employee\_name, SUM(s.probability) FROM salaries s WHERE s.salary $>$ 70~000 \\ GROUP BY s.employee\_name}\\
 
-When the relation is spread over several disks, if things are not spread out evenly, then there is \textit{skew} in the distribution of tuples: a large percentage of them being places in some areas and a very small percentage in others. This can be because of either \textit{attribute-value} skew -- that is, some values are more common in the data such as city being ``Toronto'' being much more common than ``Yellowknife''; or it can be because of the way the partitioning function works even if values are evenly distributed~\cite{dsc}.
+In a more complex query, we simply multiply the probabilities. Consider the following query \cite{CA}: \\
+\texttt{SELECT o.id, c.id FROM order o, customer c  WHERE o.cIdFk = c.id AND c.balance > 10000 } \\
+This query is modified in the same way as that of the preceding paragraph, except the sum statement reads \texttt{SUM(o.probability * c.probability)} and the group statement is \texttt{GROUP BY o.id, c.id}.
 
-To balance this out, one suggested strategy is the histogram approach. Suppose there are, for example, 5 disks and 100 possible values. The simple range approach is 20 values in each partition. If the data has a normal distribution however (in the statistical sense of the normal distribution, the bell curve). Rather than 20 values per disk we would try to cut it so there are about 20\% of tuples in each partition.
+\paragraph{Determining Probabilities}
+The most pressing question is how we determine the probabilities. We note there are definite conditions attached to being able to determine these. See Figure \ref{formula} for the detailed breakdown of the procedure to map the tuples' probability to the interval [0, 1].
 
-An alternative approach is to cut it all up more. More? Suppose there are $n$ processors and the work is divided up into $5n$ ranges. If the data is evenly distributed, each CPU will do 5 chunks. If the work is unevenly divided, however, some CPUs will do a smaller number of large chunks and others will do a large number of smaller chunks and some will be in between. The uneven distribution of values is then spread out over several processors. 
+\begin{figure}[!h]
+  \centering \includegraphics{images/formula.pdf}
+  \caption[Tuple Probability Assignment Formula]{Tuple Probability Assignment Formula \cite{CA}}
+  \label{formula}
+\end{figure}
 
-Admittedly, in a single server database this is not likely to happen even when there are multiple disks. Usually the disks are arranged in a RAID array and that is done outside the purview of the database server... It is either managed by the operating system or by the hardware (even better). So why did we learn about this? Because it will be useful in a distributed database system, where there are multiple disks available to the database system. That is a subject we will return to soon.
+Though most of the algorithm is self-explanatory, some components merit clarification, also provided in \cite{CA}. Tuples within a cluster must be exclusive events, or the algorithm will fail. Representatives are determined by commonality. Representatives contain the most common features in the cluster, so the similarity between the tuples will give an indication of which tuple is most likely to be representative. To clarify, a short example, Table~\ref{rep}:
 
-\subsection*{Intraquery Parallelism}
+\begin{table}[h]\begin{center}
+        \begin{tabular}{r | c  c  c  c } 
+					customers & name & market\_segment & country & address\\ \hline
+	           		 & Mary   & building & USA    & 123 Jones Ave. \\ 
+	         		 & Mary   & banking  & Canada & 123 Jones Ave. \\ 
+					 & Marion & banking  & USA    & 123 Jones Ave. \\ 
+        \end{tabular}
+        \caption[Inconsistent Customers Table]{Inconsistent Customers Table \cite{CA}\label{rep}}
+\end{center}\end{table}
 
-The subject of inter-query parallelism is actually somewhat boring and redundant as it is just the same as previous discussions of parallelism and concurrency. Lock shared data, you know the drill. But there are numerous opportunities to get parallelism inside a single query, and it is a much more interesting subject. We'll consider two things: intraoperation parallelism (parallelizing an individual operation of the query) and interoperation parallelism (doing more than one operation at a time). 
+When examining this with a human's eyes, we might conclude that the most common values in the database are probably the correct ones, so the resultant representative tuple would show the customer Mary as part of banking in the USA with an address of 123 Jones Ave. The algorithm shown in Figure \ref{formula} follows this same intuition. The tuple we will consider correct is the one closest to the representative. For numerical data, similarity between two figures can be computed, and a pair can be more or less similar than another pair of figures (456 and 385 are more similar than 750 and 385). For data for which there is no obvious distance measure, we term them \textit{categorical data}, and we proceed using information loss as the distance metric \cite{CA}. Information loss is simply a measure of the difference between  the tuple in question and the representative. 
 
-\paragraph{Intraoperation Parallelism.} 
-When we have a single operation that can be, in some way, divided up (partitioned) it is a good candidate for intraoperation parallelism. A number of them were likely things you already learned about in a concurrency course (just usually on some other data items), just now with tuples:
+\paragraph{Analytical Shortcomings}
 
-\begin{itemize}
-	\item Searching (e.g., linear search parallelized)
-	\item Sorting (e.g., merge sort)
-	\item Calculation (e.g., compute partial sums and combine)
-\end{itemize}
+The strategy presented is imperfect, however, since we might fail to produce clean answers for some classes of query. Andritsos, Fuxman, and Miller present in \cite{CA} the following case as unable to succeed: \texttt{select c.id from order o, customer c  where o.quantity < 5 and o.cIdFk = c.id and c.balance > 25~000}. This fails because the join between \texttt{c} and \texttt{o} incorrectly double-counts some probabilities. Obviously, query rewriting cannot succeed for all cases, so the algorithm is limited to only those which we can reliably rewrite. Andritsos, Fuxman, and Miller argue -- without proof -- that  such un-rewritable queries occur only infrequently, and that the algorithm is still valid most of the time.
 
-\paragraph{Partitioned Join. }To give a specific example, we will look at parallel join, in particular a partitioned join, as in~\cite{dsc}. Let's assume we want to join relations $r$ and $s$ and we have two processors. If the join is an equality condition such as one attribute in $r$ equalling another in $s$ then we can divide this up to multiple processors. If there are $n$ processors we could divide each relation into $n$ pieces and send each processor $P_{i}$ its piece of $r$ and $s$. That processor then compute its part. These parts are then combined at the end to produce the correct data. Keep in mind that we do probably want to partition things with a histogram approach so each processor has roughly equal work.
+Overlooked in this analysis is determining how we might find a representative sample when it is not obviously in a majority-rules scenario. Given two prima facie equally plausible tuples, how do we decide which is the better choice to consider the representative? Whichever is picked to be the representative will not differ from the representative (by definition), so it will receive a probability of 1. Thus, whatever we (perhaps randomly) choose to be our representative is the eventual winner and will be considered correct. It is clear that we need to come to some decision, but reporting 100\% certainty about data which is, at best, 50\% certain is misleading. 
 
-\begin{center}
-\includegraphics[width=0.3\textwidth]{images/partitioned-parallel-join}\\
-Partitioned Parallel Join~\cite{dsc}.
-\end{center}
+This analysis also equates popular with correct. If an incorrect answer appears in the database twice and a correct answer once, then the incorrect answer will be chosen and deemed correct, since it is more popular. That aside, there is not much that can be done about this problem; even a human observing the database might be more likely to conclude that the popular answer is the correct one, in the absence of additional, external knowledge.
 
-\paragraph{Fragment and Replicate.} Partitioning is not suitable for all types of joins, however; because we put in the restriction that there is a join on an equality condition. A more general approach is the \textit{asymmetric fragment-and-replicate join} which has three steps~\cite{dsc}:
+\section*{Computational Complexity of Repair \& Probability}
+Computational complexity is broken down into a short analysis on each of the methods detailed above. Each approach has its own properties. Computational complexity may disqualify a method from being practically useful, should it take too much time to reach a reasonable answer.
 
-\begin{enumerate}
-\item Partition one of the relations ($r$) and hand out the partitions to the processors.
-\item Send copies of the whole other relation ($s$) to every processor.
-\item Each processor computers its join (through whatever method) and the data is recombined. 
-\end{enumerate}
+\paragraph{Repairing Databases}
+Assuming that we are looking at repairs that are subsets of the original database, then repair checking is in polynomial time, for arbitrary constraints combined with acyclic dependencies \cite{CQ}. Should any of these constraints not hold, the problem is pushed into the realm of co-NP-complete problems, although additional orthogonal restrictions might lead to more polynomial time cases \cite{CQ}.
 
-It would be preferable to choose the smaller relation to be the one that is copied as it would obviously mean less data needs to be copied to execute this algorithm.
+Having considered the spectre of computationally infeasible or impossible situations, Bertossi and Chomicki \cite{CQ} develop various methods of finding consistent answers without explicitly computing every possible repair to the database. One of the ways that they suggest is compact repair representation - use information present to construct an efficient representation of all the possible repairs, and use this representation to answer all queries. However, this is not explored in the paper.
 
-The diagram below shows the asymmetric fragment-and-replicate join; the general case appears on the right where there are $m \times n$ processors rather than just $n$. In a typical server, the asymmetric approach is suitable. But in theory if you had a very large number of cores then you might use the general replication routine. 
+\paragraph{Query Transformation} 
+The process of query transformation in \cite{CQ} is shown to have a polynomial time computability of result tuples, as the transformed query will be first order as long as the original query is as well. In fact, because the query transformation does not require examining all the possible repairs, so we can evaluate a query with an exponential number of possible repairs in polynomial time.
 
-\begin{center}
-\includegraphics[width=0.7\textwidth]{images/fragment-and-replicate}\\
-Fragment and Replicate~\cite{dsc}.
-\end{center}
+\paragraph{Aggregate Query Transformation}
+The approach presented in \cite{CQ} is to aggregate queries is to build a conflict graph; a standard graph with nodes and edges. In the graph, maximal independent sets - that is, sets that are the farthest apart in terms of data equality - represent possible repairs of the database. As long as there is at most one nontrivial constraint, all operators except \texttt{COUNT} are polynomial time. If there are many nontrivial constraints, then the problem of finding lower and upper bounds becomes NP-complete. The \texttt{COUNT} operation is always NP-complete, even in the case of a single nontrivial constraint. Finally, it is noted that the \texttt{AVG} function's polynomial time algorithm is iterative, and cannot be formulated using SQL. 
 
-\paragraph{Partitioned Parallel Hash Join.} 
-Recall from much earlier the hash join: we can parallelize it. If we have $n$ processors labelled $P_{0}, P_{1}, ... P_{n}$ and we have two relations $r$ and $s$ such that they are spread out across multiple disks. Remember that we want to choose the smaller relation as the ``build'' relation, so choose $s$ as the smaller one. The algorithm is then~\cite{dsc}:
+Under special circumstances, Bertossi and Chomicki found some better behaviour for the \texttt{COUNT} function, but even approximating is difficult; the concept of a maximal independent set reportedly has bad approximation properties.
 
-\begin{enumerate}
-	\item Choose a hash function $h1()$ that takes the join attribute value of each tuple in $r$ and maps the tuples to one of the $n$ processors. The subset of tuples of $r$ that are mapped to $P_{i}$ are called $r_{i}$; the tuples of $s$ are similarly divided across the processors and the divisions are called $s_{i}$. Each processor $P_{i}$ reads the tuples of $s$ on its disk and sends them to the appropriate processor based on $h1()$.
-	\item As a processor receives the tuples from $s_{i}$, it further partitions them by a second hash function $h2()$ which is used to compute the hash join locally. This step can be done independent of other processors.
-	\item Once the tuples of $s$ have been distributed, then $r$ is distributed to the processors based on $h1()$; when it gets there it is repartitioned by $h2()$.
-	\item Each processor then executes the build and probe phases of the hash-join algorithm on the local partitions $r_{i}$ and $s_{i}$ to produce part of the final result.
-	\item As the last step, the results need to be recombined to produce the final result.
-\end{enumerate}
+\paragraph{Probabilistic Complexity}
+Andritsos, Fuxman, and Miller include in \cite{CA} a note on the computational complexity of their work.  specifically a graph showing the performance as the size of the database grows, reproduced here as Figure \ref{CAPerformance}:
 
-A quick rundown on how parallelism affects operations other than selection and join~\cite{dsc}:
-\begin{itemize}
-\item \textbf{Duplicate Elimination}: Duplicates are typically removed by sorting, which itself is something we could do in parallel. Also, if we partition a relation on an attribute, each processor can easily remove duplicates of that attribute.
-\item \textbf{Projection}: Projection can be done as each item is read from disk; just take what you need.
-\item \textbf{Aggregation}: Aggregation can be partially done locally and then the results can be combined to produce a global value. That is easy to imagine for something like sum (each processor computes its local sum, they are all added together). The same is true for count. Minimum and maximum involve comparison rather than addition to combine their values. Average, however, is more interesting: we would likely take the numerator (sum) and denominator (number of tuples) and recombine those.
+\begin{figure}[!h]
+  \centering \includegraphics[width=4in]{images/CAPerformance.pdf}
+  \caption[The Effect of Database Size on Probabilistic Evaluation]{The Effect of Database Size on Probabilistic Evaluation \cite{CA}}
+  \label{CAPerformance}
+\end{figure}
 
-\end{itemize}
+It is clear from a cursory examination that the behaviour of the queries is linear, with the exception of some corner cases (like Query 3). However, they sidestep the issue that the number of candidate databases is possibly exponential - if there are \textit{n} inconsistencies each with clusters of size \textit{m}, the total possibilities might be as large as $n^{m}$. Computing probabilities for such a set might be exceedingly difficult, but the whole issue is glossed over with a single comment.
 
-\paragraph{Interoperation Parallelism.}
+\subsection*{Future Work \& Suggestions}
 
-We already discussed the idea of pipelining: the partial result of one step can be moved on to the next stage and processing in that next stage will be able to begin processing. This, unfortunately, does not scale well: a pipeline with 4 stages cannot really take advantage of 16 processors.
+In \cite{CQI}, Arenas, Bertossi, and Chomicki warn that their proofs of termination and completeness properties of the query transformation are only preliminary and partial. Surely this will be addressed in the future. They also find that completeness for disjunctive and and existential queries, they will need to move beyond simple query transformations. In addition, they do not yet have upper bounds on the size of the transformed query, and they lack some complexity information on different classes of query. This particular paper (\cite{CQI}) is a more detailed examination of some sections of \cite{CQ}), with two authors in common, so suggestions for improving it are combined with that of its successor.
 
-The next way that we can use parallelism between various operations: if we are to join four tables, we could compute two pairs of joins in parallel and then combine them in a third operation for the last step. You probably will not want to join more than a few tables in any single query so the amount that this can scale is also limited.
+Database repairs examined in the \cite{CQ} fashion are based on differences against the whole tuple and does not permit modifying attributes of tuples. Bertossi and Chomicki suggest that a \textit{flexible} (attribute-level) repairs. They further identify majority-based approaches to consistency, which is very similar to how the probabilistic approach decides what to do.
 
-\subsection*{Change is Hard}
+Further in that paper, the section on logic programs to compute database repairs is rather light on details and seems mostly an aggregation of examples. We suggest that the paper might be improved by including more detail on the subject, since a lot has been left out, or reducing the amount of space dedicated to what is clearly a side point implementation detail. 
 
-We would normally expect that when changes are made to the database schema such as data migration, changing column structure, or adding an index are made, the database is taken temporarily off the line (out of production) so the changes can be made while nothing else is going on. You have surely experienced this when you've tried to use an application on the web that tells you it's currently offline for maintenance. Such maintenance is usually planned for what are considered ``off hours'' (when utilization is low) and some downtime window is planned. Oftentimes when the downtime is significant it's because a database change needs to be made. And all things considered, when you have the option to do the change offline, you probably should.
+In this same vein, there is a note about computationally constructing compact repair representations, yet there is not much talk about how we might do this, aside from a side note about placing \texttt{null} into a field when there are infeasibly many repairs. We suggest expanding compact repair representations, or clarifying the note about them (which implies that there is a wealth of information on the topic coming).
 
-Sometimes we don't have the option to take things offline for an extended period. The system is critical or there are other business reasons why you can't just turn things off. If the change is small it's not really a big problem. But we can do online migration if we must. 
+The probabilistic paper presents no future extensions or future directions to its work. As suggestions for them, they could certainly investigate the computational complexity further. Specifically, why some cases are more difficult than others to handle (see query 3 in Figure \ref{CAPerformance}). They also appear to lack a strategy for dealing with a large set of inconsistencies. 
 
-If a new index is to be constructed, for example, we can't just lock the relation in shared mode and we have to allow insertion, deletion, and update while the index is being added. This is usually done by just keeping track of all the changes as they come in and adjusting the index when generated to account for all the changes that happened while it was being built.
+Noting the scenario in which 50\% certain data may be reported 100\% certain, my suggestion for such forced-guess scenarios is to report the uncertainty associated with this answer and confess that we cannot find any better solution without additional input.
 
-\section*{Parallel Database Architectures}
+Finally, the set of queries that they cannot rewrite is claimed to be small, but no proof or evidence is offered to convince the reader that this is really the case. Surely a subsection or followup would be rather more persuasive than simply taking it on faith.
 
-Now if we have a parallel database, we should consider the architecture> how it is set up. We will consider three possible options: shared memory, shared disk, and shared nothing.
+\subsection*{Conclusion}
 
-\paragraph{Shared Memory.} This is our typical multicore or multi-CPU architecture we have likely already become familiar with when discussing concurrency. There are multiple processors (or multiple cores, processing units -- as far as we are concerned all we want is workers). Memory is shared between the various processors and they have a common set of disks. There is no redundancy, however, as it is all wrapped up into one machine.
+There appears to be no single right answer when dealing with an inconsistent database. However inconsistent it may be, it is unlikely that we will be able to unequivocally say what is correct and what is not. All of the examined options present viable alternatives to solving the problem, but they can easily slip into computational infeasibility in the event of complex constraints or a great number of inconsistencies. With these techniques, we can certainly get back consistent answers to our queries. The success of aggregate queries is less certain, but the chances are still reasonable.
 
-This means that communication can take place between the threads using shared memory. Every processor has its own cache and cache coordination is a factor, but the hardware helps us out there (for more details take ECE~459!). We should already be familiar with this sort of coordination from earlier: semaphores, mutexes, and the like, are used to achieve the coordination we need.
+Some techniques report uncertainties, and others ignore anything about which we are uncertain. Ultimately, how to handle the situations comes down to the decision of the database administrator or designer. He or she will need to choose the solution he or she feels appropriate to the situation. 
 
-\paragraph{Shared Disk.} In this architecture all processors can access disks directly, but every processor has its own memory. This has some degree of redundancy as we might be able to keep working if something goes wrong at one of the systems. If one of the systems crashes, every system can continue executing without any problem, at some reduced performance level. 
 
-The tradeoff is that communication has to take place using the disk. So to coordinate (e.g., lock an item) the lock information has to be written to disk and that means that disk access is likely to be a serious bottleneck in the system.
-
-\paragraph{Shared Nothing.} In a shared nothing system, well, it's exactly what it sounds like: nothing is shared between the systems. If they wish to communicate, then communication takes place over the network. This means the systems are as redundant as possible: if any one system goes down we might be able to carry on. 
-
-This sort of architecture isn't so much parallel as it actually is \textit{distributed} and it comes with its own problems, such as what happens if we need data that is on the disk of some other system, since it does, after all, take longer to get data from a remote location than if it is locally available...
 
 \input{bibliography.tex}
 

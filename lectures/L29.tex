@@ -2,148 +2,129 @@
 
 \begin{document}
 
-\lecture{ 29 --- Recovery: Repairing Inconsistent Data }{\term}{Jeff Zarnett}
+\lecture{ 29 --- More Recovery \& ARIES }{\term}{Jeff Zarnett}
 
-\section*{Inconsistent data? In my database? It's more likely than you think!}
+\section*{Fuzzy Checkpointing}
 
-Inconsistent databases are a difficult problem for database designers to deal with. As the definition of inconsistent suggests, one or more integrity constraints have been violated, and one might conclude that queries on the database would be impossible or the answers meaningless. Research on the subject, specifically in the fields of repairing inconsistencies and answering queries despite the status of the database, has provided several options. The works we examine restrict themselves to relational databases, and not any of the other possible types.
+Thus far when we have talked about creating a checkpoint assumes that we stop all execution, briefly, to take the snapshot. This sort of thing is not unheard of in programs, such as the ``stop the world'' garbage collector behaviour in Java. It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take an usually long time. Therefore we would like to modify the checkpoint system to avoid having to halt all execution.
 
-We cannot proceed without first providing a working definition of what is meant when we say that a database is consistent. We say a database $D$ is \textit{consistent} if $D$ satisfies the set of integrity constraints $C$ in the standard sense \cite{CQI}. If any of these constraints are not met, the database is \textit{inconsistent} (or has inconsistencies). When there are inconsistencies whereby there are multiple tuples reflecting the same real-world entity, we name that a \textit{cluster}~\cite{CA}.
+The term for a checkpoint that isn't such a clean division between here and there is called a \textit{Fuzzy Checkpoint}. A fuzzy checkpoint allows updates to start once the checkpoint has been created but before the modified buffer blocks are written to disk~\cite{fds}. There's still a pause in execution while the checkpoint is created, but that should be the fast part.
 
-The obvious source of how databases may become inconsistent is: errors. Data can be entered that violates integrity constraints. That can happen if the database was implemented without certain important integrity constraints (e.g., foreign keys) added, or a new rule is being added. It can also happen because database integrity constraints can be turned off (yikes!) which is usually intended for mass data import, or perhaps because the database engine (myISAM anyone?) just does not enforce those constraints. So in all cases, the inconsistency was added in error. 
+This does potentially present a problem: the checkpoint data is written to disk before the blocks are written and we could have a crash before all the blocks are written to disk. What do we do then? Keep track of the last completed checkpoint, and don't update the last completed checkpoint marker until all blocks have been output.
 
-However, it is not the case, that by simply relying on error-detection and rule enforcement, we can be certain that no inconsistencies will ever arise. We will look at some ideas of how databases may become inconsistent in the first place, aside from the obvious answer of errors. Papers \cite{CQI} and \cite{CQ} offer some plausible scenarios where inconsistencies may be introduced. The first is from data warehousing; when data is imported from various sources and may need cleaning before storing. The second is database integration; when some data is stored across many databases stitched together, there may be different constraints at a local level than at the higher level, resulting in a locally consistent, yet globally inconsistent, database. It is possible that integrity checking may simply be too costly from a performance standpoint, and the database must proceed without it. Finally, we might, under some circumstances, choose to allow a temporary inconsistency, such as warehouse stock levels being allowed to fall below a minimum when replenishments have already been ordered. It is clear from these three scenarios that there exist plausible reasons why a database might be inconsistent, and why this subject is not rendered irrelevant in an error-free system.
+Note that even with fuzzy checkpoints, a block cannot be updated while it is being output to disk (although other blocks can be modified)~\cite{dsc}. Fuzzy checkpoints are more or less the standard approach in the real world because the alternatives take too long.
 
-We would like the answer from a query against an inconsistent database to be the same as that of the consistent database, but with partial information, we may not know what the consistent database would return. At the very least, we are interested in getting a consistent answer to a query, even in the presence of inconsistent data. We may also be interested in repairing the database, so that the inconsistencies may be removed entirely.
+\section*{Recovering from Loss of Nonvolatile Storage}
 
-\subsection*{Repairing Inconsistencies}
-When presented with an inconsistent database, we might be able to repair it. The nature of the repair will obviously be context-dependent. The basic definition of a repair $D'$ of a database $D$ is that $D'$ is a modification of $D$ such that $D'$ meets the constraint set $C$.
+The recovery routines considered so far are about booting the server up again after a crash or power failure or other temporary outage where nonvolatile storage is unaffected. But bad things will happen to even nonvolatile storage. So we need to take copies of the data to account for the fact that even supposedly nonvolatile storage is lost.
 
-\paragraph{Basic Principles of Repairs}
-There are infinitely many such database repairs that can be performed. We add a further restriction; that the new database $D'$ is changed only minimally from the original $D$. Making the minimal set of changes necessary to meet all constraints $C$ has nice properties: if a database is consistent, then the minimal repair is to do nothing ($D'$ is equal to $D$). Furthermore, we will always be able to find a repair to the the database, since we can make changes as needed to reach a consistent state, although in the worst case, it may mean emptying the database entirely. \cite{CQI}
+But how do we back up the database data? It is called a \textit{dump}. It is basically taking a copy of all the data. If we are doing it live, we require that no transactions are running and the steps are~\cite{dsc}:
 
-With that in mind, it is sometimes undesirable to make the minimal set of changes, because that may simply be deletion of the offending tuple(s). While deletion may bring the database into a consistent state, it also may mean data loss, and that is generally not our first choice. We are therefore forced to keep our minds open to repairs that are not the minimal set of changes, but as minimal as possible without data loss.
+\begin{enumerate}
+	\item Write all log records currently in main memory to stable storage
+	\item Write all buffer blocks to disk
+	\item Copy the contents of the database to stable storage
+	\item Note completion of the dump in the log
+\end{enumerate}
 
-We will now look at an example using table of employee salaries, Table~\ref{inconsistent1}. In this example, we show only a subset of this relation; columns ``employee\_name" and ``salary" are depicted. The sole constraint is that each employee may have only one salary.
+The form the dump takes could be raw data, but there are tools in most database packages that exports the data as a SQL dump: it writes out the data description language (create table statements, for example) and insert table statements for the data. Such a dump can be used to copy the database from one system to another or migrate it from one database server to another.
 
-\begin{table}[h]\begin{center}
-        \begin{tabular}{r | c  c} 
-					salaries & employee\_name & salary \\ \hline
-	           		 & J. Page  & 50 000 \\ 
-	         		 & J. Page  & 80 000 \\ 
-					 & V. Smith & 35 000 \\ 
-					 & M. Stowe & 75 000 \\ 
-        \end{tabular}
-        \caption[Inconsistent Salaries Table]{Inconsistent Salaries Table~\cite{CQ}\label{inconsistent1}}
-\end{center}\end{table}
+The approach described above does have the obvious downside of needing to stop execution for a very long time. That is, however, not realistic. A tool that dumps the database like \texttt{mysqldump} takes a complete database dump, but it does so as a transaction: it gets a snapshot of the data at the time the dump is requested; further changes can still go on in the meantime but this transaction will be left running for as long as it takes (and it can be HOURS!).
 
-The constraint is violated for the user ``J. Page"; he has two salaries (rows 1 and 2 in Table~\ref{inconsistent1}) - \$50~000 and \$80~000 (cluster size of 2). There are two possible repairs that we can make to this database, depicted in Table~\ref{consistent1} and Table~\ref{consistent2}:
+An import will need to be run to get the data back into the database from the dump file if it was in SQL format. In the case of a loss of all data then it is imported into a fresh (empty) database; otherwise the previous (corrupt, partial, or otherwise problematic) data is dropped and it is replaced with the data from the import.
 
-\begin{table}[h]\begin{center}
-        \begin{tabular}{r | c  c} 
-					salaries & employee\_name & salary \\ \hline
-	         		 & J. Page  & 80 000 \\ 
-					 & V. Smith & 35 000 \\ 
-					 & M. Stowe & 75 000 \\ 
-        \end{tabular}
-        \caption[Possible Repair of Salaries Table (Option 1)]{Possible Repair of Salaries Table (Option 1) \cite{CQ}\label{consistent1}}
-\end{center}\end{table}
+Exporting seems fairly easy from a technical perspective: just copy the data to the output file in the form of create table statements and then insert into statements. That works but there is a problem when importing. Tables are added and they have foreign key constraints. But how can you set up the key constraints if the other tables don't exist? And how can you insert the data for one table that references another without that other table having the data present as well?
 
-\begin{table}[h]\begin{center}
-        \begin{tabular}{r | c  c} 
-					salaries & employee\_name & salary \\ \hline
-	           		 & J. Page  & 50 000 \\ 
-					 & V. Smith & 35 000 \\ 
-					 & M. Stowe & 75 000 \\ 
-        \end{tabular}
-        \caption[Possible Repair of Salaries Table (Option 2)]{Possible Repair of Salaries Table (Option 2) \cite{CQ}\label{consistent2}}
-\end{center}\end{table}
+There is some possibility to do a topological sort where you find a sequence of create table and add constraint statements, then one for insert statements... This is very difficult and potentially impossible depending on how your data is defined. The real answer is that when importing data via this method, integrity constraints are temporarily disabled to allow the file to be processed sequentially without any slowdowns.
 
-Rows 3 and 4 of Table~\ref{inconsistent1} are unchanged (as this is a minimal repair), and the two options are to delete either the first row (Table~\ref{consistent1}) or the second (Table~\ref{consistent2}). In either case, we return to a consistent database, because the sole constraint is now correctly enforced. Bertossi and Chomicki clearly demonstrate in~\cite{CQ} an important point: throwing away all tuples that participate in the violation results in the loss of J. Page's data. They overlook the minor point that doing so would not be the minimal set of changes to the system - throwing away one would be enough.
+Another way that backups tend to get taken is at the level outside of the database: the operating system. The data is ultimately stored somewhere on a volume (or volumes) in the database and the operating system can do things like shadow copies and image backups of the drives. Of course, the state that is stored to the disk at the time of the backup is what gets copied. If this is not a consistent state, some additional actions may be needed on startup to get things back to a consistent state.
 
-There are some specific circumstances under which we might face infinitely many or infeasibly many repairs; such as how to repair a string such that it is unique in the relation. The number of possible strings which meet this condition is infinite (though it may be constrained from infinite to infeasible by limiting the string length attribute (for example, to 255 characters). Under those circumstances, the repair we undertake is to insert a \texttt{null} into that attribute, and therefore compress the infinite or infeasible set down to one possible repair \cite{CQ}. The proponents of this system acknowledge that it is imperfect, however, because the relational data model may forbid a null in that attribute.
+\section*{ARIES}
+In spite of sounding like the name of a NASA program to Mars or some such, the ARIES algorithm is a database recovery routine used by IBM. It relies on three main pillars: write-ahead logging, repeating history during redo, and logging changes when undoing something. The description of how ARIES works is all from~\cite{fds}.
 
-\paragraph{Specifying Repairs with Annotations}
-The pressing question now is what repairs to perform. Annotated logic, specifically, \textit{Annotated Predicate Calculus} as in \cite{CQ}, provides a method. We must move beyond classical logic, otherwise inconsistencies (logical contradictions) would prove problematic. In APC, we annotate database atoms (components) with true ($t$), false ($f$), contradictory ($\top$), and unknown ($\bot$). Below in Figure \ref{TruthLattice} is the lattice of logical values. In this figure, the intersection points represent truth values ($t$, $f$, et cetera) and the edges represent paths along which reasoning moves when additional data is found.
+The algorithm and the approach we have examined for recovery works and it produces the correct results, but it comes with some drawbacks and performance decreasing elements. ARIES is hopefully going to address it. ARIES is broken up into three phases: analysis, redo, and undo.
 
-The truth values in the lattice are as follows, all from \cite{CQ}:
+\paragraph{Analysis.} In the analysis phase, the goal is to figure out what pages in the buffer were dirty. We don't have the actual pages, of course, because the crash caused the loss of that data. However, e can determine the information based on the log data from the checkpoints: the dirty page table, transaction table, et cetera. During this phase a determination will also be made as to where to begin the redo phase.
+
+\paragraph{Redo.} In the redo phase, updates from the log are done in the database. The normal recovery routine expects that we only redo committed transactions, but in ARIES we will try hard to skip unnecessary work: and only redo operations that are necessary.
+
+\paragraph{Undo.} The last phase is the undo phase, and the log is scanned backwards and transactions that were active at the time of the crash are undone in reverse order. 
+
+Every log has a LSN -- \textit{Log Sequence Number}; this is an incrementing counter that indicates the log record's address on disk; each number corresponds to a specific change of some transaction. Each data page stores the LSN of the most recent log record that changed that page. Log records are generated for updating a page, committing a transaction, aborting a transaction, undoing an update, and ending a transaction.  When an update is undone, a compensation log record is added; when a transaction ends, successfully or unsuccessfully, an end log record is written. 
+
+The log structure has numerous fields, including the previous LSN for that transaction, the transaction ID, and what type of transaction is being written. The LSN can link (in reverse order) the log records for the same transaction. Other fields in each log record might include where to find the item (page, offset, etc), as well as the before and after values.
+
+To perform a recovery, we need the log as well as the \textit{transaction table} and \textit{dirty page table}, both of which are maintained by the transaction manager. The transaction table lists the various transactions in progress. Similarly, the dirty page table contains the pages that are dirty (shocking, I know). These are lost when a crash occurs but are rebuilt when the system comes back online, obviously by looking at the log data. Thos tell us about what information is in progress.
+
+To take a checkpoint, some steps are the same as the regular checkpoint process: a begin-checkpoint entry is added to the log, the checkpoint is written, and then the end-checkpoint entry is added. Alongside the end-checkpoint entry, the data for the transaction table and dirty page table are written to the log as well. The last step is to add the LSN of the begin-checkpoint entry to a special file. This special file just marks the location of the last successfully completed checkpoint operation and it will be checked during recovery so we know where our last checkpoint is. Note that fuzzy checkpointing is used so the cost of writing all this data out is not so high. If a crash occurs during the checkpoint process, the special file will not yet have been updated so we will resume from the earlier point.
+
+After a crash occurs, the recovery process begins. The first thing is to use the special file just mentioned to find the place in the log where the process starts. This is where the analysis phase begins: start with the begin-checkpoint entry and keep moving until the end of the log (with stops along the way). 
+
+When the end-checkpoint entry is found, the transaction table and dirty page table are read into memory. Their content will be altered in memory as log processing continues: if a transaction $T$ was in progress at the time of the end of the checkpoint and we then encounter an end-transaction record for $T$ then we know that it completed (successfully or otherwise) and we can remove $T$ from the memory list of transactions in progress. If instead we found a transaction $T$ that was not in the in-progress transaction list at the time of the end checkpoint, we will add it to the transaction table. 
+
+Whether the transaction was known or not before encountering an operation involving it, anything other than an end-transaction statement will result in updating the LSN for that transaction in our records. If the transaction's operation results in a change to a page $P$, then $P$ is added to the dirty page list (if not already present) and the LSN field for $P$ is updated as well. 
+
+At the conclusion of the analysis phase, the transaction table and dirty page table have all the information necessary to make the changes to return the system to a consistent state.
+
+The redo phase begins: to avoid having to do anything unnecessary, no changes are done that have already been saved to disk. It is easy enough to tell which changes are done: look at the dirty page table, and find the smaller LSN, which we will call $M$. Anything before that is already done, so we can skip over records in the log that have a LSN smaller than $M$ (because they are already done or overwritten in memory). Redo starts then at the LSN equal to $M$ and scans forward to the log. 
+
+For each change, consider whether the page $P$ is in the dirty page table. If it is not, then the change is already on disk. If $P$ is in the dirty page table, but has a LSN larger than the current change, the change is already written to disk and does not need to be reapplied. If $P$ is in the dirty page table but does not have a larger LSN,, page $P$ is read from disk and the disk stored version is checked; if the LSN is larger than that of the operation being performed then we can skip this operation.  If none of those conditions led to skipping the operation then the redo is applied. 
+
+That concludes the redo phase; at this point the database is in the exact state it was in at the time of the crash, but the state is not consistent. There are still uncompleted transactions with partial progress that need to be rolled back. That is the job of the undo phase.
+
+The log is scanned backwards from the end and each operation by a transaction in the ``undo set'' is undone by entering a compensating transaction record. The undo set is all transactions that were in progress at the time of the last checkpoint, plus all those that started after the checkpoint, subtracting those that finished before the crash (regardless of whether they were in progress at the checkpoint). 
+
+Once that is done then the database is restored to a consistent state and normal operations may resume. 
+
+Let us now do a simple example of how ARIES works from~\cite{fds}. Let us assume we have three transactions $T_{1}, T_{2}, T_{3}$. $T_{1}$ updates page $C$, $T_{2}$ updates $B$ and $C$, and $T_{3}$ updates $A$. We then have a crash occur, and the state of the system is as shown in the two diagrams below:
+
+\begin{center}
+\includegraphics[width=0.85\textwidth]{images/aries-1}\\
+The log at the point of the crash~\cite{fds}.
+\end{center}
+
+\begin{center}
+\includegraphics[width=0.85\textwidth]{images/aries-2}\\
+Transaction Table and Dirty Page Table at the time of the crash~\cite{fds}.
+\end{center}
+
+With this information in hand we may begin to execute the algorithm. The first step is the analysis phase. The first step is to go to the most recently completed checkpoint. That so happens to be at LSN 4. So analysis moved from there forward. 
+
+LSN 5 is the end checkpoint statement so it contains the transaction and dirty page tables. In LSN 6, transaction $T_{3}$ is found and added to the the list of transactions in progress. LSN 7 doesn't tell us anything new, but LSN 8 tells us that the transaction $T_{2}$ has committed. So the analysis phase is complete and the result is shown below. It's worth noting that transactions $T_{1}$ and $T_{2}$ have status ``commit'' but still appear in there -- because the pages they have updated have not been written to disk. 
+
+\begin{center}
+\includegraphics[width=0.85\textwidth]{images/aries-3}\\
+Transaction Table and Dirty Page Table after analysis~\cite{fds}.
+\end{center}
+
+Then it is time for the redo phase: the smaller LSN in the dirty page tables is 1 (page $C$) so that's where we start the redo process. LSNs 1, 2, 6, and 7 want to update pages that have higher LSNs than the updates, so no need to repeat that update.
+
+The undo phase here is very simple: the only thing to undo is the operations of $T_{3}$. We go backwards and the only log entry we need to undo is LSN 6. At that point we are all done.
+
+
+\section*{Remote Backups}
+
+Somewhat related to the idea of recovering our database if we have a crash is the idea of an online backup: a second copy of the database standing by to take over if the primary one should go down (whether through a crash or by losing network connection). The second copy is certainly on different hardware, and should more likely be located at a different physical location. 
+
+By moving it to a different physical location, of course, that adds some latency to the connection: it takes nontrivial time for data to be transferred from the primary to the backup location. And that means that a strategy for keeping these in sync is necessary, but there are other considerations:
+
+\paragraph{Detecting failure.} As you might imagine, the backup system needs to detect that the primary has failed so it knows when to take over. Ideally there are multiple independent communication lines between the primary and the backup so that the failure of any single one is not mis-detected as a failure of the primary system~\cite{dsc}.
+
+\paragraph{Taking over.} Suppose a real failure is detected and the primary has crashed. In the meantime, the backup does the job of the primary. If the first system comes back online, it could be the new backup or it could retake the role of primary. Either way, it needs to get caught up on the things that have happened in the meantime. Once both systems are back online, the redo logs can be sent to the system that is behind to get it caught up~\cite{dsc}.
+
+\paragraph{Making extra sure.} In this sort of configuration, is a transaction really committed until it has reached the backup site? It turns out we get a choice of how much we are willing to tolerate~\cite{dsc}:
 
 \begin{itemize}
-\item \textit{Basic Values}: $t$, $f$, $\top$, and $\bot$, as explained in the preceding paragraph. 
-\item \textit{Database Values:} $t_d$ for atoms in the original database and $f_d$ for those not in it.
-\item \textit{Constraint Values:} $t_c$ and $f_c$ to annotate database literals appearing in the disjunctive normal form of the constraints. Built-in atoms in the constraints receive simply $t$ and $f$.
-\item \textit{Advisory Values:} $t_a$ and $f_a$ are used to resolve situations where the database does not conform to the integrity constraints. 
+	\item \textbf{One-Safe}: If the transaction has been written to stable storage at the primary location. If there is a crash at the primary before that transaction has made it to the secondary location, then it may appear to be lost. When the primary site comes back, it may happen that in the meantime there has been an incompatible change made only on the secondary. Imagine you book seat 4A on the primary system and it crashes; someone else then books 4A on the secondary system. Who gets the seat? This is something that may require humans to sort out.
+	\item \textbf{Two-Very-Safe}: A transaction is only committed once it is in both the primary and backup stable storage... which means that no transactions can be executed if one site is down.
+	\item \textbf{Two-Safe}: A transaction is only committed once it is in both the primary and backup stable storage... if both are up; otherwise it is the same as one-safe: the primary suffices. 
 \end{itemize}
 
-\begin{figure}[!h]
-  \centering \includegraphics[width=3.5in]{images/TruthLattice.pdf}
-  \caption[Truth Value Lattice]{Truth Value Lattice \cite{CQ}}
-  \label{TruthLattice}
-\end{figure}
+Either two-safe or two-very-safe necessarily comes with a performance penalty: when the transaction is committed the changes must be propagated to the other server (if up) to consider the transaction fully done.
 
+We're not limited to only two-safe protocols, of course. We could insist on an $n$-safe protocol where we have some additional replica servers and we consider the transaction done only when all $n$ servers have completed the transaction. The cost of having $n$ servers contain the data is really not much higher than the cost of having two: we have to send the data out and wait for confirmation, but much of this can be done in parallel.
 
-Using Figure \ref{TruthLattice}, we provide some clarifying examples. In the simplest case, if we have something true in the database ($t_d$), and true in the constraints ($t_c$), then we can move simply to true ($t$), without problem. If we find something true in the database ($t_d$) yet false according to the constraints ($f_c$), then we can move to $f_a$ - suspected false. If we have an irresolvable conflict, for example, finding one thing certainly true and the other certainly false, we move to $\top$ (showing there is nothing we can do to resolve this).
-
-We consider data to be fallible, but constraints to be correct. Thus, if an atom gets both $t_d$ and $f_c$ (true in the database but not permitted by the constraints), we will resolve that conflict as $f_a$; we think it should be false. At the end of the evaluation, in order to repair the database, things we believe to be false will be removed, and things we believe to be true will be inserted into the database. Bertossi and Chomicki in \cite{CQ} assert that for every repair to a database $D$ with respect to constraints $C$, there is a one-to-one relationship with a model of a minimal set of atoms tagged $f_a$ and $t_a$.
-
-If we apply this principle to an inconsistent database, then the results we will get will indicate our best course of action. The results received will simply be a set of advice: add this; delete that. A program can use the set of advisory values to repair the database.
-
-\paragraph{Specifying Repairs with Logic Programs}
-
-A reference in \cite{CQ} presents a way to create a disjunctive program out of the set of advisory clauses produced using the annotated logic method. This program is used to process that advice and produce a repaired database. However, the program uses the annotations as additional data points, and it is therefore not an annotated (i.e. standard) logic program. Such a program will work for arbitrary first-order queries and for arbitrary constraints.
-
-
-We can also make use of a logic program alone to find repairs. In \cite{CQ} we consider a logic program with exceptions to these rules. The exceptions naturally have a higher priority than the rules. Most of the time, when we repair a database, most data is preserved, but some tuples will be removed. We can combine the appropriate logic program with the idea of logical consequence, and use this to compute repairs. To do so, we must find atoms true in every answer set of the program. This approach functions for all first-order queries, but it may be impractical because the size can quickly get out of hand.
-
-\paragraph{Aggregate Queries}
-
-Aggregate queries are important to databases. Basic operators like \texttt{MIN}, \texttt{MAX}, and \texttt{SUM} are valid queries and should not be excluded. It might be possible that some such queries could be expressed as a first order query, but in \cite{CQ} it is acknowledged that we cannot handle such things using query transformation. 
-
-In some circumstances, the answers to aggregate queries are easy. If we look once again at the examples in Tables \ref{inconsistent1}, \ref{consistent1}, and \ref{consistent2}. As an example, we want to select the minimum salary. V. Smith's salary of \$35~000 is returned under all possible repairs. If instead we sought the maximum, both repairs offer different answers. The solution Bertossi and Chomicki present is that we cannot return a single answer. Instead, we return an interval where the minimum is the lower bound from all possible repairs, and the maximum is the upper bound. In this example, we consider [75~000,~80~000] to be a consistent answer to the aggregation query \cite{CQ}. 
-
-
-
-\paragraph{Open Issues}
-
-The major open issue they identify is how to deal with global constraints in a composite database system. It is unclear what a consistent answer is in such a context, and similarly unclear what a repair means \cite{CQ}. Bertossi and Chomicki further suggest that they are uncertain about how we can query such a composite system.
-
-The final suggestion they put forward is to move this mechanism into the database management system. This would allow soft integrity constraints (not explicitly enforced), and different users could have different constraints, should they so choose. Under these circumstances, different consistent answers are returned depending on the query's origin.
-
-\subsection*{Query Transformation}
-
-Bertossi and Chomicki presented another option: query transformation. Instead of modifying the database and then running the query on the new database, we transform the query and run it against the unaltered database. We change the query such that for every possible database $D'$ the answers to said query is equal to the consistent answers (in light of constraints $C$ in the original database $D$).
-
-As in \cite{CQ}, we will consider first-order queries, and only universal integrity constraints. We iterate the transformation of the query by conjoining the \textit{residues} to the results of the query, until the query in iteration $n$ is identical to that in $(n-1)$ \cite{CQ}. If there are no residues, then the query needs no alterations.
-
-\paragraph{Residues}
-But what is a residue? Consider the following example constraint set from \cite{CQ}:
-\begin{center}
-$C = \{\forall x.[R(x) \bigvee \neg P(x) \bigvee \neg Q(x)], \forall x.[P(x) \bigvee \neg Q(x)] \}$ 
-\end{center}
-
-We will focus on $Q(x)$ as our target query. The residue of $Q(x)$ with respect to the first constraint is $R(x) \bigvee \neg P(x)$; if the constraint and $Q(x)$ are true, then the residue must also be. The residue with respect to the second constraint is $P(x)$. Finally, the $\neg Q(x)$ component does not have any residues, because the integrity constraints do not constrain it. It is not necessary in this example, but in general, we might need to iterate the procedure, because the residues might themselves have residues.
-
-Instead of running the query $Q(x)$, we ask $Q(x)$ together with each of its residues. More formally, it is $Q(x)$ is logically AND-ed with each residue, as follows:
-
-\begin{center}
-$Q(x) \bigwedge (R(x) \bigvee \neg P(x)) \bigwedge P(x)$
-\end{center}
-
-The effect of this altered query is to return only the answers to $Q(x)$ for which the constraints hold. Looking at the previous example of Table~\ref{inconsistent1}, the modified query will ask for the names and salaries of all employees ($Q(x)$) where there is only one entry in the relation for that user (the residue, derived from the uniqueness constraint). This will return two tuples (V. Smith and M. Stowe). No data will be returned for tuples where there is a violation (J. Page), so no data is shown reflecting our uncertainty about his salary.
-
-\paragraph{Algorithmic Validity} Arenas, Bertossi, and Chomicki acknowledge that the algorithm hangs on three fundamental principle: soundness, completeness, and termination. While these are not examined in \cite{CQ}, they reference \cite{CQI}, and all three principles are examined therein.
-
-The soundness principle is the most obvious - every answer to the altered query must be a consistent answer to the original. The soundness principle is shown for all universal or non-universal but domain-independent queries. However, this excludes non-universal yet domain dependent queries like $\exists x \neg P(x)$ \cite{CQI}.
-
-Completeness is necessary so that every consistent answer to the original query appears as an answer to the transformed one. They prove completeness for binary and generic constraints, but do not prove it in general. In fact, in the event of disjunctive or existential queries, this method may fail to produce all answers \cite{CQ}. 
-
-Finally, termination means that there will always be a reachable point at which we may stop the query modification iterations because the query no longer changes between iterations. Fortunately, as long as the constraints set is acyclic, then termination occurs for any kind of  query~\cite{CQI}\cite{CQ}.
-
-\paragraph{Open Issues}
-If we apply query transformation to the initial database in Table~\ref{inconsistent1}, this will certainly return only the consistent answers from the database (V. Smith and M. Stowe). Neither of the tuples for J.Page will be returned, because they are inconsistent. This may sometimes be desirable, if we do not wish to report information we are uncertain about. However, under some circumstances, it is probably undesirable to simply ignore the tuples that are inconsistent. Surely J. Page would prefer that the discrepancy in his paycheque be alerted to someone rather than have his information not shown in the accounting department's reports. To that end, he would almost certainly prefer to take home the lower amount than nothing at all. Query rewriting is useful, but not a complete solution.
-
-The analysis in \cite{CQI} shows that query rewriting fails in the case of a disjunctive or existential queries, but only fails in the completeness category. The methodology is intended only to handle universal integrity constrains, and therefore existential qualifiers present problems. Arenas, Bertossi, and Chomicki assert that existential qualifiers may lead to co-NP-completeness, and computational feasibility issues prevent the fulfillment of the completeness criterion. 
-
+But if we are going to be sending data out to multiple databases... are we sure they agree? We will need to come back to this subject next...
 
 \input{bibliography.tex}
 
