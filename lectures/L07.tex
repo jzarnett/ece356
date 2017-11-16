@@ -2,9 +2,9 @@
 
 \begin{document}
 
-\lecture{ 7 --- Database Design, Modelling Diagrams }{\term}{Jeff Zarnett}
+\lecture{ 7 ---  Modelling Diagrams }{\term}{Jeff Zarnett}
 
-\section*{Database Design}
+\section*{Modelling Diagrams}
 
 We have talked at some length about the tools for defining the database, but we really should spend significant time on good design. Knowing how hammers work is not enough; we also need to understand what good architectural plans look like.
 
@@ -71,6 +71,8 @@ It is worth noting that the weak entity shown in the diagram has some slight dif
 We could choose a different option, of course, and add some sort of unique identifier to the section that would promote the weak entity to a strong one. But that doesn't necessarily make logical sense in the context of the application; a section doesn't make sense on its own and giving it a unique identifier does not really correspond with reality: a section is logically dependent on the course, isn't it?
 
 Weak entity sets can exist in other configurations than just the identifying relationship. A weak entity can be the owner of another weak entity, or a weak entity can belong to more than one identifying set.
+
+
 
 \input{bibliography.tex}
 
