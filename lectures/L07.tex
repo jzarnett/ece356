@@ -72,7 +72,41 @@ We could choose a different option, of course, and add some sort of unique ident
 
 Weak entity sets can exist in other configurations than just the identifying relationship. A weak entity can be the owner of another weak entity, or a weak entity can belong to more than one identifying set.
 
+If you'd like to think about when it would make sense to have a weak entity, you might ask yourself if a particular entity can exist independently of any other entity. In an e-commerce scenario, there are customers, who have orders composed of items. Customers can exist if they don't have any orders, and items can exist if they don't appear in any orders. In that case, we would expect that both customer and order both to be strong entities.
 
+Continuing this analogy, what about product reviews? A review belongs to an item, and if it is not anonymous then it also belongs to a user. But a review does not make sense independent of an item, otherwise, what would it be a review of? In this case, review can be modelled as a weak entity and it can have one identifying set (item) or two (item and customer). If we wish, though, a review can be a standalone element with its own unique identifier (e.g., a review number so that it can be accessed by referring to review \#1337 or similar), in which case we would promote it to a strong entity.
+
+Of course, the database can't be composed entirely of weak entities; there have to be at least some strong entities. 
+
+\subsection*{Extended Features of the E-R Model}
+The basic E-R model that we have discussed up to this point covers almost all of what we need to model a database, but there are some extensions that would be nice for notational convenience or ease of understanding.
+
+\paragraph{Specialization \& Generalization.} The first idea that we will look at is specialization. This is the same as a subclass in object-oriented-programming. We have some parent class (e.g., user) that has some number of attributes like ID, name, email, et cetera. And then there are some particular classifications: a staff member is a user, but has certain staff specific attributes like office and phone number. A customer is a user but has different attributes like frequent flyer number, airline status, et cetera. 
+
+The mirror image operation of this is generalization, which is analogous to extracting a superclass in object-oriented programming. In that case we would identify some common attributes between certain entities and decide to consolidate the common attributes in a single entity from which the other ones are derived.
+
+Obviously, this only works if we have attribute inheritance: sub-entities receive the attributes of their super-entities, in the same way that subclasses receive the attributes of their superclasses. As you are familiar with the ideas of object oriented programming (... right?) we don't have to actually go into any detail on that subject.
+
+\begin{center}
+\includegraphics[width=0.35\textwidth]{images/specialization-generalization}\\
+An E-R diagram showing specialization and generalization~\cite{dsc}.
+\end{center}
+
+We have some choices about how the generalization is defined. The first option is to have it be \textit{condition} defined, such as having some rules that say that a person who fulfills a certain condition is included in that group. So a customer who has status of ``Frequent Flyer'' in the system is automatically included in that specialization. In other cases, an operation must be taken to specifically include a person in that subset, such as assigning an employee to a specific department~\cite{dsc}. 
+
+We could also have rules that say sets must be disjoint (a member of some group cannot be a member of another group), or if they can be overlapping. In our system we could say that a staff person can also be a customer, but that is specific  to the domain we are discussing. 
+
+We can also have the idea of an ``abstract class'': we could write in some rules that say that no instance of ``user'' can exist, and everyone must be a staff member or customer (or both). In that case, this is called total specialization: we are not allowed to have unspecialized (general) entities. The entity user might appear in the E-R diagram but as notational convenience only.
+
+\paragraph{Aggregation.} 
+
+Aggregation allows us to treat a grouping of entities that are related as a single block. This can simplify the diagram and show us a relationship between relationships. Aggregation may not seem very useful in the context of a database schema that can be handily represented on a piece of paper, but for a large database it can be a good way to sequester parts of the design in a different area so the diagram is comprehensible.
+
+\begin{center}
+\includegraphics[width=0.45\textwidth]{images/unaggregated}
+\includegraphics[width=0.42\textwidth]{images/aggregation}\\
+E-R diagram with complex relationship without (left) and with (right) aggregation~\cite{dsc}.
+\end{center}
 
 \input{bibliography.tex}
 
