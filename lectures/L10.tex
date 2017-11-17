@@ -48,6 +48,23 @@ The full algorithm for building up the closure just uses Armstrong's rules and i
 	\item If anything was added in steps 2 or 3, go back to step 2; otherwise the algorithm terminates.
 \end{enumerate}
 
+\paragraph{Closure of Attribute Sets.} Suppose we have some attribute(s) $\alpha$ and we wish to determine if it is a superkey. The strategy we will use requires us to compute the set of attributes that are \textit{functionally determined} by $\alpha$. An attribute $B$ is functionally determined by $\alpha$ if $\alpha \rightarrow B$. Then the  simple algorithm requires us to compute $F^{+}$ as above and then take all functional dependencies where $\alpha$ is the left hand side and the union of the right hand side of all dependencies, but this is difficult and expensive because $F^{+}$ may be large. Instead, a more efficient algorithm follows~\cite{dsc}.
+
+\begin{enumerate}
+	\item The initial condition is that $\alpha^{+}$ begins as $\alpha$.
+	\item For each functional dependency $\beta \rightarrow \gamma$ in $F$,
+		if $\beta$ is contained in $\alpha^{+}$, then $\gamma$ is added to $\alpha^{+}$
+	\item If anything was added in step 2, repeat step 2; if nothing was added, the algorithm terminates.
+\end{enumerate}
+
+Much like computing the closure of $F$, here we compute the closure of $\alpha$. 
+
+Going back to the earlier example with the five functional dependencies, we would like to evaluate something to see if it is a superkey. Given the rules, is $A$ a superkey? Let's go through the steps. 
+
+The initial condition is that $A$ is in $\alpha^{+}$ (the result). Based on the rules, we can look at the rule $A \rightarrow B$ and see that we can add to the result $B$, which is now $AB$. The next rule that says $A \rightarrow C$ allows us to add $C$ to the result so $ABC$. The rules that require $CG$ on the left hand side cannot be added, at least not yet, because $CG$ does not appear in the result ($C$ does, but not $G$). We can look at the rule for $B \rightarrow H$ and add $H$ to the result meaning the result is $ABCH$. This is not the full set ($ABCGHI$) and therefore we conclude that $A$ is not a superkey.
+
+This procedure can be repeated for any individual attribute and we will quickly find that no single attribute is a superkey for this relation.
+
 \input{bibliography.tex}
 
 \end{document}
