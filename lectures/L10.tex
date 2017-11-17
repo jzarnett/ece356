@@ -1,0 +1,53 @@
+\include{header}
+
+\begin{document}
+
+\lecture{ 10 --- Decomposition: Functional-Dependency Theory }{\term}{Jeff Zarnett}
+
+\section*{Functional-Dependency Theory}
+
+Earlier we talked about the closure of a set of functional dependencies. Recall from earlier that the closure contains all the functional dependencies that are explicitly satisfied as well as those that are logically implied. That is, if $A \rightarrow B$ and $B \rightarrow C$ then it is implied that $A \rightarrow C$ and this is true no matter how many steps are in between. because this is transitive. More formally, if the functional dependencies is $A \rightarrow B$ and $B \rightarrow C$ then we know that for two tuples $t_{1}$ and $t_{2}$ if $t_{1}[A] = t_{2}[A]$ then $t_{1}[B] = t_{2}[B]$ and $t_{1}[C] = t_{2}[C]$. The notation to show the closure of a set $F$ of functional dependencies is $F^{+}$ as previously discussed.
+
+It is unlikely, however, that we want to compute $F^{+}$ from the definition of functional dependencies; if $F$ is large there are many rules and many implied rules and we have to construct every logically implied element of $F^{+}$ from first principles. Instead, we would like to use \textit{axioms}, handy rules of inference, that allow us to reason about the dependencies in a simpler way. The first three axions are simple enough and are called \textit{Armstrong's Axioms}, named after the person who came up with them~\cite{dsc}:
+
+\begin{itemize}
+	\item \textbf{Reflexivity}: If $\alpha$ is a set of attributes and $\beta$ is contained within $\alpha$, then $\alpha \rightarrow \beta$ holds.
+	\item \textbf{Augmentation}: If $\alpha \rightarrow \beta$ holds and $\gamma$ is a set of attributes, then $\gamma\alpha \rightarrow \gamma\beta$ holds.
+	\item \textbf{Transitivity}: If $\alpha \rightarrow \beta$ holds and $\beta \rightarrow \gamma$ holds, then $\alpha \rightarrow \gamma$ holds.
+\end{itemize}
+
+These axioms are considered both sound and complete, because they do not produce any errors and they allow generation of $F^{+}$ given $F$. There are proofs of these properties, but we prefer to omit those and just focus on using them. This is a minimal set, though, and there are some rules that we can derive some more from Armstrong's rules that would be convenient shortcuts~\cite{dsc}:
+
+\begin{itemize}
+	\item \textbf{Union}: If $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds, then $\alpha \rightarrow \beta\gamma$ holds.
+	\item \textbf{Decomposition}: If $\alpha \rightarrow \beta\gamma$ holds, then  $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds (reverse of previous rule).
+	\item \textbf{Pseudotransitivity}: If $\alpha \rightarrow \beta$ holds and $\gamma\beta \rightarrow \delta$ holds, then $\alpha\gamma \rightarrow \delta$ holds.
+\end{itemize}
+
+We'll work on the example in the textbook(\cite{dsc}) which says that the relation $r$ has the attributes $(A, B, C, G, H, I)$ and the functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CH \rightarrow I$, (5) $B \rightarrow H$.
+
+Based on the rules that we have, what logically implied functional dependencies can we observe? 
+
+There are three~\cite{dsc}:
+\begin{itemize}
+	\item $A \rightarrow H$ which is found by transitivity ($A \rightarrow B$ and $B \rightarrow A$).
+	\item $CG \rightarrow HI$ which is found by the union rule ($CG \rightarrow H$ and $CG \rightarrow I$).
+	\item $AG \rightarrow I$ which is found by pseudotransitivity ($A \rightarrow C$ and $CG \rightarrow I$). 
+\end{itemize}
+
+The full algorithm for building up the closure just uses Armstrong's rules and is as below. The algorithm terminates when there is nothing left to add, which is certain to happen because the worst case scenario is that everything is functionally dependent on everything else which would mean if there are $n$ attributes, there are $2^{n} \times 2^{n}$ possible functional dependencies. Now, the algorithm~\cite{dsc}:
+
+\begin{enumerate}
+	\item The initial condition is that $F^{+}$ begins as $F$.
+	\item For each functional dependency $f$ in F+ $F^{+}$:
+	\begin{enumerate}
+		\item apply the transitivity rule to $f$ and add it to $F^{+}$
+		\item apply the augmentation rule to $f$ and add it to $F^{+}$
+	\end{enumerate}
+	\item For each pair of functional dependencies $f_{1}$ and $f_{2}$, if they can be combined using transitivity, add the newly created combination to $F^{+}$.
+	\item If anything was added in steps 2 or 3, go back to step 2; otherwise the algorithm terminates.
+\end{enumerate}
+
+\input{bibliography.tex}
+
+\end{document}
