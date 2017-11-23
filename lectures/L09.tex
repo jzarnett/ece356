@@ -2,9 +2,9 @@
 
 \begin{document}
 
-\lecture{ 9 --- Database Design: Normalization }{\term}{Jeff Zarnett}
+\lecture{ 9 --- Normalization }{\term}{Jeff Zarnett}
 
-\section*{Database Design}
+\section*{Normalization}
 So far, we learned the syntax to create tables, and how to turn modelling diagrams into tables and all the various bits and pieces about how modelling diagrams work. The modelling diagrams give us some guidance and tell us about wrong ways to represent the data, but we don't yet have enough guidance as to what is correct. If we do a good job the relation will be in a \textit{normal form}. Yes, \textit{a} normal form... there are several.
 
 An example from~\cite{dsc} gives us an opportunity to do something wrong and show bad design: if we combine instructor (having the attributes id, name, department, salary) with department (having an id, faculty, budget) then our combined table means one larger relation replaces two smaller ones. This isn't total nonsense because instructors do have a relationship with a department, but is this a good way to model the data? Intuition might tell you no, but think about why. In the combined relation, if there are two instructors, say, Sedra and Smith, both members of department of electrical \& computer engineering, in both tuples there will be an entry for the budget of the department. The budget data is duplicated and risks becoming inconsistent.
