@@ -2,184 +2,158 @@
 
 \begin{document}
 
-\lecture{ 17 --- Query Evaluation and Optimization }{\term}{Jeff Zarnett}
+\lecture{ 17 --- Query Processing, Continued }{\term}{Jeff Zarnett}
 
-\section*{Query Evaluation}
+\section*{Query Processing, Continued}
 
-The strategies we have looked at thus far have explained how to perform individual parts of a query. If a simple select statement or a select-join is needed then we just have to carry it out using an evaluation plan. Choosing which evaluation plan, as we saw, is not trivial, and soon we will examine how we can ``guess'' about which plan is likely to be best. But first we need to think about what order in which to perform a compound expression.
+Having examined in some detail the idea of different strategies for carrying out a select operation. The next thing we would like to do is expand to more advanced queries, specifically, join queries. Join queries will be cripplingly inefficient if they operate on unsorted data. Remember that in a join, we need to match a tuple of the left hand relation with a tuple of the right hand relation. If for every tuple we had to linearly search the right hand relation, that would be painful. One way or another, we probably have to sort one of the relations to make this work.
 
-\subsection*{Evaluation of Expressions}
+\subsection*{Digression: Sorting}
 
-Our normal expectation of how a composite operation works is that we do a subpart (whichever one) and then store the resulting relation temporarily for further use. This is called \textit{materialization} and usually results in the temporary relation being written to disk. That seems undesirable but it may be necessary. The other option is a \textit{pipeline} which would allow us to immediately forward on the partial results from a particular operation so the second operation can run in parallel with the first~\cite{dsc}.
+So let us take a few minutes to talk about sorting. Wait, I hear you say, you already know ALL about sorting, insertion sort and selection sort and bogo sort and radix sort. Yes, also merge sort and quick sort. When you learn about sorting in a data structures and algorithms context, you are sorting a manageable amount of data. Manageable in the previous sentence means the full set of data can be fit into memory. For those, we can use all the standard algorithms. In the world of databases we need an algorithm that does not depend on loading everything into memory.
 
-\paragraph{Materialization.} First, let us talk about materialization. Sadly, this is not about how people who ``beam up'' using the transporter in Star Trek get put back together again afterwards. In the example from earlier where there is a three way join $r_{1} \bowtie r_{2} \bowtie r_{3}$ we will choose one of the ways to group this and then, as you would expect, temporarily store the output in some temporary relation $r_{4}$ which is then used in the join with the third relation. 
+Sorting relations that do not fit into memory is called external sorting, and we will learn the external sort-merge algorithm from~\cite{dsc}. The basic plan works a lot like the merge sort algorithm works: divide the data into smaller units, sort the smaller units, then merge the smaller sorted units into a larger sorted unit. The sorting of each smaller unit will take place in memory, as per normal, and then we need to do an N-way merge where $N$ is the number of smaller units to be merged. Let's expand on this.
 
-Calling back to an idea you have likely studied in compilers (or will study soon at least), when presented with a complex statement, we need to parse it and form a tree. Then, we work from the bottom level of the tree up to complete the expression. 
+Step one of the algorithm is to divide the file into $N$ chunks of size $M$ where $M$ is the number of blocks that can fit into the area of memory available for sorting. Each chunk is as big as it can be for the constraints of the system, but no bigger. This chunk is called a \textit{run}. Each run $i$ is then sorted and it is written to a temporary file called $R_{i}$.
 
-If the code to be compiled is \texttt{ x = (y * 5) + z; } we can look at that and discover we need to do the following things: fetch y, multiply y by 5 and store it in a temporary location, fetch z, add y to z, and finally, assign it to x. There are some things we can do in a different order, potentially, such as fetching z in a different order, but there are some operations we can't do out of order like addition before the brackets\footnote{If anyone ever tries to tell me that order of operations doesn't matter much, I usually tell them to make a cake by first baking all the ingredients and then mixing them.}. 
+Step two of the algorithm now merges it. If $N$ is less than $M-1$ we have the simpler case and we can complete the merge in one pass. In that case we load the first block of $R_{i}$ for each $i$ from $0$ to $N-1$ into memory and we allocate an output block. Then we choose the first tuple from the all of the blocks, and move it into the output block. If a block $R_{i}$ becomes empty, replace it with the next block in that run (if there is one). If the output block becomes full, write it out and allocate a new output block. Continue this algorithm until all runs are empty. 
 
-In the database, we again, need to work on our low level operations and execute those operations (fetch rows, compute joins, whatever it is) and take the output and put this in a temporary relation. A temporary relation will be created at each step until all operations are complete. At that point we have the final result and can return it. 
+If $N$ is large enough that we cannot do it all in a single pass, we will do multiple passes. We will combine the first $M-1$ runs into a temporary file, and then the next (up to) $M-1$ runs, and so on, until the last run has been processed. Then we repeat the process using the larger runs as input until we produce the sorted file.
 
-The cost of materialization is the sum of the individual operations, plus the cost of writing all intermediate steps to disk~\cite{dsc}. How large those intermediate costs are depends very heavily on how much data is to be written to disk at each step. However many tuples of each intermediate step fit into a block is important because it determines how many blocks are needed at each step. Once again, we get a hint that says if we get some choices about which operations to do sooner rather than later, we want the ones that result in the fewest result tuples in the output relation...
+An example may help to clarify. Suppose the file consists of 10~000 blocks and we can fit 50 blocks in memory to do the sort. We can therefore create runs of 10~000/50 = 200 blocks each. Each run is sorted. Then we come to merge them. We cannot fit a block from each of the 200 runs inside the 49 available (50 - 1 block for output) so we must do multiple passes. The first pass sorts runs 1 through 49 into a new run (let's call it $R'_{1}$, then runs 50 - 98 into $R'_{2}$, et cetera, until the last one which is then 197-200 in $R'_{5}$. These larger $R'$ runs are then combined using the same merge procedure as before. Since there are only 5 we are sure the merge will complete in this second pass and we have the output file we wanted.
 
-\paragraph{Pipelining.}
-The idea behind pipelining is to reduce or avoid the costs of storing those temporary files. The idea of pipelining is very common in computing, from CPUs all the way up to large software transactional systems. In short, in pipelining, a chunk of data moves through several different stages from beginning to end. When a particular chunk moves from stage 1 to stage 2, the next chunk can move into stage 1 and begin processing. Thus, we can accomplish things in parallel and potentially get some more done in less time.
-
-Without pipelining, the first data item to finish stage 1 just kind of sits around waiting for the last item to finish stage 1 before the first item can start stage 2. It accordingly needs a place to wait. Eliminating that place of waiting is the goal of pipelining. And this is the plan for execution. As a nice bonus, we can maybe show partial results to the user as processing continues rather than waiting until all is done before showing all results. 
-
-In~\cite{dsc} there are two approaches for how pipelines may execute, either demand-driven (or consumer-driven, pull) pipeline, the system requests at the output end the ``next'' chunk when it is ready to receive it, which triggers the earlier stages in turn to pick up their next chunk of data and so on and so on. In the supply-driven (or producer-driven, push) pipeline, each stage of the pipeline is always trying to pick up the next chunk and process it (but it may be blocked waiting for space to open up in the output area). 
-
-My personal preference runs towards a push-driven pipeline since it rather resembles the type of producer-consumer problem discussed in earlier courses. Each stage of the pipeline can be its own thread, and threads can be both a producer and a consumer. The first stage reads the first chunk of the input file and does some transformation, and places that in its output buffer. Obviously, some sort of mutual exclusion constructs such as semaphores will be used to get proper concurrency control here. The second stage can then pick up that intermediate data, process it, and pass it on to the third stage\footnote{\url{https://www.youtube.com/watch?v=KzHX_MP_eBk}} by putting it in yet another intermediate buffer. This continues until all data is processed through all stages and is output. Buffer sizes will be limited, of course, so there can be different stages that are blocked awaiting space in a buffer or waiting their turn to access a buffer. But this sort of program structure should be quite familiar to you from learning about semaphores and the like.
-
-The catch, when it comes to pipelining, is that there are some operations that don't work very well with it. Sorting is the most obvious example: you cannot send the first chunk of the sorted file on to the next stage until the entire file has been sorted. Our choice of evaluation algorithm for a select or join operation may also limit the ability to pipeline. These sorts of things are just limitations we cannot easily get around and may need to be accounted for in our plan for how to evaluate a query.
-
-\section*{Query Optimization}
-
-Finally we are ready to talk about query optimization. This topic should be pretty easy to motivate. The database server is responsible for choosing how to carry out the requested query and it is preferable to do it efficiently and choose an optimal plan rather than a sub-optimal one. When we put some numbers to early examples, we saw that there can be orders of magnitude difference in how long it takes to execute a query depending on the strategy, and even which operand is on the left or right side of the operator. Conclusion: it is worth while for the database server to make the effort to decide what is optimal.
-
-We have looked at techniques for evaluation of how long we think a certain plan is going to take to execute which concentrated primarily on how many disk operations we expected to take place. These typically included numbers like the number of tuples or the number of blocks and that left open the question of how did we know how many tuples or blocks are in this relation?
-
-One way that might have immediately come to mind is the metadata kept by the database system; if it does provide us with some useful information like relation $r$ has 10592 tuples and is currently stored in 2591 blocks then we have some values to go on. Those are the easy values to get. But how do we determine how many tuples we think will match the condition that some attribute $A$ is greater than some value $x$? And how many blocks will those tuples be in?
-
-The answer lies mostly in \textit{heuristics}, or perhaps less charitably, educated guessing. A heuristic is a guideline or ``rule of thumb'' the gives us some hints. Suppose we know some statistics about $A$. If we do, then it can help us make some important decisions about what execution plans we choose. 
-
-In fact, one of the main heuristic rules we should always try to follow is to cut down the size of intermediate relations whenever possible. That means select and project operations should be done early and certainly before a join. A join operation can result in a file size that is some multiple of the size of the input file so it is preferable to cut things down first~\cite{fds}.
-
-We previously introduced the idea of turning the input query into a tree structure which was then evaluated from the bottom up. Combining that with our knowledge that order of operations matters and that we would like to choose the efficient route, we will often transform the input expression to a faster, better equivalent. See the diagram below~\cite{dsc}:
+A visual representation of a two step sort merge from~\cite{dsc}:
 
 \begin{center}
-\includegraphics[width=0.7\textwidth]{images/optimization-1}
+	\includegraphics[width=0.5\textwidth]{images/external-merge}
 \end{center}
 
-If it seems strange to you that the expressions can be rewritten a bit, it is more normal than one might expect. Compilers do this all the time, generating code that is equivalent to, but much faster than, the code that you wrote in the source file. If you would like to hear more about that, you could take ECE 459, Programming for Performance! 
+Sorting has a cost, of course and the cost analysis also follows from~\cite{dsc}. If the number of blocks in the relation $r$ is $b_{r}$, the first step of the algorithm requires us to read in each block of the relation and write it out again for a cost of $2b_{r}$. The number of runs decreases by $M-1$ in each merge pass, so the number of merge passes is $\lceil log_{M-1}(b_{r}/M)\rceil$. Each pass reads reads every block of the relation and writes it once, except the last pass doesn't need to write the last output to disk as it is just going to send it on elsewhere. So the total number of block transfers is $b_{r}(2\lceil log_{M-1}(b_{r}/M)\rceil + 1)$. 
 
-This is only one possible transformation. Depending on the nature of the query, zero, one, or multiple equivalents may exist. It may be practical to write off some of those immediately, without assessing them, because we know they will be an inferior variant of a plan we have. The next step is then to draw up the plans for how we would execute the expressions. An annotated plan looks something like this~\cite{dsc}:
+The total number of disk seeks is more complicated: If each run has $b_{b}$ blocks, then each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. And we need to then write the output which costs  $2\lceil b_{r}/b_{b}\rceil$ for ever merge pass, except the last, since it gets sent on. So the total number of seeks is $2\lceil b_{r}/b_{b}\rceil + \lceil b_{r}/b_{b}\rceil(2 \lceil log_{M-1}(b_{r}/M)\rceil - 1)$.
 
-\begin{center}
-\includegraphics[width=0.45\textwidth]{images/optimization-2}
-\end{center}
+What a fun equation that was! Referencing the two sep merge above, we get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks if the value of $b_{b}$ is set at 1.
 
-There may be many options for annotating each of the steps in the expression tree. A totally thorough approach would, once again, consider every possibility, but we realistically can eliminate some options that we know will be inferior to other choices. Then we may affix cost estimates to each plan as the sum of each part. The estimates can be wrong (it's why they are called estimates) but generally we can be sure we are at least in the correct ballpark. The final step is then to choose the the plan with the lowest cost. That last step is probably the least interesting since it just requires us to, well, compare some numbers and choose the smallest one.
+\subsection*{Join Operation}
 
-As a practical note, in SQL you may ask the database server to tell you how it would carry out a query. First you write the query as you normally would and prefix this query with the keyword \texttt{EXPLAIN}\footnote{Every time I do this, I can't help but feel like this: \url{http://imgur.com/lUIlU4l}. I think the all-caps nature of the keyword contributes.}.
+There are several ways to compute a join, and we will analyze the costs of a few of the different approaches. Whatever route is actually taken, it's important to note that joins can be very expensive depending on how this is to be computed. The join we are looking to examine is the one introduced in relational algebra as $\Join_{\theta}$, specifically $r_{1} \Join_{r_{1}.a = r_{2}.b} r_{2}$ (or in SQL, an \texttt{INNER JOIN} with an explicit \texttt{ON} predicate). As before, the strategies described come from~\cite{dsc}.
 
-\subsection*{Expression Transformation}
+\subsubsection*{Nested-Loop Joins}
 
-There are some rules for how exactly to transform a query to an equivalent alternative. These are a little bit like some things you may have learned in mathematics, like how multiplication commutes or that addition is associative or something like that. There is probably nothing really saved by re-ordering a simple math expression like $12 \times 2 \times 3$, although you may find it personally faster or easier to do the math in your head by first computing $2 \times 3$ and multiplying the result by $12$ rather than first computing $12 \times 2$ and then multiplying it by $3$. Or you may personally find it easier to do the opposite, or have no preference whatsoever. But the idea applies.
+The simple way to do a join is using one of the nested-loop strategies. It's called the nested loop strategy because that's exactly what it is: we have two nested for loops.
 
-We should remember that database operations do not, unless there is an explicit order-by clause, specify an order in which tuples appear in the output. Order does not matter in the output. If a request is for addresses where the province is ``ON'' or the province is ``QC'' then one execution plan may result in all tuples where province is ``ON'' followed by all provinces where the province is ``QC'' or the reverse, or they may be all mixed together. All three of those outcomes are equivalent as long as the same tuples are in the output.
+\paragraph{Join Strategy 1: Nested-Loop}
+As with the select operation, the first option we are going to look at is basically a linear search and most likely has terrible performance characteristics. It is, however, a fallback option that we can always choose even if we can't choose anything else. This requires no index exist on either field $a$ or $b$ (the join attributes).
 
-There are some rules from~\cite{dsc} and~\cite{fds} that we want to learn about. To spare a lot of repetition of what things mean, the notation will be centralized here. $\theta_{x}$ denotes a predicate (as part of a selection or join, for example), $L_{x}$ denotes lists of attributes, and $E$ denotes a relational algebra expression (a sub-expression or a relation $r$). All our other symbols from relational algebra remain the same as when they were first introduced.
+The algorithm described in pseudocode is:
+\begin{verbatim}
+1. for each tuple i in r1
+2.   for each tuple j in r2
+3.     if i.a equals j.b
+4.       add (i join j) to the result
+5.     end if
+6.   end for
+7. end for
+\end{verbatim}
 
-\paragraph{Rule 1: Conjunctive Selection}
-Conjunctive selection can be turned into a sequence of individual selections. This makes sense: if we have a selection from address where province is ``ON'' and city is ``Kitchener'', we can do this as a selection on address where city is ``Kitchener'', producing a temporary relation and then we do a selection where province is ``ON'' on that temporary relation. That is sometimes called a cascade of selection.
+This is, after all, the brute force algorithm, so we expect that the number of tuples that needs to be examined is the number of tuples in $r_{1}$ (let's call it $n_{1}$) multiplied by the number of tuples in $r_{2}$ ($n_{2}$). In the best case scenario, both relations fit in memory at the same time and the cost is just two seeks plus a transfer for each of the blocks of $r_{1}$ (which we will call $b_{1}$) and a transfer for each of the blocks of $r_{2}$ ($b_{2}$). In the worst case we get only one block of each relation at a time. The inner loop then is one seek plus $b_{2}$ transfers to read it into memory. The outer loop requires one seek and one transfer for each block of $r_{1}$, plus one run of the inner loop for each tuple in $b_{1}$. So the total amount of seeks is $2 b_{1}$ and the number of blocks to be transferred is $b_{1} + n_{1} \times b_{2}$.
 
-In relational algebra: $\sigma_{\theta_{1} \wedge \theta_{2}}(E) = \sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E))$
+To illustrate with an example the difference between the best and worst case scenario, let us assign some numbers to $n_{1}$, $b_{1}$ and $b_{2}$. Suppose $n_{1}$ is 1600, $b_{1}$ is 100 blocks, $n_{2}$ is 10000, and $b_{2}$ is 500. Sticking with values used earlier, a seek takes 4~ms and a transfer 0.1~ms. In the best case scenario, the cost is 2 seeks plus a transfer for each block, or: $2 \times t_{s} + (b_{1} + b_{2}) \times t_{T} = 2 \times 4 + (100 + 500) \times 0.1 = 8 + 60 = 68$ ms. In the worst case scenario, the number of seeks is $2b_{1}$ plus the number of transfers as $b_{1} + n_{1} \times b_{2}$, or: $2 \times b_{1} \times t_{s} + (b_{1} + n_{1} \times b_{2}) \times t_{T} = 2 \times 100 \times 4 + (100 + 1600 \times 500) \times 0.1 = 200 \times 4 + 800000 \times 0.1 = 800 + 80000 = 80800$ ms. Yikes. That is a really huge difference. Conclusion: buy more RAM.
 
+Assuming that $b_{1}$ is not equal to $b_{2}$ we can actually observe something interesting: it could be worse! The so-called worst case scenario is actually the second-worst case scenario. Imagine if the order of the relations is switched in the join loop). Let's do the math again: $2 \times b_{2} \times t_{s} + (b_{2} + n_{2} \times b_{1} \times t_{T} = 2 \times 500 \times 4 + (500 + 10000 \times 100) \times 0.1 = 1000 \times 4 + 1000500 \times 0.1 = 4000 + 100050 = 104050$ ms. So much worse. That's about 1.29 times more just based on the choice of which relation is $b_{1}$ and which is $b_{2}$.
 
-\paragraph{Rule 2: Selection Commutes}
-Selection commutes. Suppose the original selection is on address where city is ``Kitchener'', producing a temporary relation and then we do a selection where province is ``ON'' on that temporary relation. This is equivalent to doing a selection on address where province is ``ON'' and producing a temporary relation, and then we can select where city is ``Kitchener'' on the temporary relation. The results are identical in both cases. 
+Under this strategy it matters quite a lot which relation is the outer loop and which one is the inner loop. It would be vastly preferable to make the outer loop the smaller of the two relations since it minimizes the number of seeks as well as reduces the number of transfers. 
 
-In relational algebra: $\sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E)) = \sigma_{\theta_{2}}(\sigma_{\theta_{1}}(E))$
+\paragraph{Join Strategy 2: Block Nested-Loop}
+The previous strategy could be improved by thinking in terms of block operations rather than in terms of individual tuples. Instead of running the inner loop once for each tuple in the outer loop, we could run it once for each block in the other relation and that might be a lot less painful in terms of count of disk reads. Again, we are still assuming that no index is available, so we have to do this the ``hard'' way.
 
-\paragraph{Rule 3: Projection Redundancy Elimination}
+If everything fits in memory, then the block nested-loop strategy is really no improvement over the regular nested loop algorithm. It gains an advantage if there will be more memory reads. The primary improvement is that instead of loading the inner blocks once for every tuple of the outer relation, they are loaded once per block of the outer relation. Thus there are $b_{1} \times b_{2} + b_{1}$ transfers and $2\times b_{1}$ seeks that take place.
 
-Only the last projection operation is needed; all other projection operations do not do anything. This should be pretty logical given that projection reduces the returned attributes to just those that are specified in the projection.
+To once again use the same values as before, there are now $2 \times b_{1} = 2 \times 100 $ seeks which at a cost of 4 ms = $200 \times 4 = 800$ ms seek time, plus $b_{1} \times b_{2} + b_{1} = 100 \times 500 + 100 = 50100$ at a cost of 0.1 ms = $5010$ ms. Summed up a total of $5810$ ms to complete this.
 
-In relational algebra: $\Pi_{L_{1}}(\Pi_{L_{2}}(\Pi_{L_{3}}(E))) = \Pi_{L_{1}}(E)$
+As before it could be worse if we swapped the order of the relations. $2 \times b_{2} = 2 \times 500 $ seeks which at a cost of 4 ms = $1000 \times 4 = 4000$ ms seek time, plus $b_{2} \times b_{1} + b_{2} = 500 \times 100 + 500 = 50500$ at a cost of 0.1 ms = $5050$ ms. The total is then $9050$ ms which is about 1.56 times the cost of the other ordering. 
 
-\paragraph{Rule 4: Commuting Selection and Projection}
-If a selection involves the same attributes as a projection list, we can commute the two operations. That is, if $L$ contains exactly the same set of attributes $A_{1}, A_{2}...$ that are referenced in $\theta$ then:
+Of course, you may not lose sleep over this considering that the slower approach here is only 11\% of the cost of even the faster simple nested-loop approach. But why not choose the strategy that is 7\%? 
 
-$\Pi_{L}(\sigma_{\theta}(E)) = \sigma_{\theta}(\Pi_{L}(E))$
+\paragraph{Join Strategy 3: Index Nested-Loop}
+Suppose an index is available on one of the two relations. If so, then we don't have to do this in the most painful way; we can use the index instead. Since we will iterate over the inner relation more times, we want the index to be on the inner relation, if we have only one index to work with.
 
-\paragraph{Rule 5: Selection Combination}
+To find which tuples in the inner relation match the outer relation tuple $t_{1}.a$ then we do an index lookup on $r_{2}$ to find the tuple(s) that match. The worst case scenario will once again be that we can only get one block of the relation into memory. We will need to do one seek for each block of the outer relation $b_{1}$ and then one transfer for it. We will also need to, once for each tuple in $b_{1}$ look into the relation $r_{2}$. The formula is $b_{1} ( t_{s} + t_{T} ) + n_{1} \times c$  where $c$ is the cost of doing a single selection in that table using an index (if available). We already know everything we need to know about how to estimate $c$ since we already discussed four strategies for how to do a selection with an equality condition.
 
-Selection may be combined with both cartesian product. This is, as you will recall, how a theta join works and is shown as (a) below in the relational algebra. If a selection being combined with what is already a theta join, that is the same as a theta join with a conjunctive predicate, shown as (b) below in relational algebra.
+As before, the run time is faster if $n_{1}$ is the smaller value; that is, the outer relation should have fewer tuples. 
 
-a. $\sigma_{\theta}(E_{1} \times E_{2}) = E_{1} \bowtie_{\theta} E_{2}$
+\subsubsection*{Merge Join}
+The merge join might be more properly called the \textit{sort merge join} approach. Suppose relations $r_{1}$ and $r_{2}$ have some set of common attributes $r_{1} \cap r_{2}$ and we wish to compute the natural join. If both relations are sorted on  $r_{1} \cap r_{2}$ then we can do a merge-sort-like algorithm to compute the join.
 
-b. $\sigma_{\theta_{1}}( E_{1} \bowtie_{\theta_{2}} E_{2}) = E_{1} \bowtie_{\theta_{1}\wedge\theta_{2}} E_{2}$
+\paragraph{Join Strategy 4: Merge-Join}
+A description of the algorithm in pseudocode is in~\cite{dsc} but it it sensible to approach the concepts before looking at what is a long algorithm. The algorithm has one pointer for each relation, initialized to the first tuple in that relation. Then advance those pointers. Then each tuple of $r_{1}$ with the same value of the join attributes is read into a temporary block. Then the tuples of $r_{2}$ are read and processed as they go.
 
-\paragraph{Rule 6: Theta Joins Commute}
-Theta (and natural) joins commute, so the operands can be swapped in order and the same result is produced. That is a relief, considering our previous discussion of what blocks need to get moved into memory to complete the operation. This does potentially change the order of the attributes in the output, but we should not actually care. Normally a selection statement, for example, specifies some attributes to be returned, meaning there is a projection operation to be done. If there is a select \texttt{*} operation, no order is guaranteed in the output anyway.
+The aforementioned temporary block does need to be big enough to contain all the tuples of $r_{1}$ for each value of the join attributes. That is usually not a problem since we hope not too many tuples match that particular condition. If they do, we would expect either that (1) the database server has a lot of data and therefore needs a lot of RAM and can have the space to do this; or (2) the index is on an inappropriate field (e.g., boolean value) and we should not be trying to use this algorithm. The fallback plan is then the block nested-loop strategy.
 
-In relational algebra: $E_{1} \bowtie_{\theta} E_{2} = E_{2} \bowtie_{\theta} E_{1}$
+Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we one seek for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
 
-The natural join is a special case of the theta join, so $E_{1} \bowtie E_{2} = E_{2} \bowtie E_{1}$
+There is also an assumption that the relations in question are sorted on the attributes of the join. While that may be true if one of them is a primary key attribute, it is probably not the case for the other relation. As you would imagine, a join of employees and departments relies on relations employee and department and it is unlikely that employees will be sorted based on department ID or vice versa. Each will have their own primary key. 
 
-\paragraph{Rule 7: Natural Join Associates}
-When discussing joins, we actually already covered this rule, that they are associative, i.e. we can do them pairwise in whichever order we prefer. For theta joins, it looks a little more complicated, but the outcome is the same, keeping in mind that $\theta_{2}$ references only attributes of Expressions 2 and 3 (so it can't really be applied to Expression 1).
+\paragraph{Join Strategy 5: Hybrid Merge-Join}
 
+We can execute a variant of the merge-join approach on unsorted tuples if a secondary index exists on the join attribute(s). Normally if we are accessing the second relation through an index of some sort, we get the tuples in sorted order (from the view of that index), but they could be anywhere in the disk blocks meaning that each time we go to the next tuple is potentially another disk seek and transfer.
 
-a. $(E_{1} \bowtie E_{2}) \bowtie E_{3} = E_{1} \bowtie (E_{2} \bowtie E_{3})$. 
+To save ourselves some work we can use the hybrid merge-join algorithm. The basic idea here is to merge the sorted relation $r_{1}$ with the leaf entries of $r_{2}$'s secondary index. The output is then made up of tuples of $r_{1}$ and pointers to the tuples of $r_{2}$. This file can then be sorted on the pointers to $r_{2}$ tuples so that accesses to $r_{2}$ go in physical storage order rather than jumping everywhere back and forth.
 
-b. $(E_{1} \bowtie_{\theta_{1}} E_{2}) \bowtie_{\theta_{2}\wedge\theta_{3}} E_{3} = E_{1} \bowtie_{\theta_{1}\wedge\theta_{3}} (E_{2} \bowtie_{\theta_{2}} E_{3})$. 
+\paragraph{Join Strategy 6: Hash Join}
+Another important strategy can be used for joining relations and it relies on hashing as we have already discussed. However, the complexity of the hash join is high and we will consider it beyond the scope of this course. Those who are curious can find more information in~\cite{dsc}.
 
-c. Because cartesian product is an empty theta join, $(E_{1} \times E_{2}) \times E_{3} = E_{1} \times (E_{2} \times E_{3})$. 
+\subsection*{Other Considerations in Query Processing}
 
+There are a few more situations beyond the select and join scenarios that we will care about when we have to actually execute a query. Let us see a few more things from~\cite{dsc} that note some extra work we may have to do if the query is slightly more complex.
 
-\paragraph{Rule 8: Selection Distribution}
-Selection distributes over theta join if the following conditions hold:
+\paragraph{Distinct.} Often times in performing a query we are asked to remove duplicates (e.g., select distinct). This is easy enough if we are sorting the data because two identical values will be next to each other for merging. Alternatively, we could simply avoid writing them to the output at all if the sort-inserted routine finds something already in the designated space for that value. This can be expensive, so this is generally done only if we really ask for it.
 
-a. It distributes if all the attributes in $\theta_{0}$ involve only the attributes of one of the expressions $E$ being joined. This means we can cut down the first relation to only the matching rows before performing the join, which is hopefully a faster way to do it. In this example, if $\theta_{0}$ applies only to $E_{1}$:
+\paragraph{Projection.} Projection should probably get a mention: it is pretty much just throwing away any columns of the relation that we don't need in some way. Projection could happen in several steps; if employee ID is used in a where condition, for example, but not asked for in the output, we might first project the full tuple down to the output fields plus those used in the where condition, then later throw away some more when presenting the final results. The same is true of an order-by clause: if that field is not needed in the output we will toss it out once the ordering is complete.
 
-$\sigma_{\theta_{0}}(E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{0}}(E_{1})) \bowtie_{\theta} E_{2}$ 
+\paragraph{Set Operations.} Set operations (union, intersection, difference) are fairly self explanatory as well. Sorting the data is necessary, generally, to make this efficient. If there is no index, we might need to build one. Each relation $r_{x}$ is partitioned into different parts which we will label $r_{x_{0}}, r_{x_{1}}...$. A quick recap from~\cite{dsc} on how to do the various operations:
 
-b. It distributes when $\theta_{1}$ involves only the attributes of $E_{1}$ and $\theta_{2}$ only the attributes of $E_{2}$. This would mean cutting down both relations before performing the join.
+\begin{itemize}
+	\item Union
+	\begin{enumerate}
+		\item Build an in memory hash index on the $r_{1_{i}}$
+		\item Add the tuples $r_{2_{i}}$ to the index if they are not present
+		\item Add the tuples referenced in the index to the result.
+	\end{enumerate}
+	
+	\item Intersection
+	\begin{enumerate}
+		\item Build an in memory hash index on the $r_{1_{i}}$
+		\item For each of the tuples in $r_{2_{i}}$, see if it is already in the index, and if so, add it to the output.
+	\end{enumerate}
+	
+	\item Difference
+	\begin{enumerate}
+		\item Build an in memory hash index on the $r_{1_{i}}$
+		\item For each of the tuples in $r_{2_{i}}$, see if it is already in the index, delete it from the index.
+		\item Add the tuples referenced in the index to the result.
+	\end{enumerate}
 
-$\sigma_{\theta_{1}\wedge\theta_{2}} (E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{1}}(E_{1})) \bowtie_{\theta} (\sigma_{\theta_{2}}(E_{2})) $
+\end{itemize}
 
-Both of these scenarios apply also for the cartesian product.
+\paragraph{Outer Join.}
+The outer join operation requires us to add some tuples that don't have a match in the other relation. A nested loop algorithm isn't too bad: if there is no match then pad the tuples with nulls on the appropriate side(s) and add it to the output. An alternative strategy is then to compute the (regular) join, then do a select on all tuples, subtracting those without a match, and pad those tuples and add them to the result.
 
-\paragraph{Rule 9: Projection Distribution}
-The projection operation can be distributed over theta join if the following conditions hold:
+\paragraph{Aggregation.} One approach to aggregation is more or less the same as the idea of duplicate removal. We select all the ones we need to aggregate, then take a second pass through the data to sort it, and then merge the values as are necessary. But this is probably not the best way, as might occur to you when thinking about count. Count might be done slightly more efficiently since we can skip the sort and merge entries part by simply keeping a running count. That might also be applied to min, max, sum if we are clever enough to maintain those values and update them accordingly. Average would require maintaining two values and then performing a division... but somehow this seems rather possible.
 
-a. If $L_{1}$ and $L_{2}$ are attributes of $E_{1}$ and $E_{2}$ respectively, and $\theta$ contains only attributes in $L_{1} \cup L_{2}$, then we can distribute. This means that we can, much like the previous rule, cut down the relations using the projection before performing the join:
+\paragraph{Order of Operations.} When dealing with simple expressions there is one operator and we have seen that it can sometimes matter in which order the operands occur. This problem of order of operations becomes larger when we start having complex queries. $r_{1} \bowtie r_{2} \bowtie r_{3}$ could be executed with two different groupings and with different orders of operands: 
+\begin{enumerate}
+\item $(r_{1} \bowtie r_{2}) \bowtie r_{3}$,  
+\item $(r_{2} \bowtie r_{1}) \bowtie r_{3}$, 
+\item $r_{3} \bowtie (r_{1} \bowtie r_{2})$,
+\item $r_{3} \bowtie (r_{2} \bowtie r_{1})$,
+\item $r_{1} \bowtie (r_{2} \bowtie r_{3})$. 
+\item $r_{1} \bowtie (r_{3} \bowtie r_{2})$. 
+\item $(r_{2} \bowtie r_{3}) \bowtie r_{1}$
+\item $(r_{3} \bowtie r_{2}) \bowtie r_{1}$
+\end{enumerate}
 
-$\Pi_{L_{1} \cup L_{2}}( E_{1} \bowtie_{\theta} E_{2} ) = (\Pi_{L_{1}}(E_{1})) \bowtie_{\theta} (\Pi_{L_{2}}(E_{2}))$
-
-b. If $L_{1}$ and $L_{2}$ are attributes of $E_{1}$ and $E_{2}$ respectively, and $L_{3}$ are join attributes of $E_{1}$ not $L_{1} \cup L_{2}$ and $L_{4}$ are join attributes of $E_{2}$ not $L_{1} \cup L_{2}$:
-
-$\Pi_{L_{1} \cup L_{2}} (E_{1} \bowtie_{\theta} E_{2}) = \Pi_{L_{1} \cup L_{2}}((\Pi_{L_{1} \cup L_{3}}(E1)) \bowtie_{\theta} (\Pi_{L_{2} \cup L_{4}}(E_{2})))$
-
-Again, this can also be applied to cartesian product.
-
-\paragraph{Rule 10: Set Operations Commute}
-
-The set operations union and intersection commute  (difference does not).
-
-a. $E_{1} \cup E_{2} = E_{2} \cup E_{1}$
-
-b. $E_{1} \cap E_{2} = E_{2} \cap E_{1}$
-
-\paragraph{Rule 11: Set Operations Associate}
-Union and intersection are associative:
-
-a. $(E_{1} \cup E_{2}) \cup E_{3} = E_{1} \cup (E_{2} \cup E_{3})$
-
-b. $(E_{1} \cap E_{2}) \cap E_{3} = E_{1} \cap (E_{2} \cap E_{3})$
-
-\paragraph{Rule 12: Selection Distribution II}
-
-Selection distributes over union, intersection, and difference operations:
-
-a. $\sigma_{\theta}(E_{1} \cup E_{2}) = \sigma_{\theta}(E_{1}) \cup \sigma_{\theta}(E_{2})$
-
-b. $\sigma_{\theta}(E_{1} \cap E_{2}) = \sigma_{\theta}(E_{1}) \cap \sigma_{\theta}(E_{2})$
-
-c. $\sigma_{\theta}(E_{1} - E_{2}) = \sigma_{\theta}(E_{1}) - \sigma_{\theta}(E_{2})$
-
-\paragraph{Rule 13: Projection Distribution II}
-The projection operation distributes over a union operation.
-
-In relational algebra: $\Pi_{L}(E_{1} \cup E_{2} = (\Pi_{L}(E_{1}))\cup(\Pi_{L}(E_{2}))$
-
-\subsubsection*{Rules Review}
-
-These rules are (sadly) neither a complete set nor minimal. There are other potential transformations that can be done, including various rules from boolean algebra (e.g., $\neg (a \wedge b) = \neg a \vee \neg b$) that are not covered here~\cite{fds}. As we might see from looking at the rules as well, it is possible to use certain rules to derive other ones in that list. This is okay, as they are intended as a human comprehensible list. If we were actually writing these for the computer we would probably want a minimal set to reduce the amount of computation done to generate all the equivalent transformations. 
-
-Having learned a bit about equivalence rules and what they are for, next time we will work on putting them to use and affixing cost estimates.
+Sometimes we do not have quite this degree of freedom, however, and an order is necessarily implied, such as a subquery. In the next topics we will examine evaluations of expressions and look in more detail at how we decide which approach is likely to be best.
 
 \input{bibliography.tex}
 

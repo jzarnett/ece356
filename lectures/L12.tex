@@ -2,11 +2,25 @@
 
 \begin{document}
 
-\lecture{ 12 --- File Organization }{\term}{Jeff Zarnett}
+\lecture{ 12 --- Storage and Block Structure }{\term}{Jeff Zarnett}
 
-\section*{File Organization}
+\section*{Physical Storage}
 
-Recall from earlier that there were a few different file organization options we could choose~\cite{fds}:
+Until this point in the course we have looked at databases more from the perspective of application developers: people who use the database for a specific purpose. This conceptual level has been useful for telling us about how to interact with databases and even how to (re)design data storage in the database to meet certain goals. That may have been entirely review for those who have significant experience with using databases. Now it is time to move into the implementation side of the database. Treating the database as some sort of black box may be convenient, but we are interested in knowing how it does what it does. 
+
+Our first foray into the behind-the-scenes will be about how the data is stored. This will call back to what you have learned in operating systems about memory and storage. If you need to, now is a good time to review that material to read up on it. Although we will give a quick summary. 
+
+The fastest form of memory is registers, storage locations within the CPU itself. Then there is cache (often several levels of it), main memory, and finally, stable storage (solid state devices, magnetic hard drives, optical storage, and tapes). Memory is a series of size/speed/cost tradeoffs, with faster memory being relatively small due to its cost. Your operating system course will have covered, probably at length, caching and replacement algorithms. To avoid repetition, we will not spend any time on that.
+
+The most salient fact that we need to think about is that there is primary (volatile, that is, lost if power is cut) storage, also known as main memory, and then secondary (non-volatile) storage (whether SSD, hard drive, tape, etc, doesn't much matter right now). To actually do any of the operations we want to do in a reasonable time, the data must be moved from secondary storage to primary storage, and eventually if the data is to be saved/updated it has to be written back to secondary storage. Secondary storage is generally very slow compared to primary storage, and therefore how we store our data becomes important because it determines how many times we need to access the slow storage (and how much time we spend waiting for it). 
+
+It's not as simple, unfortunately, as just packing as much into a block of storage as possible. We will still want to do that (usually) but there is more to it than just getting six records into a space where five used to fit. What is perhaps more important is: which five (or six) records to put in this particular block?
+
+Do we have to do this? Well, yes. Consider three reasons~\cite{fds}: (1) databases are too big for main memory (usually); (2) power outages and crashes DO happen, so nonvolatile storage is necessary; (3) secondary storage is affordable.
+
+Data is stored in files, and files correspond to blocks on disk. The \textit{primary file organization} determines how the file records are physically placed on disk (in the file, in the blocks)~\cite{fds}. This obviously determines how we can access them. This is part of what determining the primary key is about. 
+
+Remember from earlier that tuples of a relation as returned by a select query do not have a guaranteed ordering (unless there is an order-by clause). That is because they could be stored in a primary organization in multiple ways. Our options could be~\cite{fds}:
 
 \begin{enumerate}
 	\item \textbf{Heap File}: An unordered file where new records are just appended to the end.
@@ -15,115 +29,104 @@ Recall from earlier that there were a few different file organization options we
 	\item \textbf{B-Tree File}: The file is organized using a B-tree structure.
 \end{enumerate}
 
-We did not go into the details of the options earlier, but we will now be able to do so. Under most circumstances one relation corresponds to one file. However, multiple relations can be in the same file if desired. To start with, we will just have one relation in a file. 
+This suggests strongly that if the data is not in the right order to begin with (and probably it is not) then extra work is needed to sort it. That is correct. Efficient sort algorithms exist, to be sure, but an order-by clause has a cost. We will soon examine in more detail the idea of query evaluation and execution.
 
-Remember that these file organizations are not affected by whether records are of fixed or variable length. Similarly, whether spanned records is allowed or not does not affect the file organization. Those sorts of consideration are about how to pack records into a block; this is about the order of the records. The first $k$ records may be stored in the first block, but which records are the first $k$?
+A \textit{secondary organization} allows efficient access to the data based on other criteria. An index is an example of a secondary organization which allows us to efficiently access the data based on that criterion. If we establish an index on an attribute, such as province in an address, it allows us to efficiently find tuples matching a particular province (e.g., ``SK''). In the absence of that index, to find all addresses matching that province, we might have to scan all tuples.
 
-\subsection*{Heap File} 
+We'll come back to the subject or organizing records in files in the next lecture.
 
-The simplest way to order records is: don't order the records! The heap file has no inherent organization, although some (weak) idea of ordering may exist in the sense that records appear in the file in the order in which they are inserted. However, there is no guarantee about that, and if that is the behaviour it is an implementation detail and should not be relied upon. 
+\subsection*{Placing Records on Disk}
 
-This strategy makes insertion efficient -- just tack this on to the end of the file, a constant time ($O(1)$) operation . If a new block is needed, allocate that new block and write it to disk. If not, the last block of the file is read, modified, and written. That part is simple. However, searching for a record is more difficult, because the file is not ordered in any way. Thus, we would have to perform a linear search ($O(n)$) over all records. To find one individual record in the relation it be necessary to examine, on average, half of the entries (assuming that all requests are equally likely). If the element is not in the file at all then we have to examine all the elements, and it was all for nothing anyway~\cite{fds}. 
+The database will store records (tuples, relations, metadata, etc) on disk in a file or multiple files, as one would expect. The file itself is partitioned into blocks that match up with the file system's underlying architecture. Blocks are typically 4~KB but size may vary. Records are of variable size because they are user defined: if a user defines a relation with six attributes, a tuple in that relation may be a record.
 
-To delete a record, we need to first search for the record (linear search), then rewrite the block that it is in. Ultimately after enough deletions there will be multiple partially-full blocks, leading to wasted space. Thus, compaction of some sort will eventually need to take place which moves the records around to fill in these holes.
+Let us imagine that a relation consists entirely of fixed length fields, so we can say that a tuple has a known size. If the sum of the fields' storage needs is, for example, 94 bytes, then we can fit 4096/94 = 43.57 records inside a block. For performance reasons as well as to keep chaos down we will usually not allow a record to be split across two blocks. Thus we would round down and say that 43 records can fit in this block (at most).
 
-An update has all the problems we've discussed before. We must linear search to find the record(s) to the updated.  it may lead to reorganization of a block or having to move the file to a different block, treating it as if it is an insertion and deletion.  
+A careful reading of the previous paragraph said that the relation consists entirely of fixed length fields. That is, sadly, not a safe assumption in real life. Although we can restrict most fields to some number (e.g., 255 character string, 30 digits of precision number, etc), the database can be used to store arbitrary data in a ``long text'' sort of format. It is not hard to imagine a scenario: if you wished to maintain a database of all e-mails sent and received, the body of the e-mail (as well as the attachments) are of arbitrary size. Those are often called ``BLOB''s -- Binary Large OBjects -- because, well, that's exactly what they are. 
 
-Heap organization throws into the light the idea that the file structure has performance implications: that is, no matter what we choose, it will mean some operations are faster at the expense of other operations. Heap organization means that insertion is fast but reading, updating, and deleting are slower. This seems incongruous with our usual expectations of what databases are for. Normally we would expect retrieval to be the most common operation, right?
+The fixed length records are a good starting point and we will deal with that first. Variable length-records that fit within a single block are the subject for another series of allocation algorithms. Finally, if there is so much data (e.g., email attachments and content) that we cannot possibly fit it into a block, we will likely store the content elsewhere and just keep a pointer to it in the record~\cite{dsc}. Remember that this is just about storage -- from the perspective of the user, a select query that asks for the body of the e-mail would return a tuple that has the body of the e-mail as an attribute just as if it were any other (fixed or variable length) string.
 
-\subsection*{Sorted File}
+\paragraph{Fixed-Length Records.} 
 
-Long, long ago in an introductory programming course you learned about sorting, and perhaps more importantly, the idea that if you are going to search your data (more than once anyway). Usually in such sorting exercises you are asked to sort a bunch of integers. Integers have nice properties including a logical, simple ordering, and you can tell quickly at a glance if the array has been sorted correctly or not. In a sequential file, we will sort the records based on one particular attribute from start to end.
+We will assume for the moment that an individual file contains only one kind of record. If a record is of fixed length, then we can easily compute how long it will be in storage by simply summing up the length of the fields. The example in \texttt{dsc} shows a type ``instructor'' with attributes ID (varchar of 5), name (varchar 20), dept\_name (varchar 20), and salary (numeric 8,2).\footnote{This is super overly optimistic. Believe me, I am not getting paid eight figures a year here. Unless you count the leading zeros...}. 
 
-The field that we sort the file on is called the \textit{ordering field}, and if it is a  unique key then it is called an \textit{ordering key}~\cite{fds}. It does not have to be the primary key. A search that is on the ordering field is quite efficient. Suppose employees have sequential unique employee ID numbers and that is the ordering key in the database. If the goal is to find all employees with an ID less than 385, the data is sequential in all the blocks and that is convenient.
+That's easy enough to sum up if each character is assumed to be 1 byte (so I guess this is not UTF-8) and we will assume the numeric 8,2 can be represented in 8 bytes (which is much more than needed since you'd actually really only need 5 to represent a number between 0 and 99~999~999.99, but let's assume that the type gets rounded up). That means the storage is $5 + 20 + 20 + 8 = 53$ bytes for this record. 
 
-To find an individual record we can use a binary search ($O(\log n)$) which is for finding a record as well as update and deletion as discussed earlier. We are likely to access $\log_{2}(n)$ blocks, whether or not we find what we are looking for.
+That works. So the first 53 bytes are the first record, then the next 53 bytes are the second, and so on and so on and so on. 77.28 records would fit in a 4K block and we round down meaning 77 records fit in an individual block. The rest of the space is wasted, in some sense, in the same way that we may have internal fragmentation in memory allocation requests. 
 
-A simple sequential organization looks like~\cite{dsc}:
+Even if we wanted to we would have trouble dividing such a record across two blocks: 0.28 (rounded to 2 decimal places; it's actually longer of course) of a record here is 15 bytes so do we put ID and then the first ten bytes of the name? Probably not. More likely is to have all of one field (ID) in block $i$ and the remaining fields in block $i+1$ which would reduce the amount of wasted space from 15 bytes to 10. 
 
-\begin{center}
-\includegraphics[width=0.4\textwidth]{images/sequential}
-\end{center}
-
-In looking at this diagram we can see that they are sorted by some sort of integer ID (the leftmost column) in ascending order. And yet, there is a pointer in the rightmost column pointing to the next record and the next and the next. What purpose would that serve? It is for efficiency reasons, of course. 
-
-It can be difficult to maintain the physical ordering of the data because every insertion, deletion, and perhaps update requires a lot of moving records around. So we could potentially relax the constraint of having to keep all the records in order at all times. Instead, we could temporarily have the following physical layout~\cite{dsc}:
+If we choose to allow a record to be in two blocks it is called \textit{spanned} (see (b) in the diagram below), otherwise it is unspanned (shown as (a) in the diagram) (although this shows variable length records rather than fixed)~\cite{fds}:
 
 \begin{center}
-\includegraphics[width=0.45\textwidth]{images/sequential-2}
+\includegraphics[width=0.7\textwidth]{images/spanned-unspanned}
 \end{center}
 
-If the insertion we are doing goes at the end of the file such as in the example an ID of 99001 is inserted, then the file maintains its sequential order. If there is a free space in the block where the record belongs, then we can put the record in the correct block although it is out of order. If, as in the case shown above, the block is full then we need to place the new record somewhere else. For that there is often an \textit{overflow block} where records that do not fit into their normal locations go. 
+In any case it is undersirable to have the record split even if it can be split cleanly because it doubles the amount of work to read or write this record (because every operation is on two blocks). We have no choice if the record is bigger than a block, unfortunately, then we must use spanned organization. 
 
-Deletion is the mirror image of insertion. If we deleted the record at the very end of the file, there is nothing special to maintaining order. If the record being deleted is in an overflow block, that makes the order more sequential rather than less. If the record inside a block is being deleted, such as the record with ID 58583 then the pointer from record 45565 would just be updated to point to 76543 and that would suffice. The empty space would be noted for the future. 
+A second problem is that it is difficult to delete a record in this structure. Either we have to have a way to mark the record as deleted or we overwrite it with some record from somewhere else in the file~\cite{dsc}.
 
-If this continues over time, the file loses its sequential ordering as more and more records end up in overflow blocks. The file becomes less and less sequentially organized, meaning it resembles the heap file more and more. Eventually the file must be reorganized which sorts the records based on the sequential order again, potentially moving a large number of records to get them into the order where they belong. Because this is a potentially expensive operation, it would likely only be done when the system is not busy and when there are enough records out of order that it makes sense to do this. 
-
-\subsection*{Hashed File}
-
-A hashed file works very much like the sorted file, except, instead of the sorting key being a number, a hashed value is used instead. The hash technique can allow for fast access to records. The hash field is often the key. On its own that does not sound any different than the sorted file, but the ``magic'' in the use of the hash function instead of just the ID directly is that the hashed value tells us the address of the disk block in which the record is stored~\cite{fds}. So instead of having to binary search to find the record with ID 99901, we could instead compute the hash value and find out that it is in block $x$ and then go directly there.
-
-We will take a short digression to cover the subject of hashing, actually. Chances are you covered this in a data structures and algorithms course, but it was probably in the context of hashing a value to find what index in the array to insert a particular element. That is \textit{internal hashing}, which we will quickly review, but hashing can be much more.
-
-If you implement a hash table simply, there is an array with $M$ ``slots'' and then the hash function turns a particular value into an integer between $0$ and $M-1$. The hash function can be as simple as some integer field modulo $M$. That algorithm will work but probably does not provide ``nice'' properties to the hash function, or its output. If you don't have an integer field you want to hash (no ``id'' or other such field), don't despair. You can simply interpret everything as an integer if you want! It's all ones and zeros when you drill down to it and you can just pretend this string or double or binary data is an integer number and problem solved~\cite{fds}.
-
-It is more likely that you actually want a hash function that has some better properties. A \textit{folding} has function does some arithmetic operations -- add up some numbers, reverse some positions, move blocks around, the like, and usually a modulo operation is the last step to get everything cut down to the right size.
-
-Regardless of how the hash function is calculated, we need to deal with the fact that two input values will eventually produce the same output value. This is called a \textit{hash collision} and it is super common, because the range of output addresses is very often smaller than the range of input.\footnote{There are ``perfect'' hash functions that don't produce collisions, incidentally.} You may, for example, have an array that can contain 4096 elements, but  siif the input values are a range from $0$ to $2^{16}$ then there will definitely be collisions. That itself is not a bad thing, as long as we have a way to handle this situation. We can apply three major approaches for how we handle hash collisions from~\cite{fds}. 
-
-The first is \textit{Open Addressing} -- simply go to the next open space if we must. Suppose the hash function computes $n$ but there is already an element stored at that position. Then just go to position $n+1$ and put it there (if possible, otherwise go to $n+2$, etc). This is simple, but it can lead to clustering, where a bunch of elements are close together.
-
-The next strategy is \textit{chaining}. In this case, we have overflow locations. If there is a collision, we put the new item in an empty space and put a pointer from one element to the next. 
-
-The third strategy is a second hash function (\textit{multiple hashing}) that is run if we have a collision to differentiate. We could have a third, fourth, etc. function but as one point we will default to open addressing because we will have no other choice.
-
-A goal of hashing is to distribute the records relatively evenly across the address space so that we do not have too many collisions, but also do not have too much empty space. Ideal is something like 70-90\% full; and if we need to make the table bigger (or smaller), then we do so. If $M$ is a prime number, we get good distributions, although other technical constraints like the hashing algorithm may mean a power of 2 is best~\cite{fds}.
-
-With the review of internal hashing aside, we should take a look at external hashing, which is what we need for files on disk. Instead of viewing the data storage as an array  where we can store one element, instead we have buckets that hold multiple records... which is exactly what you should expect given that we have already talked about blocks. Then, the hashing function produces a bucket (block) number, and then from there we can get to the actual record by looking in the header for the block. 
-
-This does ameliorate some of the collision problem; if we have multiple records that produce the same hash value it's not a big deal because they can go in the same bucket. Nevertheless, we need to still be concerned about what happens when buckets are full, and as you might expect the solution for this will be overflow blocks. 
-
-Still, all the hashing we have covered so far is \textit{static hashing}, that is to say, we have a fixed number of buckets. That is not suitable for our purposes a database where files will need to grow as the amount of data in the tables increases (or not be allocated as ridiculously large and mostly empty in the first place). If most buckets are close to full, we could simply add more buckets and then use a new hashing function (with the new maximum size) to reassign all the items to their new buckets, but this sort of global reorganization is very very slow~\cite{fds}.
-
-The following image shows how a strategy of buckets with overflow buckets may look (simplified)~\cite{fds}:
+If our initial state is as follows~\cite{dsc}:
 
 \begin{center}
-	\includegraphics[width=0.75\textwidth]{images/overflow-buckets}
+\includegraphics[width=0.4\textwidth]{images/instructor-1}
 \end{center}
 
-Much better would be a hashing function that permits dynamic file expansion. That is to say, the file grows and shrinks as needed based on the amount of data that is in the file.
-
-The first approach is \textit{extendible hashing} -- an access structure is stored in addition to the file. The access structure is an array of $2^{d}$ bucket addresses, where $d$ is the global depth of the directory. The first $d$ bits of a hash value are the index into the array to determine which element of the array is selected; the array element is the bucket in which the corresponding entry is stored. What makes this dynamic is that there may be duplicates in the array. Local depth $d'$ (``Dee prime'') specifies the number of bits on which the local bucket contents are based~\cite{fds}. The hash value will usually be interpreted as a sequence of bits.
-
-This may make more sense if displayed visually~\cite{fds}:
+And we choose to delete record 3, we can either (1) move each record up by one in the file to fill in that gap (left side in the diagram below); or (2) move the last record to fill in that space (right side in the diagram below). Both diagrams from~\cite{dsc}:
 
 \begin{center}
-	\includegraphics[width=0.75\textwidth]{images/extendible-hashing}
+\includegraphics[width=0.4\textwidth]{images/instructor-2} 
+~~~~~~~~~~
+\includegraphics[width=0.4\textwidth]{images/instructor-3}
 \end{center}
 
-Suppose we are running out of space: that means that a bucket whose depth $d'$ is equal to $d$ has become full and is now overflowing. That would mean we increase the value of $d$ which doubles the number of buckets. A quick example of bucket splitting from~\cite{fds} in the previous diagram would be what happens if the bucket whose hash values start with 01 becomes full. At that point we need to split the records up between those that start with 010 and those that start with 011. Those are now two distinct buckets with $d'$ of 3. That is fine, because $d'$ can range from 1 to $d$ (inclusive) but no higher.  
+The first approach requires significantly more work than the second: we have to continually copy each record and overwrite the previous one, potentially $n-1$ times for a block containing $n$ records when the first one is deleted. If we move the last record into the open space it is less work but we still had to copy some data around. We could instead just mark that space as empty. 
 
-If one of the buckets with $d'$ equal to $d$ becomes full, then we need to split those as well and the size of $d$ must increase (in this example, to 4). Alternatively, if $d'$ is smaller than $d$ for all buckets (which could happen after enough deletions occur), we could potentially decrease $d$ by 1~\cite{fds}.
+Marking the space as empty, however, has its own tradeoffs. If we want to insert a new record then we would have to scan through the whole block to see if there are any empty spaces. Instead of that, we might have a header structure in the file that tells us where the free sections are, if any, in a simple linked list or bitmap structure~\cite{dsc}. 
 
-Extendible hashing is great because it allows the file to grow and shrink as is appropriate with the amount of data that is in the file. As things get close to full, we just create a new bucket (or several buckets) and the rate of collisions falls again. If we have to split a bucket, then a relatively small number of records need to be moved, because it is only some of the records in the bucket being split that need to go to the new bucket. 
-
-If we have to increase the value of $d$ then we have a potentially larger and more painful reorganization, but we probably won't lose any sleep over that. Why not? When $d$ is small, the total number of records in the system is not very large so the time to move all of them (worst case) is not very big. For example, if $d$ is 3, if the table is completely full, there are $2^{3} = 8$ buckets. Not very many. If $d$ is large then increasing it is very rare. If $d$ is 16 there are $2^{16} = 65~536$ buckets and it takes a long time to fill them up. Ah, the power of exponential growth.
-
-% Dynamic Hashing?
-% Linear Hashing?
-
-There exist other hashing strategies, dynamic and linear hashing, notably, but we will not examine them at the moment.
-
-\subsection*{B-Trees}
-
-We will assume that everyone is familiar with B-Trees from a data structures and algorithms course (and perhaps a review from an operating systems course...). We will actually look into B-Trees in more detail when we talk about the idea of indexing. But theoretically we could use B-Trees to store the data in a way that very much resembles how operating systems store files on disk.
+Of course, things get complicated when we want to insert or delete records that are not fixed length. If we deleted record 3 in the previous example, what do we do if record 11 is bigger than record 3 was? What if it was smaller? We clearly need a different strategy for variable length records.
 
 
-\subsection*{Multiple Record Types}
 
-Everything else so far has assumed that each type of record has its own file. That is not a requirement; it is possible to keep multiple types of record in the same blocks. This could speed up join queries that go over both tables but perhaps slow down other queries. To make this work we need a differentiator, of some sort, to tell us what kind of record each record is, and that is generally a simple field of some sort.
+\paragraph{Variable-Length Records.}
 
-In a similar but less extreme variation, we could put tables that we know to be related next to one another on disk which could potentially reduce the amount of effort to read and write related records.
+As long as one field is of variable length then we have variable-length records in our file. There are some other situations that might cause record length to vary~\cite{fds}: repeating fields, optional fields, or even putting multiple types of record in the same file. 
+
+A repeating field is one that may have multiple attributes, such as an array of values. This seems strange at first glance since normally one might wish to have a separate relation to represent the array... On the other hand, if it is just a series of strings that might not be sensible. So a customs declaration with a list of clearance document numbers could have the array inside the declaration relation, or in a separate one.
+
+Optional fields are not recommended. If fields are variable length, i.e., not fixed length, then an empty field does not take up any space and it isn't any problem. So let us perhaps leave that subject alone. 
+
+However the variable-length records are implemented, there are two operations we need to consider: (1) how to get records out of a block and (2) how to get particular attributes from a record~\cite{dsc}. Because databases are for retrieval as well as storage we do need an efficient way to get data out again when we want it.
+
+Variable length attributes are often represented in one of two ways. The first is a terminator character of some sort, something not normally allowed in the domain. The next is the attribute is prefixed with its length. If these options sound familiar, they should, because they are the same ways programming languages might represent a variable length string. As you will know, C chose the terminator approach (null-terminated strings) and other languages like Pascal chose the length prefix approach.
+
+The sample layout structure from~\cite{dsc} suggests that fixed length attributes are put together, then each variable length record has an entry of \textit{(offset, length)}  to explain where the variable length attribute is in the file. If the attributes ID, name, and dept\_name in the previous example are variable length, and we have a fourth attribute of fixed length, salary (so it does have leading zeros!) then the length of the record can be computed. For the variable length record, if offset and attribute are 2 bytes each, then we have 4 bytes ``overhead'' per variable length attribute and we get something that looks like this~\cite{dsc}:
+
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/variable-length-record}
+\end{center}
+
+The null bitmap (stored in one byte here), tells us which if any of the attributes have a null value. That is one approach to show what values are null; if a value is null when queried then there is no need to actually look at the stored data. The null bitmap could be stored at the beginning or it may not even appear at all: if an attribute is null its length can be zero and that is enough to know there's no data there. It may be a performance improvement to look at the null bitmap and decide if the rest of the data needs to be examined.
+
+Then how do we put the variable length records into a block? For that, the strategy is the \textit{slotted page structure}: a data structure header in each block. The header includes the number of records in that block, where free space ends, and then an array with the location and size of each record. This diagram shows what this looks like~\cite{dsc}:
+
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/slotted-page}
+\end{center}
+
+Records themselves are contiguous in the block and free space exists, perhaps counter-intuitively, between the end of the array and the first record. When a new record is added, it goes at the end of free space and the array gets a little bit bigger (so the free space is reduced at both ends)~\cite{dsc}. 
+
+Deletion requires a bit more work: if an entry is deleted the data is removed and any records between that record and the free space area are moved so that all free space remains contiguous. If a record needs to grow or shrink due to an update statement, then we have to repeat the same procedures and move the records around to ensure that all free space remains contiguous~\cite{dsc}. 
+
+Reorganization following deletion does not have to take place immediately; it is possible to do periodic reorganization when it is a convenient time.
+
+\paragraph{Performance Considerations.}
+
+We can see that there are performance implications for whatever implementation strategy we choose. Performance is not our primary consideration at the moment, nor is it a major focus of this course. However, it is a subject we will want to look at and think about on a regular basis. 
+
+ A select statement can take longer for certain requests than others; if a record is in one block it doesn't take as long to retrieve it as it would if it is spanning two blocks. A seemingly simple update statement may take a different amount of time based on how many records need to be moved if variable allocation is used. If record sizes are fixed then assigning a value may take a constant amount of time... but the number of blocks we need to access to perform an update may be higher because fewer records fit in a block due to all the space being held in reserve for empty values that have not been filled.
+
+
+
 
 \input{bibliography.tex}
 

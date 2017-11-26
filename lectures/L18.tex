@@ -2,151 +2,184 @@
 
 \begin{document}
 
-\lecture{ 18 --- Query Optimization }{\term}{Jeff Zarnett}
+\lecture{ 18 --- Query Evaluation and Optimization }{\term}{Jeff Zarnett}
+
+\section*{Query Evaluation}
+
+The strategies we have looked at thus far have explained how to perform individual parts of a query. If a simple select statement or a select-join is needed then we just have to carry it out using an evaluation plan. Choosing which evaluation plan, as we saw, is not trivial, and soon we will examine how we can ``guess'' about which plan is likely to be best. But first we need to think about what order in which to perform a compound expression.
+
+\subsection*{Evaluation of Expressions}
+
+Our normal expectation of how a composite operation works is that we do a subpart (whichever one) and then store the resulting relation temporarily for further use. This is called \textit{materialization} and usually results in the temporary relation being written to disk. That seems undesirable but it may be necessary. The other option is a \textit{pipeline} which would allow us to immediately forward on the partial results from a particular operation so the second operation can run in parallel with the first~\cite{dsc}.
+
+\paragraph{Materialization.} First, let us talk about materialization. Sadly, this is not about how people who ``beam up'' using the transporter in Star Trek get put back together again afterwards. In the example from earlier where there is a three way join $r_{1} \bowtie r_{2} \bowtie r_{3}$ we will choose one of the ways to group this and then, as you would expect, temporarily store the output in some temporary relation $r_{4}$ which is then used in the join with the third relation. 
+
+Calling back to an idea you have likely studied in compilers (or will study soon at least), when presented with a complex statement, we need to parse it and form a tree. Then, we work from the bottom level of the tree up to complete the expression. 
+
+If the code to be compiled is \texttt{ x = (y * 5) + z; } we can look at that and discover we need to do the following things: fetch y, multiply y by 5 and store it in a temporary location, fetch z, add y to z, and finally, assign it to x. There are some things we can do in a different order, potentially, such as fetching z in a different order, but there are some operations we can't do out of order like addition before the brackets\footnote{If anyone ever tries to tell me that order of operations doesn't matter much, I usually tell them to make a cake by first baking all the ingredients and then mixing them.}. 
+
+In the database, we again, need to work on our low level operations and execute those operations (fetch rows, compute joins, whatever it is) and take the output and put this in a temporary relation. A temporary relation will be created at each step until all operations are complete. At that point we have the final result and can return it. 
+
+The cost of materialization is the sum of the individual operations, plus the cost of writing all intermediate steps to disk~\cite{dsc}. How large those intermediate costs are depends very heavily on how much data is to be written to disk at each step. However many tuples of each intermediate step fit into a block is important because it determines how many blocks are needed at each step. Once again, we get a hint that says if we get some choices about which operations to do sooner rather than later, we want the ones that result in the fewest result tuples in the output relation...
+
+\paragraph{Pipelining.}
+The idea behind pipelining is to reduce or avoid the costs of storing those temporary files. The idea of pipelining is very common in computing, from CPUs all the way up to large software transactional systems. In short, in pipelining, a chunk of data moves through several different stages from beginning to end. When a particular chunk moves from stage 1 to stage 2, the next chunk can move into stage 1 and begin processing. Thus, we can accomplish things in parallel and potentially get some more done in less time.
+
+Without pipelining, the first data item to finish stage 1 just kind of sits around waiting for the last item to finish stage 1 before the first item can start stage 2. It accordingly needs a place to wait. Eliminating that place of waiting is the goal of pipelining. And this is the plan for execution. As a nice bonus, we can maybe show partial results to the user as processing continues rather than waiting until all is done before showing all results. 
+
+In~\cite{dsc} there are two approaches for how pipelines may execute, either demand-driven (or consumer-driven, pull) pipeline, the system requests at the output end the ``next'' chunk when it is ready to receive it, which triggers the earlier stages in turn to pick up their next chunk of data and so on and so on. In the supply-driven (or producer-driven, push) pipeline, each stage of the pipeline is always trying to pick up the next chunk and process it (but it may be blocked waiting for space to open up in the output area). 
+
+My personal preference runs towards a push-driven pipeline since it rather resembles the type of producer-consumer problem discussed in earlier courses. Each stage of the pipeline can be its own thread, and threads can be both a producer and a consumer. The first stage reads the first chunk of the input file and does some transformation, and places that in its output buffer. Obviously, some sort of mutual exclusion constructs such as semaphores will be used to get proper concurrency control here. The second stage can then pick up that intermediate data, process it, and pass it on to the third stage\footnote{\url{https://www.youtube.com/watch?v=KzHX_MP_eBk}} by putting it in yet another intermediate buffer. This continues until all data is processed through all stages and is output. Buffer sizes will be limited, of course, so there can be different stages that are blocked awaiting space in a buffer or waiting their turn to access a buffer. But this sort of program structure should be quite familiar to you from learning about semaphores and the like.
+
+The catch, when it comes to pipelining, is that there are some operations that don't work very well with it. Sorting is the most obvious example: you cannot send the first chunk of the sorted file on to the next stage until the entire file has been sorted. Our choice of evaluation algorithm for a select or join operation may also limit the ability to pipeline. These sorts of things are just limitations we cannot easily get around and may need to be accounted for in our plan for how to evaluate a query.
 
 \section*{Query Optimization}
 
-Given an understanding of the various rules, there are now some clear ways we can transform an input query to determine which of the equivalent representations will have the lowest cost of execution. Combining that with what we have already seen when it comes to join operations, it is fair to say that the query optimizer is likely to focus first on join relations since that is potentially the biggest area in which we can make some gains.
+Finally we are ready to talk about query optimization. This topic should be pretty easy to motivate. The database server is responsible for choosing how to carry out the requested query and it is preferable to do it efficiently and choose an optimal plan rather than a sub-optimal one. When we put some numbers to early examples, we saw that there can be orders of magnitude difference in how long it takes to execute a query depending on the strategy, and even which operand is on the left or right side of the operator. Conclusion: it is worth while for the database server to make the effort to decide what is optimal.
 
-Suppose our query involves a selection and a join: we want to select the employee number, salary, and address for an employee with an ID of 385. Suppose number and salary are in the employee table with 300 entries, and the address information is in another table with 12000 entries. We have a join query, and if we do this badly, we will compute the join of employees and addresses, producing some 300 results, and then we need to do a selection and a projection on that intermediate relation. If done efficiently, we will do the selection and projection first, meaning the join needs to match exactly one tuple of employees rather than all 300. 
+We have looked at techniques for evaluation of how long we think a certain plan is going to take to execute which concentrated primarily on how many disk operations we expected to take place. These typically included numbers like the number of tuples or the number of blocks and that left open the question of how did we know how many tuples or blocks are in this relation?
 
-The query optimizer should systematically generate equivalent expressions, but since performing all possible transformations and then evaluating each option may itself take non-trivial time, it is likely that the optimizer does not consider every possibility and will take some ``shortcuts'' rather than brute force this. One technique that helps on top of that is to re-use common subexpressions to reduce the amount of space used by representing the expressions during evaluation~\cite{dsc}.
+One way that might have immediately come to mind is the metadata kept by the database system; if it does provide us with some useful information like relation $r$ has 10592 tuples and is currently stored in 2591 blocks then we have some values to go on. Those are the easy values to get. But how do we determine how many tuples we think will match the condition that some attribute $A$ is greater than some value $x$? And how many blocks will those tuples be in?
 
-\subsection*{Estimating Statistics}
+The answer lies mostly in \textit{heuristics}, or perhaps less charitably, educated guessing. A heuristic is a guideline or ``rule of thumb'' the gives us some hints. Suppose we know some statistics about $A$. If we do, then it can help us make some important decisions about what execution plans we choose. 
 
-For all the discussion about how it might make sense to swap this or change that or do this rather than that, we have not yet really talked about how the system may guess about how many results are going to be returned. In the previous example I used exact numbers, 300... 1... 12000... etc., but for the database server to get those it can either look them up, or it can guess about them. As mentioned earlier, sometimes certain numbers, like the number of tuples in a relation, are easily available by looking at metadata. If we want to know, however, how many employees have a salary between \$40~000 and \$50~000, the only way to be sure\footnote{Other than nuking it from orbit...} is to actually do the query, and we most certainly do not want to do the query when estimating the cost, since at that point we might as well not bother optimizing at all.
+In fact, one of the main heuristic rules we should always try to follow is to cut down the size of intermediate relations whenever possible. That means select and project operations should be done early and certainly before a join. A join operation can result in a file size that is some multiple of the size of the input file so it is preferable to cut things down first~\cite{fds}.
 
-If we cannot measure, then, well, we need to guess. Our guesses are, however, not wild, but instead educated. Estimates are based on assumptions, and those assumptions are very often wrong. That is okay. We do not need to be perfect. All we need is to be better than not optimizing. And even if we pick the second or third or fifth best option, that is acceptable as long as we are close to the best option.
-
-There are five major areas where costs for actually performing a query accumulates. We have, for simplicity, acted as if accessing disk storage is much larger than any other costs to the point where it dominates all other factors. That is not quite accurate, and modern query optimizers are capable of taking more things into consideration. The list from~\cite{fds} below is more complete:
-
-\begin{enumerate}
-	\item \textbf{Disk I/O}: the previously-discussed costs of seeking and data transfer to get data from the disk or other secondary storage.
-	\item \textbf{Disk Additional Storage}: the costs, if any, of storing intermediate relations on disk during processing of the query.
-	\item \textbf{Computation}: The CPU usage that will be required to do the operations including sorting, merging, and arithmetic operations.
-	\item \textbf{Memory}: The memory usage for the buffers necessary to do the desired operations.
-	\item \textbf{Communication}: The cost of sending the results back to the requester, or in  a distributed database, the cost of transferring data between the different nodes.
-\end{enumerate}
-
-We will generally proceed on the basis that disk I/O is the largest cost and outweighs everything else. That may not be true in a particular use case (e.g., the database server has tons of RAM and a lot of data can be kept in memory). The principles of assessing cost and choosing a strategy still apply, even if we are optimizing faster queries or constrained by CPU instead of disk.
-
-\paragraph{Metadata.} As previously mentioned, there is some metadata stored in the database that we could look at to find out some data that we know has some high accuracy. Some items that might be in the metadata, from~\cite{dsc} and ~\cite{fds}:
-
-\begin{itemize}
-	\item $n_{r}$: the number of tuples in a relation $r$ 
-	\item $b_{r}$: The number of blocks containing a relation $r$ 
-	\item $l_{r}$: the size in bytes of relation $r$
-	\item $f_{r}$: the number of tuples of $r$ that fit into one block
-	\item $V(A, r)$: the number of distinct values in $r$ of attribute $A$
-	\item $h_{r, i}$: the height of an index $i$ defined on relation $r$
-\end{itemize}
-
-Some of these values can be computed, notably $l_{r}$ is the number of blocks times the size of a block, and $f_{r}$ is the number of tuples divided by the number of blocks. The value of $V(A, r)$ may or may not be maintained for all attributes, or for groups if that is so desired. If it is on a key field, every value is unique, so we know it is the same as the number of tuples for that field. There can also be metadata about index information as well... which might make it metametadata? 
-
-There are obviously tradeoffs when it comes to maintaining metadata. The more often it is updated, the more effort is spent updating it. If every insertion or update or deletion resulted in an update, that may mean a nontrivial amount of time is spent updating this data. If we only do periodic updates, it likely means that the statistic data will be outdated when we go to retrieve it for use in a query optimization context. Perhaps some amount of balance is necessary: updates can be done during times of lower system load with some maximum limit for how long an update can wait before it gets enough priority. This is, in some small way, a callback to scheduling algorithms you have surely learned about in an OS class. 
-
-A database may also be interested in keeping some statistical information in a histogram. The values are divided into ranges and we have some idea of how many tuples are in those ranges. You have almost certainly seen a histogram before in something like a population pyramid diagram. An example from~\cite{dsc}:
+We previously introduced the idea of turning the input query into a tree structure which was then evaluated from the bottom up. Combining that with our knowledge that order of operations matters and that we would like to choose the efficient route, we will often transform the input expression to a faster, better equivalent. See the diagram below~\cite{dsc}:
 
 \begin{center}
-\includegraphics[width=0.4\textwidth]{images/histogram}
+\includegraphics[width=0.7\textwidth]{images/optimization-1}
 \end{center}
 
-That should also tell you that they do not necessarily have an even distribution. A histogram does not take up a lot of space and it can help us to figure out certain problems: if we have a histogram of salaries and the largest bucket is 100~000+ and there are 10 people in this category, and there is a query asking how many employees have a salary greater than or equal to \$100~000 we will know at least that the number of tuples to be returned is 10. Nice.
+If it seems strange to you that the expressions can be rewritten a bit, it is more normal than one might expect. Compilers do this all the time, generating code that is equivalent to, but much faster than, the code that you wrote in the source file. If you would like to hear more about that, you could take ECE 459, Programming for Performance! 
 
-The above numbers are exact values which we can know and, hopefully, trust although they could be slightly out of date depending on when exactly metadata updates are performed. The more exact values we have, the better our guesses. But things start to get interesting when, in the previous example, we ask something that does not have a category, such as how many people have a salary larger than \$150~000, where there isn't an obvious answer found in the metadata?
+This is only one possible transformation. Depending on the nature of the query, zero, one, or multiple equivalents may exist. It may be practical to write off some of those immediately, without assessing them, because we know they will be an inferior variant of a plan we have. The next step is then to draw up the plans for how we would execute the expressions. An annotated plan looks something like this~\cite{dsc}:
 
-As in the previous discussion of costs, we expect select operations and join operations to be the important ones since they are the ones we will do the most of (probably). Our strategies again come from~\cite{dsc}: 
+\begin{center}
+\includegraphics[width=0.45\textwidth]{images/optimization-2}
+\end{center}
 
-\subsection*{Estimating Selection Size}
+There may be many options for annotating each of the steps in the expression tree. A totally thorough approach would, once again, consider every possibility, but we realistically can eliminate some options that we know will be inferior to other choices. Then we may affix cost estimates to each plan as the sum of each part. The estimates can be wrong (it's why they are called estimates) but generally we can be sure we are at least in the correct ballpark. The final step is then to choose the the plan with the lowest cost. That last step is probably the least interesting since it just requires us to, well, compare some numbers and choose the smallest one.
 
-We will start with select operations.
+As a practical note, in SQL you may ask the database server to tell you how it would carry out a query. First you write the query as you normally would and prefix this query with the keyword \texttt{EXPLAIN}\footnote{Every time I do this, I can't help but feel like this: \url{http://imgur.com/lUIlU4l}. I think the all-caps nature of the keyword contributes.}.
 
+\subsection*{Expression Transformation}
 
-\paragraph{Single Equality Predicate.} The base case to consider is a single predicate in a selection with an equality condition (e.g., province = ``ON''). The estimate depends on what we know about the attribute $A$ referenced in the selection. If it is a key field, and therefore unique, we know the select will return 1 result. Unless, of course, it is not found and we will get zero results; but usually we do not expect that sort of result. 
+There are some rules for how exactly to transform a query to an equivalent alternative. These are a little bit like some things you may have learned in mathematics, like how multiplication commutes or that addition is associative or something like that. There is probably nothing really saved by re-ordering a simple math expression like $12 \times 2 \times 3$, although you may find it personally faster or easier to do the math in your head by first computing $2 \times 3$ and multiplying the result by $12$ rather than first computing $12 \times 2$ and then multiplying it by $3$. Or you may personally find it easier to do the opposite, or have no preference whatsoever. But the idea applies.
 
-If values are evenly distributed, then we can expect that $n_{r}/V(A, r)$ tuples should be returned. If there are ten possible values and everything is approximately evenly distributed then a select is expected to produce approximately 10\% of the tuples as its result. The uniform distribution may not be accurate, but if it is a reasonable approximation of the data, it is simple and fast. If a histogram is available, we can look in the range that contains that search value and guess based on the frequency count for that range instead.
+We should remember that database operations do not, unless there is an explicit order-by clause, specify an order in which tuples appear in the output. Order does not matter in the output. If a request is for addresses where the province is ``ON'' or the province is ``QC'' then one execution plan may result in all tuples where province is ``ON'' followed by all provinces where the province is ``QC'' or the reverse, or they may be all mixed together. All three of those outcomes are equivalent as long as the same tuples are in the output.
 
-\paragraph{Single Comparison Predicate.} 
-The next case is when we have a comparison like the salary greater than or equal to \$150~000 then we can, using the known maximum and minimum values of this attribute, take a guess. If the requested value $v$ is less than the minimum, we expect no rows returned; if the requested value is greater than the max also zero. Otherwise, the formula to estimate, where $m$ is the minimum value and $M$ is the maximum value: $n_{r} \times \dfrac{v - m}{M - m}$
+There are some rules from~\cite{dsc} and~\cite{fds} that we want to learn about. To spare a lot of repetition of what things mean, the notation will be centralized here. $\theta_{x}$ denotes a predicate (as part of a selection or join, for example), $L_{x}$ denotes lists of attributes, and $E$ denotes a relational algebra expression (a sub-expression or a relation $r$). All our other symbols from relational algebra remain the same as when they were first introduced.
 
-Of course, if a histogram is available, we would prefer to use that. 
+\paragraph{Rule 1: Conjunctive Selection}
+Conjunctive selection can be turned into a sequence of individual selections. This makes sense: if we have a selection from address where province is ``ON'' and city is ``Kitchener'', we can do this as a selection on address where city is ``Kitchener'', producing a temporary relation and then we do a selection where province is ``ON'' on that temporary relation. That is sometimes called a cascade of selection.
 
-\paragraph{Complex Predicates.}
-For conjunction as well as disjunction, we will use a new symbol, $s$, which represents the selectivity of the a particular selection: how likely it is that a particular tuple matches a condition. The probability that a tuple satisfies $\theta_{i}$ is $s_{i}/n_{r}$.
-
-For conjunctive selection, we want the probability that a certain tuple meets all of the critera. So the formula to estimate is:
-
-$n_{r} \times \dfrac{s_{1} \times s_{2}... \times s_{k}}{(n_{r})^{k}}$.
-
-For disjunctive selection it is the probability of matching an one of those conditions. The calculation will be simplified by trying to compute 1 minus the probability it satisfies none of the conditions: 
-
-$1 - (1 - \dfrac{s_{1}}{n_{r}}) \times (1 - \dfrac{s_{2}}{n_{r}}) \times ... \times (1 - \dfrac{s_{k}}{n_{r}})$
-
-Negation is pretty simple: if we have a predicate $\neg\theta$ then the number of tuples likely to meet that is the number of tuples in the relation subtract those that do match $\theta$.
-
-\subsection*{Estimating Join Size}
-
-If we are computing a join where the relations have no attributes in common, then the ``join'' is really the cartesian product and the number of tuples in the output will be the number of tuples in $r_{1}$ multiplied by the number of tuples in $r_{2}$. That's a lot.
-
-If the intersection of $r_{1}$ and $r_{2}$ is a key (unique value) for $r_{1}$ then we know that a tuple in $r_{2}$ can match with at most one in $r_{1}$ so the maximum number of tuples that could occur is the number of tuples in $r_{2}$. If the intersection is also defined as a foreign key on $r_{2}$ then it is exactly the number of tuples in $r_{2}$. This also applies symmetrically (so you can swap $r_{1}$ and $r_{2}$ in the previous statements).
-
-The difficult case occurs if the intersection of two relations is not a key in either of those two relations. In that case, looking at the attributes in the relation, which we will call $A$, then the number of tuples in the join relation are:
-
-$\dfrac{n_{r_{2}}}{ V(A, r_{2})} $. 
-
-In other words, the average number of values in $r_{2}$ that have a given value of $A$. Since we expect that they match with $r_{1}$ then we estimate that there will be:
-
-$\dfrac{n_{r_{1}} \times n_{r_{2}}}{ V(A, r_{2})} $. 
-
-Now wait, you might say, because the denominator here depends only on $r_{2}$, and if you switched the positions of $r_{1}$ and $r_{2}$ we could get a different answer if $V(A, r_{1})$ is not identical to $V(A, r_{2})$. Quite right. Those two values may be different if not all entries in one of the tables can be joined with an entry in the other. That is unusual but not impossible. If that is the case, we would choose the smaller of the two estimates since the smaller relation will limit what we can do.
-
-The previous calculation does assume, of course, that all values are equally likely. If they are not, then applying a histogram will give a more accurate prediction. 
-
-\subsection*{Other Operations}
-
-\paragraph{Projection.} Projection on an attribute $A$ will result in either $n_{r}$ tuples if duplicates are allowed, or $V(A, r)$ if they are not. The relational algebra definition does not permit duplicates, mind you.
-
-\paragraph{Aggregation.}
-Suppose we seek an aggregation on some attribute $B$ grouping by $A$. Imagine in an example that $B$ is salary and $A$ is job title. Then there will be one tuple in the output for each distinct value of $A$.
-
-\paragraph{Set Operations.}
-
-If a set operation has both operands as the same relation, it can be rewritten as a compound predicate and that would give us our estimates. Those sorts of transformations are not especially difficult to imagine: $\sigma_{\theta_{1}}(r) \cup \sigma_{\theta_{2}}(r)$ is easily rewritten as $\sigma_{\theta_{1} \vee \theta{2}}(r)$. 
-
-If the set operation is on different relations then we could actually estimate it directly. We will typically assume worst case scenario, so: (1) union will be the size of the two relations, (2) intersection will be the size of the smaller of the two relations, and (3) in set difference we will assume in $r_{1} - r_{2}$ that the result is the size of $r_{1}$ (i.e. no tuples removed). 
+In relational algebra: $\sigma_{\theta_{1} \wedge \theta_{2}}(E) = \sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E))$
 
 
-\paragraph{Outer Join.} Outer joins are fairly simple. For a left outer join: $r_{1}$ {\tiny \textifsym{d|><|}} $r_{2}$ the estimated size is $r_{1} \bowtie r_{2}$ plus the size of $r_{1}$; right outer join $r{1} {\tiny \textifsym{|><|d}} r_{2}$ is estimated as $r_{1} \bowtie r_{2}$ plus the size of $r_{2}$ and the full outer join {\tiny \textifsym{d|><|d}} is just the combined size of $r_{1}$ plus $r_{2}$.
+\paragraph{Rule 2: Selection Commutes}
+Selection commutes. Suppose the original selection is on address where city is ``Kitchener'', producing a temporary relation and then we do a selection where province is ``ON'' on that temporary relation. This is equivalent to doing a selection on address where province is ``ON'' and producing a temporary relation, and then we can select where city is ``Kitchener'' on the temporary relation. The results are identical in both cases. 
 
-Admittedly, I beg to differ from the textbook on the size of the outer joins. We know that in a left outer join, for example, there will be $r_{1}$ tuples in the output because one tuple will appear for each tuple in $r_{1}$ whether it has a match in $r_{2}$ or not. The right outer join is symmetric. I would therefore save the headache of trying to estimate (or even reuse) an estimate of $r_{1} \bowtie r_{2}$. By this same logic the full outer join does agree with the previous paragraph.
+In relational algebra: $\sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E)) = \sigma_{\theta_{2}}(\sigma_{\theta_{1}}(E))$
 
-\subsection*{Distinct Values}
+\paragraph{Rule 3: Projection Redundancy Elimination}
 
-If we are interested in knowing how many distinct values of an attribute $A$ there are, we have a few shortcuts based on the query. The simplest possible case is if the query specifies that $A$ equals some value $a$ in which case there will be at most 1 distinct value of $A$. If the predicate is complex and there are several allowed values $a_{1}, a_{2}, a_{3}... a_{n}$ then we can be certain the maximum number of possible values of $A$ is $n$. The last easy case is if there is a comparison, in which case the estimate is $V(A,r) \times s$ where $s$ is the selectivity of the selection.
+Only the last projection operation is needed; all other projection operations do not do anything. This should be pretty logical given that projection reduces the returned attributes to just those that are specified in the projection.
 
-Otherwise we will assume that the distribution of values of $A$ has no relation to the distribution of values in the selection predicate. The correct way to guess is through the use of probability theory, but we could also do a quick estimate of the smallest value of $V(A, r)$ (the most restrictive selection condition). 
+In relational algebra: $\Pi_{L_{1}}(\Pi_{L_{2}}(\Pi_{L_{3}}(E))) = \Pi_{L_{1}}(E)$
 
-This same logic holds for estimating how many unique values will be returned in a join: the smallest condition will limit how many rows are in the relation. Whether that is in the left relation or the right depends heavily on the join conditions. 
+\paragraph{Rule 4: Commuting Selection and Projection}
+If a selection involves the same attributes as a projection list, we can commute the two operations. That is, if $L$ contains exactly the same set of attributes $A_{1}, A_{2}...$ that are referenced in $\theta$ then:
 
-\subsection*{Advanced Query Optimization}
+$\Pi_{L}(\sigma_{\theta}(E)) = \sigma_{\theta}(\Pi_{L}(E))$
 
-There are a few more advanced techniques which we really will not dig into in great detail, but will examine in some degree. 
+\paragraph{Rule 5: Selection Combination}
 
-\paragraph{Top-K.} A query that asks you to find the top $k$ tuples based on some attribute, such as finding the top ten customers based on annual revenue. This could potentially save some work if we know that we need no further results are required. In Pipelining might be sufficient if the conditions are simple enough that we can perhaps sort and then process the data. But for something like top customers by revenue, we would probably need to find all the tuples that match, aggregate them, and then sort by income. Heuristics might help, but might not: generally more invoices means more income, but we could also have a customer with one invoice for \$10~000~000. 
+Selection may be combined with both cartesian product. This is, as you will recall, how a theta join works and is shown as (a) below in the relational algebra. If a selection being combined with what is already a theta join, that is the same as a theta join with a conjunctive predicate, shown as (b) below in relational algebra.
 
-\paragraph{Update Ordering.} 
+a. $\sigma_{\theta}(E_{1} \times E_{2}) = E_{1} \bowtie_{\theta} E_{2}$
 
-Update queries often have a bunch of queries restricting them to one tuple. If that is the case, update optimization is not really an issue. But if the update affects a number of rows, then there is a possible problem called the \textit{Halloween problem}, apparently because it was discovered on that day. Suppose an update is being done in a pipelined fashion: an updated tuple could be inserted into the relation ahead of where the scan is, meaning the tuple could be updated again incorrectly. 
+b. $\sigma_{\theta_{1}}( E_{1} \bowtie_{\theta_{2}} E_{2}) = E_{1} \bowtie_{\theta_{1}\wedge\theta_{2}} E_{2}$
 
-The problem can be solved in a few ways. One is to determine the tuples to be modified first before any updates take place. Another has to do with splitting up the updates to be done into batches so that we don't have to wait for the whole selection to be done.
+\paragraph{Rule 6: Theta Joins Commute}
+Theta (and natural) joins commute, so the operands can be swapped in order and the same result is produced. That is a relief, considering our previous discussion of what blocks need to get moved into memory to complete the operation. This does potentially change the order of the attributes in the output, but we should not actually care. Normally a selection statement, for example, specifies some attributes to be returned, meaning there is a projection operation to be done. If there is a select \texttt{*} operation, no order is guaranteed in the output anyway.
 
-I would argue that these sorts of update-ordering problems can be more properly solved by good transaction management. But this is a topic we will have to return to.
+In relational algebra: $E_{1} \bowtie_{\theta} E_{2} = E_{2} \bowtie_{\theta} E_{1}$
 
-\paragraph{Multiquery Optimization.}
+The natural join is a special case of the theta join, so $E_{1} \bowtie E_{2} = E_{2} \bowtie E_{1}$
 
-The first way we can optimize multiple queries at once is to avoid repeating any operation that is used in more than one query. That is to say, if query 1 and query 2 both have some part in common (e.g., the same subquery), the result of that subquery should be reused rather than recomputed a second time. That would, of course, require that query 1 does not modify the data, which could cause a problem.
+\paragraph{Rule 7: Natural Join Associates}
+When discussing joins, we actually already covered this rule, that they are associative, i.e. we can do them pairwise in whichever order we prefer. For theta joins, it looks a little more complicated, but the outcome is the same, keeping in mind that $\theta_{2}$ references only attributes of Expressions 2 and 3 (so it can't really be applied to Expression 1).
 
-The second way to optimize when we have multiple queries is to do some things in parallel. If query 3 scans over a particular relation $r$ looking for some attributes, and query 4 scans over the same relation $r$ looking for something different, then we could note the tuples matching queries 3 and 4 in one single pass rather than having to scan it twice.
+
+a. $(E_{1} \bowtie E_{2}) \bowtie E_{3} = E_{1} \bowtie (E_{2} \bowtie E_{3})$. 
+
+b. $(E_{1} \bowtie_{\theta_{1}} E_{2}) \bowtie_{\theta_{2}\wedge\theta_{3}} E_{3} = E_{1} \bowtie_{\theta_{1}\wedge\theta_{3}} (E_{2} \bowtie_{\theta_{2}} E_{3})$. 
+
+c. Because cartesian product is an empty theta join, $(E_{1} \times E_{2}) \times E_{3} = E_{1} \times (E_{2} \times E_{3})$. 
+
+
+\paragraph{Rule 8: Selection Distribution}
+Selection distributes over theta join if the following conditions hold:
+
+a. It distributes if all the attributes in $\theta_{0}$ involve only the attributes of one of the expressions $E$ being joined. This means we can cut down the first relation to only the matching rows before performing the join, which is hopefully a faster way to do it. In this example, if $\theta_{0}$ applies only to $E_{1}$:
+
+$\sigma_{\theta_{0}}(E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{0}}(E_{1})) \bowtie_{\theta} E_{2}$ 
+
+b. It distributes when $\theta_{1}$ involves only the attributes of $E_{1}$ and $\theta_{2}$ only the attributes of $E_{2}$. This would mean cutting down both relations before performing the join.
+
+$\sigma_{\theta_{1}\wedge\theta_{2}} (E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{1}}(E_{1})) \bowtie_{\theta} (\sigma_{\theta_{2}}(E_{2})) $
+
+Both of these scenarios apply also for the cartesian product.
+
+\paragraph{Rule 9: Projection Distribution}
+The projection operation can be distributed over theta join if the following conditions hold:
+
+a. If $L_{1}$ and $L_{2}$ are attributes of $E_{1}$ and $E_{2}$ respectively, and $\theta$ contains only attributes in $L_{1} \cup L_{2}$, then we can distribute. This means that we can, much like the previous rule, cut down the relations using the projection before performing the join:
+
+$\Pi_{L_{1} \cup L_{2}}( E_{1} \bowtie_{\theta} E_{2} ) = (\Pi_{L_{1}}(E_{1})) \bowtie_{\theta} (\Pi_{L_{2}}(E_{2}))$
+
+b. If $L_{1}$ and $L_{2}$ are attributes of $E_{1}$ and $E_{2}$ respectively, and $L_{3}$ are join attributes of $E_{1}$ not $L_{1} \cup L_{2}$ and $L_{4}$ are join attributes of $E_{2}$ not $L_{1} \cup L_{2}$:
+
+$\Pi_{L_{1} \cup L_{2}} (E_{1} \bowtie_{\theta} E_{2}) = \Pi_{L_{1} \cup L_{2}}((\Pi_{L_{1} \cup L_{3}}(E1)) \bowtie_{\theta} (\Pi_{L_{2} \cup L_{4}}(E_{2})))$
+
+Again, this can also be applied to cartesian product.
+
+\paragraph{Rule 10: Set Operations Commute}
+
+The set operations union and intersection commute  (difference does not).
+
+a. $E_{1} \cup E_{2} = E_{2} \cup E_{1}$
+
+b. $E_{1} \cap E_{2} = E_{2} \cap E_{1}$
+
+\paragraph{Rule 11: Set Operations Associate}
+Union and intersection are associative:
+
+a. $(E_{1} \cup E_{2}) \cup E_{3} = E_{1} \cup (E_{2} \cup E_{3})$
+
+b. $(E_{1} \cap E_{2}) \cap E_{3} = E_{1} \cap (E_{2} \cap E_{3})$
+
+\paragraph{Rule 12: Selection Distribution II}
+
+Selection distributes over union, intersection, and difference operations:
+
+a. $\sigma_{\theta}(E_{1} \cup E_{2}) = \sigma_{\theta}(E_{1}) \cup \sigma_{\theta}(E_{2})$
+
+b. $\sigma_{\theta}(E_{1} \cap E_{2}) = \sigma_{\theta}(E_{1}) \cap \sigma_{\theta}(E_{2})$
+
+c. $\sigma_{\theta}(E_{1} - E_{2}) = \sigma_{\theta}(E_{1}) - \sigma_{\theta}(E_{2})$
+
+\paragraph{Rule 13: Projection Distribution II}
+The projection operation distributes over a union operation.
+
+In relational algebra: $\Pi_{L}(E_{1} \cup E_{2} = (\Pi_{L}(E_{1}))\cup(\Pi_{L}(E_{2}))$
+
+\subsubsection*{Rules Review}
+
+These rules are (sadly) neither a complete set nor minimal. There are other potential transformations that can be done, including various rules from boolean algebra (e.g., $\neg (a \wedge b) = \neg a \vee \neg b$) that are not covered here~\cite{fds}. As we might see from looking at the rules as well, it is possible to use certain rules to derive other ones in that list. This is okay, as they are intended as a human comprehensible list. If we were actually writing these for the computer we would probably want a minimal set to reduce the amount of computation done to generate all the equivalent transformations. 
+
+Having learned a bit about equivalence rules and what they are for, next time we will work on putting them to use and affixing cost estimates.
 
 \input{bibliography.tex}
 

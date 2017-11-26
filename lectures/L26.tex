@@ -2,162 +2,133 @@
 
 \begin{document}
 
-\lecture{ 26 --- Snapshot Isolation, Weak Consistency, Insert/Delete }{\term}{Jeff Zarnett}
+\lecture{ 26 --- Timestamp, Validation, \& Multiversion Protocols }{\term}{Jeff Zarnett}
 
-\section*{Snapshot Isolation for Concurrency Control}
+\section*{Concurrency via Timestamps}
 
-We already got a look at the idea of transaction isolation but we are now going to examine more carefully how it works behind the scenes. In general, the idea is that every transaction has its own ``world'' it can operate in and then we need to merge the result when the transaction is ready to commit. And that needs to be done atomically.
+Beyond just doing concurrency through some sort of locking protocol, we can also use timestamps for arranging concurrency. The timestamp, as you will recall, is a unique identifier, and they are typically assigned in the order the transactions are submitted to the system~\cite{fds}. If timestamps are used appropriately, then consistent results are produced without the use of any locks or locking, meaning deadlock can never occur.
 
-We can use validation to decide whether a transaction is allowed to commit. This applies really only for transactions that do at least one write. Reads don't interfere with one another, really, and if the two writes are on disjoint items, there are no problems there either. It only gets interesting if there are two transactions that have items in common that run at the same time. Remember that here, when we talk about concurrency, we mean two transactions that are ``active'' at the same time.
+The notation for the timestamp of a transaction $T$ is $T\!S(T)$. The transactions can be ordered based on their timestamps; if a transaction $T_{i}$ arrives and then later another transaction $T_{j}$ arrives, then $T\!S(T_{i}) < T\!S(T_{j})$. If two transactions arrive at exactly the same time, then some sort of serialization procedure will be needed to make sure that they are not identical. It is commonly the case that the system clock is used to get the time stamp; just read the current value of the clock and use that.
 
-Usually, we do not like to just allow both transactions to go forward because the first write is then overwritten by the second; a ``lost update''~\cite{dsc}. This is sometimes  acceptable as a choice, even if some textbooks say that this is really undesirable and horrible.
+The alternative is a logical counter: increment a simple integer counter for each transaction. After a timestamp is assigned, just increment the counter. Eventually there is a limit (even if you can have $2^{64}$ transactions, in theory, which is quite a lot, but not infinite) but at some point the transaction counter will need to roll over or reset.
 
-The first snapshot isolation strategy is called \textit{first committer wins}: whichever transaction $T$ is ready to commit first has to pass a simple test. If any transaction concurrent with $T$ has already written an update to any data item that $T$ wants to write, $T$ is rolled back; otherwise $T$ commits and its updates are written to the database. It's called first committer wins, because whatever transaction gets to the commit statement proceeds and any later transactions are rolled back.
+Generation of the timestamps is fairly simple, it would seem, but what are they for? Timestamps are used for serializability order in the schedule; the system must ensure that the schedule executed is equivalent to a serial schedule in which transactions are ordered according to their timestamps (ascending)~\cite{dsc}. Note that this is very different from two-phase locking. In two phase locking, a schedule is serializable by being equivalent to some schedule that is permitted under the locking rules; in timestamp ordering the schedule is equivalent to the a particular serial ordering matching ascending transaction timestamps~\cite{fds}.
 
-The alternative is \textit{first updater wins} and this is pretty much exactly what it sounds like: it is the timing of the write rather than the timing of the commit that indicates which transaction is allowed to proceed and which one(s) must be rolled back.  
+Every data element in the database is associated with separate timestamps for reading and writing. The notation can vary: in~\cite{fds} they are called \textbf{read\_TS} and \textbf{write\_TS}; in~\cite{dsc} they are \textbf{r-timestamp} and \textbf{w-timestamp}. To save space I might personally like $T\!S_{r}$ and $T\!S_{w}$. Each time the a data element $X$ is read or written, its appropriate timestamp is updated to the timestamp of the transaction performing the read or write.
 
-Locks are always released when the transaction either commits or aborts as is necessary. But strangely, the fact that a transaction $T_{2}$ writes a value later than $T_{1}$ writes that same value might succeed if for some other reason the first transaction aborts~\cite{dsc}. But to keep things from getting rather confusing it is likely a simple implementation will just force the abort if $T_{2}$ finds it wants to get a write lock on a data item that is currently exclusively held. Failure equals death indeed.
+The formal definition of the read timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully read $X$. So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has read $X$ successfully~\cite{fds}.
 
-This scheme as presented, however, does not ensure serializability. There are two suggested scenarios for how this might happen~\cite{dsc}:
+The formal definition of the write timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully written $X$. So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has written $X$ successfully~\cite{fds}.
 
-Example 1: If we have two concurrent transactions $T_{1}$ and $T_{2}$ that operate on $A$ and $B$. If $T_{1}$ reads $A$ and $B$, then updates $B$ and $T_{2}$ reads $A$ and $B$ and updates $A$, we have the potential for a conflict. Neither transaction sees the updates of the other when they do their reads, when it comes to the write... well... neither one has a problem, strictly speaking, because they write different data items and whether first-updater-wins or first-committer-wins takes place, neither transaction is detected as conflicting and neither is rolled back.
+Unfortunately, simple timestamp ordering does not avoid the risk of cascading rollback. Schedules are not guaranteed to be recoverable. This leads us to the \textit{timestamp ordering protocol} as described in~\cite{dsc}.
 
-In spite of that, we have a problem: we have an outcome (output data) that could not happen if we had serial execution of the transactions; either $T_{1}$ then $T_{2}$ or $T_{2}$ then $T_{1}$. Now what? 
+For a read operation $T_{i}$ is performing on $X$:
+\begin{enumerate}
+	\item If $T\!S(T_{i}) < T\!S_{w}(X)$ then $T_{i}$ needs to read a value of $X$ that was already overwritten -- and therefore the read operation is not permitted and $T_{i}$ is rolled back.
+	\item If $T\!S(T_{i}) \geq T\!S_{w}(X)$ the read operation is executed and $T\!S_{r}$ is set to $\max ( T\!S(T_{i}),~T\!S_{r}(X))$.
+\end{enumerate}
 
-It looks like under this scheme, some things like foreign key checks, primary key checks, et cetera, cannot be checked in the transaction world itself and must be checked an extra time when the transaction commits and is finally ready to replace the actual stored version on the database.
+For a write operation $T_{i}$ is performing on $X$:
+\begin{enumerate}
 
-Example 2: Imagine we still have $T_{1}$ and $T_{2}$ and $A$ and $B$ as before. $T_{1}$ reads $B$ and updates $B$, and $T_{2}$ reads $A$ and $B$ and updates $A$. As before, there are no direct conflicts on the data items so neither first-committer-wins nor first-updater-wins would detect a problem. Furthermore, there's a possible serial order here: there are no conflicts on $A$, and no cycle in the precedence graph: $T_{2}$ reads the value of $B$ that existed before the write by $T_{1}$. 
+\item If $T\!S(T_{i}) < T\!S_{r}(X)$ then the value that $T_{i}$ is producing was needed previously but the system assumed it wasn't going to happen and proceeded without it; thus the write is not permitted and $T_{i}$ is rolled back.
+\item If $T\!S(T_{i}) < T\!S_{w}(X)$ then $T_{i}$ is attempting to write an obsolete value; the write is not permitted and $T_{i}$ is rolled back.
+\item Otherwise, the write proceeds and $T\!S_{w}(X)$ is updated to $T\!S(T_{i})$. 
 
-A third transaction, even one that is read-only, can cause the cycle to occur, however. If $T_{1}$ commits and $T_{2}$ is still running, and $T_{3}$ is created and its view of the world has the update from $T_{1}$ but not $T_{2}$ and suddenly we have the cycle in the precedence graph, rendering the schedule non-serializable.
+\end{enumerate}
 
-After all that, though, we can accept some degree of non-serializability as long as it does not produce inconsistent results. For performance and other reasons it might be sensible to just let execution orders that are not serializable proceed as long as they don't produce inconsistent results.  Or we will allow such things if we are convinced that inconsistencies don't make a big difference. 
+When a transaction is rolled back and restarted, the transaction is assigned a new timestamp. The timestamp ordering protocol does provide us with conflict serializability, because conflicting operations are processed in timestamp order. Because there are no locks, there cannot be deadlocks -- but can starvation still occur? The answer is yes, a very long transaction might be constantly frustrated by shorter transactions constantly swooping in and making changes that force a rollback of the long transaction. Unfortunately it might be necessary to block other transactions and let the long one finish~\cite{dsc}.
 
-A small example of when we might have to really enforce constraints is the primary key. If you have a sequential counter of some sort, an ID number, then two newly created entries in the database would each be looking at the old snapshot data and will produce the same new number. Neither transaction can detect that another has tried to use the same ID number, but only when we are actually ready to perform the second commit will the duplicate key value be detected.
-
-This is, actually, slightly different from what we have discussed thus far, because it focuses on an insertion rather than just a simple write. That is different...
-
-\section*{Changes: Insertion \& Deletion}
-
-If you can believe it, all the discussion thus far on the subject of concurrency control has excluded the possibility of performing an insertion or deletion on the data items; only read and writes were allowed. But those are pretty important operations, so we can't ignore them forever. 
-
-\paragraph{Deletion.} The impact of delete depends, obviously, on what the else is going on at the time. We can take a view of what happens by considering the relation of the delete instruction relative to other instructions. In each of the cases, instruction $I_{1}$ is our delete instruction~\cite{dsc}:
-
-\begin{itemize}
-	\item \textbf{Read instruction}: If the delete $I_{1}(X)$ happens before a read of X then the read will get a logical error; if the read happens before the delete, there is no problem.
-	\item \textbf{Write Instruction}: If the delete happens before the write, the write will get a logical error; if the write happens before the delete, there is no problem.
-	\item \textbf{Delete Instruction}: Whichever instruction goes first will succeed; the second one will have an error (can't delete a deleted item).
-	\item \textbf{Insert Instruction}: If the element doesn't exist to begin with, the delete can't be before the insert, otherwise there's nothing to delete... If the item did exist then a delete should go first so the new item replaces it.
-\end{itemize}
-
-It is sensible to conclude that the delete operation requires an exclusive lock on that data item before it can be deleted. Also, the rules for writing apply for a deletion action if using a timestamp ordering protocol. It is probably not a stretch to imagine it is very much like a write.
-
-\paragraph{Insertion.} The insert operation conflicts were explained above when discussing deletion, so they don't need to be repeated here. Insert is also a lot like a write so again, the insert operation is treated like a write: the newly created item is treated as exclusively locked by its creating transaction until the transaction commits~\cite{dsc}.
-
-I think it bears repeating at this level that the changes we want to make here are at the level of actual manipulation of the underlying data. It is perfectly valid, from the perspective of the user writing the SQL, to do a read and get back ``no results'' because the item was very recently deleted. The problem here is that we have identified what data elements we need to access and the ones we want are not there (or not as expected, or there are extra ones...) and we need to stop, go back, reformulate the list of things to do, and then try to do it again. 
-
-\paragraph{The Phantom of the Op... Database.} Suppose the following transactions are executed concurrently: (1) a select statement that finds all books published by author ``Jim Butcher''; (2) an insert statement that adds a new book with author ``Jim Butcher'' amongst its attributes. 
-
-There are two possibilities for how this might go: $T_{1}$ happens before $T_{2}$ or vice versa. If $T_{2}$ happens first, nothing weird happens -- in the serial schedule, first it's $T_{2}$ then $T_{1}$ and the new book appears in the results. In the second case, if $T_{1}$ goes first and it does not contain the new book, then in the serial schedule, $T_{1}$ appears first.... except... these transactions do not operate on any tuples in common and yet there is still some dependencies between them, and they conflict on a ``phantom'' tuple (one that doesn't exist)~\cite{dsc}. This is called the \textit{Phantom Phenomenon} and has nothing at all to do with the breakout success of the Andrew Lloyd Webber musical. 
-
-The phantom phenomenon can also happen if a read changes the value, say, if an item was entered incorrectly as ``Jim Butchr'', a corrective update statement run at the same time as $T_{1}$ above produces the same problem.
-
-As a first solution, you might consider that an insertion or deletion should exclusively lock the relation entirely. That's one way to do it, it's certainly likely to be effective at getting rid of the phantom problem, but it is a painful solution because it forces a lot of transactions to wait or roll back when we really don't need that. The goal is to prevent insertions and updates that match the predicate in question, but only those (keeping the scope of the lock as minimal as possible)
-
-Remember the index? So far we have just assumed that data items being updated are tuples, but that's not strictly true, because index data elements are also data and need to be lockable. Finding items that match a search predicate requires searching an index or performing a full table scan to find the data~\cite{dsc}. 
-
-Idea: let's associate a data item (available to be locked) with each table, with the goal that it represents the way to find tuples in the relation~\cite{dsc}. Any time we want to update the data about what is in the relation, and transactions that want to read what tuples are in the relation need to also lock this item (in shared mode perhaps). And anything that operates on an index must lock the index. This moves the lock out of the realm of shadows and into the ``real'' world -- the lock conflicts here are now on an actual lock item.
-
-Keep in mind this is very much distinct from locking the entire table: locking is still required on tuples and holding this sort of lock only restricts whether other transaction can update (or read) the information about what tuples are in the relation~\cite{dsc}. Even so, it's not all that dissimilar from the idea of having one lock for the whole table, in that it almost serializes all transactions.
-
-An alternative is \textit{index locking}, which allows us to lock parts of the index at finer granularity. The protocol is~\cite{dsc}:
-
-\begin{itemize}
-	\item Every relation must have at least one index.
-	\item A transaction $T_{i}$ can only access tuples after it has found them using an index (if we must do a full table scan, it's treated as if we just crawled through the whole of some index...)
-	\item A transaction that performs a lookup (finding one tuple or multiple) must get a shared lock on all the index leaf nodes it accesses.
-	\item A transaction may not insert, delete, or update any tuples in the relation without updating every index of that relation. That requires getting exclusive locks on all index leaf nodes affected by the operation. 
-	\item Locks are still obtained on tuples as usual.
-	\item Two phase locking protocol still must be followed. 
-\end{itemize}
-
-
-\paragraph{Predicate Locking.} You may imagine that the idea of index locking does not actually match very well with the idea of making the locking match the predicates only, such as only checking on things that affect author. That sort of locking technique sounds good but it is more difficult to implement. 
-
-\subsection*{Weak Consistency}
-
-The SQL standard provides several isolation levels, and it's not necessary that we stick with serializability as the level of consistency we are willing to accept. We can weaken the rules a bit to get some more performance out of the database and that gives us what is called \textit{weak consistency}: there are rules, but they are more like... guidelines?
-
-\paragraph{Degree-Two Consistency.}
-The idea of \textit{degree-two consistency} is to prevent cascading rollbacks (aborts) without guaranteeing serializability. There are shared and exclusive locks, but two-phase behaviour is not required; in fact shared locks can be released at any time and locks can be acquired at any time, but exclusive locks must be held until the transaction commits or aborts~\cite{dsc}. This means that we might read out of date data, but uncommitted values can never be read, so the level of transaction isolation here is ``read-committed''.
-
-\paragraph{Cursor Stability.} Cursor stability is a form of degree-two consistency for programs that iterate over some set of tuples using an iterator or cursor~\cite{dsc}. This means that the tuples are examined or processed one at a time, in some order. To make sure that this works alright, the tuple currently being examined needs to be locked: before processing it is locked in shared mode; if any processing changes that tuple then it must first be locked in exclusive mode. 
-
-We don't get serializability of the transactions, but it can be a way to improve performance in a database where there are a number of relations that are popular and frequently accessed. But ultimately this offloads some of the work onto the applications using the database, meaning they must make sure they don't have a problem with non-serializable schedules~\cite{dsc}.
-
-\paragraph{Users Ruin Everything...}
-Remember the example earlier about selecting seats on a flight (or at a concert or sporting event...). When you go to select seats, you are presented with a map and you get to make your choice about which seat. You have some period of time, e.g., 2 to 10 minutes to get this done. That is a very long time as far as the database is concerned. We discussed the idea of using transaction isolation as a way of dealing with this problem: if two transactions select the same seats then we reject the second transaction.
-
-This does have a major drawback when we're dealing with user-level timeframes. The database must remember information about updates performed by a transaction long after it has ended, for as long as any other concurrent transaction is still alive. In the case of transactions like a booking that give you 10 minutes of time, this means a transaction's information needs to be retained for up to 20 minutes. 
-
-A more likely solution is that we need to split it up into multiple transactions. One transaction is completed to read the data and it is provided to a client application (e.g., web browser). Then another transaction is created when the user is ready to save changes then we create another transaction to save the data back to the database. 
-
-The data may have changed in the meantime, and if they did the attempt to merge the changes in that transaction will result in an error. What the application needs to do is reload the data (repeat the read(s) that produced the data elements and see if they changed. Detecting changes isn't as simple as just comparing fields, because it (1) would require saving the original read version, and (2) the ABA problem.
-
-The ABA problem is not any sort of acronym nor a reference to the band ABBA. It's a value that is A, then changed to B, then changed back to A. The ABA problem is a big mess for the designer of lock-free Compare-And-Swap routines. It looks like nothing has changed, but actually it has. 
-
-The solution to the ABA problem is version numbers: every tuple is assigned a number that represents the version; it is initialized to 0 and incremented (atomically) each time the tuple is updated. Then a transaction needs only to look at the version number. If the version number doesn't match the original read, then it has changed. More formally, for each tuple modified in the current transaction, if the version numbers match then it may proceed and the version number is increased by 1; if there is a mismatch the transaction is rolled back (restarted, most likely)~\cite{dsc}.
-
-This is called \textit{optimistic concurrency control without read validation}. We assume we are going to succeed without conflict (are optimistic) and rollback if we must. It is without read validation, because we check version numbers only for writes that we are going to perform. If we want optimistic concurrency control, then we must also check the version numbers of any reads that went into the transactions too.
-
-
-\subsection*{Concurrency in Index Structures}
-
-Rather than taking the simple approach and treating the index exactly the same as regular data elements, we can use special handling for the index structures to improve performance. More obviously, we can allow non-serializable access to the index as long as the results are consistent. 
-
-The first technique for locking on index structures is called the \textit{crabbing protocol}~\cite{dsc}:
-
-When searching for a key value, first lock the root note in shared mode, and when traversing down the tree, acquire a shared lock on the child node and release the lock on the parent node, repeating this until a leaf node is reached.
-
-When performing an insertion or deletion of a leaf node:
-\begin{itemize}
-	\item Follow the same protocol to reach the leaf node (acquire and release shared locks).
-	\item Lock the leaf node in exclusive mode and perform the insertion or deletion.
-	\item If a split or coalescence is needed, lock the parent in exclusive mode and do the changes; release the leaf nodes.
-	\item If the parent itself needs splitting or coalescing, retain the lock on the parent and propagate the changes; otherwise release the parent.
-\end{itemize}
-
-There is the possibility of deadlock in this protocol, but we know how to deal with deadlocks: restart a transaction and try again.
-
-
-The second technique we will talk about requires a modification of the B$^{+}$-trees called \textit{B-Link} trees. These have the added restriction that says every node (really, all of them) have a pointer to its sibling to the right. This helps in case a search is taking place at a time when a node is being split and it can continue. The locking protocol is then different for all operations as described below~\cite{dsc}:
-
-\textbf{Lookup}: Each node must be locked in shared mode before it is requested. A lock on any non-leaf node is released before a lock on any other node is requested. If a split takes place while a lookup is happening, then we might need to look in the sibling to find something (which is why there are sibling pointers). Leaf nodes are locked using the two phase protocol.
-
-\textbf{Insertion/Deletion}: The rules for lookup are followed to find the leaf node where the records will be inserted or deleted. The lock for the leaf is upgraded to exclusive, and the insertion or deletion is performed. Two phase locking is used to avoid the phantom phenomenon.
-
-If as a result of insertion or deletion, a split or coalescence is needed, the steps described below are followed to make that happen.
-
-\textbf{Split}: If a node is split, a new node is created as per normal for a B-Tree and it becomes the right sibling of the original node (and the previous right sibling of the original is now the right sibling of the new node). Then the original node is released and an exclusive lock on the parent is requested to insert a pointer to that new node.
-
-\textbf{Coalescence}: If a node need to be coalesced, then the node it will be merged with must be locked in exclusive mode. Then the parent node of the newly-created node must be locked exclusively so that the deleted node can be removed. The parent may be coalesced as well if necessary, otherwise it is released.
-
-It's worth noting that it's possible that an insertion locks a node, unlocks it, and re-locks it again.  Below is an example (from~\cite{dsc}) of insertion of ``Chemistry'' into a B-Link tree. 
+In the example below, transaction $T_{25}$ reads values $A$ and $B$ , and transaction $T_{26}$ modified both $A$ and $B$:
 
 \begin{center}
-	\includegraphics[width=0.9\textwidth]{images/b-link1}
-	\includegraphics[width=0.9\textwidth]{images/b-link2}\\
-	Insertion of ``Chemistry'' into a B-Link tree (before above, after below).~\cite{dsc}
+	\includegraphics[width=0.3\textwidth]{images/timestamp-schedule}\\
+	A schedule produced with timestamp ordering~\cite{dsc}.
 \end{center}
 
-So, running through the example: the insertion operation runs and it finds the destination where ``Chemistry'' should be inserted, which results in splitting the node  at the bottom left and the creation of a new one.  
+It is worth noting that neither two phase locking nor the simple timestamp ordering protocol covers all serializable schedules; that is, there are some that are valid under one but not valid under the other~\cite{fds}. That's fine, as far as we are concerned -- we don't need to consider all possibilities; we will get enough choices.
 
-Now let's see what happens if there is a lookup while this is going on at this point. The lookup gets blocked at the bottom-left leaf node because it is exclusively locked by the insertion. The lookup holds no locks at this point.
+If we would like to recoverability we can have strict timestamp ordering. In strict timestamp ordering, a transaction $T_{i}$ that issues a read or write of an item $X$ where $T\!S(T_{i}) > T\!S_{w}(X)$, then the read or write operation is delated until the transaction that last wrote $X$ has either committed or aborted. This, in some way, requires simulating locking item $X$ until a previous write has been committed or aborted, but there cannot be a deadlock because a transaction can only wait on an older transaction (one with a  lower timestamp)~\cite{fds}.
 
-The insertion operations complete and relocks the parent node in exclusive mode, completing the insertion. This completely screws up the lookup operation because it is now holding a pointer to the wrong node. That's okay, because the lookup can start moving to the right through the sibling nodes until it finds the correct one. That seems a little bit painful, but it does mean it will succeed.
+\paragraph{Thomas's Write Rule.} A modification of the basic algorithm called Thomas's Write Rule (or the Thomas\footnote{Named after the author of the paper describing this rule, Robert H. Thomas} Write Rule) allows greater concurrency than the basic algorithm and also, hopefully, rejects fewer writes. To explain it simply, it is ``ignore outdated writes''.
 
-If instead of a split there was a coalescence, a lookup might be left holding the pointer to a node that no longer exists. That's okay, this lookup just needs to restart from the beginning. It's not ideal, but it does happen. To reduce the amount of times this happens, we might try to leave some nodes uncoalesced even when that would be the normal procedure; this breaks the rules about B-Trees, but it might be very brief if there are many more insertions than deletions.
+More formally, the write item checks are modified to the following~\cite{fds}:
+\begin{enumerate}
+	\item If $T\!S_{r}(X) > T\!S(T_{i})$ then abort and roll back $T_{i}$ (write rejected).
+	\item If $T\!S_{w}(X) > T\!S(T_{i})$, then do not execute the write, but continue executing (do not roll back the transaction).
+	\item Otherwise, the write proceeds and $T\!S_{w}(X)$ is updated to $T\!S(T_{i})$. 
+\end{enumerate}
 
-\paragraph{Key-Value Locking.} Key-value locking allows locking individual key values allowing other operations to take place on values within the same leaf node and potentially increasing concurrency. The problem is that we could still have the phantom phenomenon, so the strategy of \textit{next key locking} is employed: not only lock the keys that are in the range/search result but also whichever one is next~\cite{dsc}. This prevent something from being inserted, altered, or deleted inside the search range. 
+This requires some explanation. If a transaction $T_{i}$ is going to write an old value, under the previous scheme that write would be rejected. Under Thomas's Write Rule, we will just skip doing the write (the value to be written is outdated) and we just carry on. Essentially we just pretend that the write happened but was immediately overwritten by the more up to date value. 
+
+\section*{Validation-Based Protocols}
+
+As you know, a transaction that is read-only does not interfere with any other read-only transaction. If a database has many more reads than writes, then a concurrency control routine might do a lot of really unnecessary work and maybe delay transactions unnecessarily. If we could instead just step in where transactions may be in conflict, that would be better, but it is necessary then to find out what transactions are the ones that have the potential for conflict...~\cite{dsc}.
+
+The validation protocol means that transactions have three phases (although read only transactions skip the last one). The phases are described in~\cite{dsc} as:
+
+\begin{enumerate}
+	\item \textbf{Read Phase.} The transaction is executed, reading the value of items and storing them in temporary variables local to that transaction. Writes are also done on temporary local variables without any changes to stored data.
+	\item \textbf{Validation Phase.} A validation test is applied (described below). If the transaction passes the test, it may proceed to step 3; if it fails, then the transaction is aborted.
+	\item \textbf{Write Phase.} The temporary local variables are written written out. Obviously, read-only transactions have nothing to do in this phase and may skip it altogether.
+	
+\end{enumerate}
+
+The validation test for the current transaction $T_{i}$, for each transaction $T_{k}$ where $T\!S(T_{k}) < T\!S(T_{i})$, one of the following conditions must hold:
+
+\begin{enumerate}
+	\item $T_{k}$ finishes before the start of $T_{i}$: serializability order is maintained because the current transaction starts after the previous one finished.
+	\item The set of data items written by $T_{k}$ does not intersect with the set of data items read by $T_{i}$, and $T_{k}$ finishes writing before $T_{i}$ starts its validation phase. This ensures that the writes of these transactions do not overlap.
+\end{enumerate} 
+
+To make this work out as expected we need, now, three timestamps for each transaction: one for the start of the transaction, one for the start of the validation phase, and then a final timestamp for when the transaction is finished.
+
+Validation prevents cascading rollbacks because the writes don't really take place until the validation phase has taken place. This is called \textit{optimistic concurrency control} because transactions execute optimistically, assuming that they are going to finish (and we'll sort it out if something goes wrong)~\cite{dsc}. The locking and timestamp approaches re a bit more pessimistic because they force a rollback if there is a potential for a conflict. The potential for a conflict is not a guarantee that one will occur.
+
+That potentially leads to an interesting discussion on the subject of whether an optimistic or pessimistic type approach is better. The general recommendation is that optimistic approaches are lower overhead and better for situations where we expect there is not much contention. We get more concurrency out of optimistic schemes, which would theoretically mean better performance.
+
+A small example to demonstrate the validation routine:
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/validation}\\
+	A schedule produced in a validation scheme~\cite{dsc}.
+\end{center}
+
+\section*{Multiversion Schemes}
+
+Thus far we have said that a transaction must be either delayed or denied (aborted) to ensure serializability. In a multiversion scheme, we have multiple versions of the data at the same time; instead of rejecting a read because a write has taken place in the meantime, the read is provided an older version of the item. Choosing which one is meant to be read is the hard part of this routine, of course.
+
+This does require more storage space to maintain multiple versions of the data. Old versions might be maintained anyway for recovery, or just record keeping purposes~\cite{fds}. Many databases are used in environments where all changes must be tracked for legal reasons, with data like the changer, change time, and what the data changed was. If that is the case then there is no additional cost to storing the data since the older versions are already present regardless. 
+
+If that is not the case, then yes, multiple versions take extra space. The amount of space is determined by how many data items are modified, in a given period of time and how long we would like to maintain older versions. More writes means more space needed. And the longer we maintain them, the more space is needed. 
+
+\paragraph{Timestamp Ordering.} In the multi version technique using timestamps, for a data element $X$, there are multiple versions $X_{1}, X_{2}, X_{3}, ... , X_{k}$. For each $X_{i}$ there are read and write timestamps. The read timestamp is the largest timestamp that has successfully read $X_{i}$; the write timestamp is the timestamp of the transaction that wrote the value of this version of $X$~\cite{fds}. 
+
+Whenever a transaction is allowed to update a value, a new version of $X$ is created. As it has never been read, yet, the read timestamp should be the same as the write timestamp (until it is read of course). If a read takes place, then the read timestamp is updated if the transaction doing the read has a larger value than the current read timestamp.
+
+Ensuring serializability requires holding to just two rules~\cite{fds}:
+
+\begin{enumerate}
+	\item If transaction $T$ tries to write item $X$, and version $i$ of $X$ has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$, and the read timestamp of $X_{i}$ is larger than the timestamp of $T$, the abort the transaction $T$ and roll it back. Otherwise, create a new version of $X$ with read and write timestamps equal to the timestamp of $T$.
+	
+	\item If transaction $T$ wants to read item $X$, find the version of $X$ ($X_{i}$) that has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$. Update the read timestamp of $X_{i}$ to the maximum of its current read timestamp and the timestamp of $T$.
+\end{enumerate}
+
+The goal is that read operations are always successful, even if they read an older version. A write, however, might not be permitted if it comes ``too late'' -- trying to write a version that another transaction would have read. The drawback is that every read requires us to update the read timestamp, which is itself a write operation (and may result in a disk access).
+
+When do we know that we can get rid of an old version? An old version is no longer needed when its write timestamp is younger than that of the oldest transaction in the system. But one must be careful then to only delete old versions; at least the current version must be maintained. But also it means that in a period in which there are no transactions active, we may clean up any old versions. That may not occur frequently enough in a heavily used database, so it might be a periodic task to simply trash very old versions.
+
+A major drawback of this scheme is that we resolve any conflicts on writes through rollbacks, which are expensive, rather than through waiting (which is unpleasant but tolerable)~\cite{dsc}. Then instead, an alternative:
+
+\paragraph{Multiversion Two Phase Locking.} What if we said we want an all-of-the-above solution that combines two phase locking with the multiversion scheme? This is that solution. The advantage of multiversion schemes is that reads don't fail. The advantage of two phase locking is that locks allow transactions to wait rather than roll back, and deadlock is avoided. The plan is thus to allow each transaction to be handled in the way they like best. Thus, read-only transactions are differentiated from the update transactions.
+
+Update transactions use two phase locking, with the restriction that they hold locks up until the end of the transaction, meaning that there his only one timestamp for the transaction, which is used to both serialize the transactions and to assign the version of the data written~\cite{dsc}. The timestamp under this scheme is an incrementing counter rather than the actual time of the transaction. 
+
+Read-only transactions are assigned a timestamp based on the current value of the counter for update transactions, at the time when the read transaction is created. Multiple read transactions can have the same value of their timestamp. In effect, the read transaction's timestamp $k$ is declaring that its view of the data is the version at time $k$. A transaction that reads some data $X$ with its timestamp $k$ gets the version of $X$ with the largest timestamp less than or equal to $k$. 
+
+If an update transaction wants to read an item, it acquires a shared lock on the latest version of the item; to do an update it acquires an exclusive lock and creates a new version of that item with the timestamp being the maximum value (effectively: infinity)~\cite{dsc}. The new version has this infinite timestamp so it won't be read by any read transaction, but it will be overwritten when the write transaction commits:  the commit operation sets the timestamp on all newly-modified variables to be the value of the transaction performing the update plus one. Then the timestamp counter is incremented. This does mean that only one transaction can commit at a time.
+
+When do we know that we can get rid of an old version? An old version is no longer needed when its write timestamp is younger than that of the oldest read-only transaction in the system. But also it means that in a period in which there are no transactions active, we may clean up any old versions. That may not occur frequently enough in a heavily used database, so it might be a periodic task to simply trash very old versions.
 
 \input{bibliography.tex}
 

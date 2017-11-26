@@ -2,133 +2,153 @@
 
 \begin{document}
 
-\lecture{ 25 --- Timestamp, Validation, \& Multiversion Protocols }{\term}{Jeff Zarnett}
+\lecture{ 25 --- Deadlock, Lock Granularity }{\term}{Jeff Zarnett}
 
-\section*{Concurrency via Timestamps}
+\section*{Deadlock}
 
-Beyond just doing concurrency through some sort of locking protocol, we can also use timestamps for arranging concurrency. The timestamp, as you will recall, is a unique identifier, and they are typically assigned in the order the transactions are submitted to the system~\cite{fds}. If timestamps are used appropriately, then consistent results are produced without the use of any locks or locking, meaning deadlock can never occur.
+You should recall from learning about concurrency what deadlock is about, and therefore a brief review only is in order. Those in need of a refresher are advised to take a look through previous courses' material to get caught up. Others may find this to be review material, but it does deviate in some significant ways from the discussion of deadlocked processes.
 
-The notation for the timestamp of a transaction $T$ is $T\!S(T)$. The transactions can be ordered based on their timestamps; if a transaction $T_{i}$ arrives and then later another transaction $T_{j}$ arrives, then $T\!S(T_{i}) < T\!S(T_{j})$. If two transactions arrive at exactly the same time, then some sort of serialization procedure will be needed to make sure that they are not identical. It is commonly the case that the system clock is used to get the time stamp; just read the current value of the clock and use that.
+We have already introduced the subject of deadlock and gave an informal definition as all transactions being ``stuck'' (unable to proceed). A more formal definition is given in~\cite{osi} (but modified for a database): ``the \textit{permanent} blocking of a set of transactions that either compete for system resources or communicate with each other''. There is emphasis on permanent. It may be possible for all transactions to be stuck temporarily, because one is waiting for some event (e.g., a read from disk), but this situation will resolve itself and is not deadlock. A set of transactions is truly deadlocked when each transaction in the set is blocked on some event that can only be triggered by another blocked transaction in the set. In this case it is permanent, because none of the events can take place.
 
-The alternative is a logical counter: increment a simple integer counter for each transaction. After a timestamp is assigned, just increment the counter. Eventually there is a limit (even if you can have $2^{64}$ transactions, in theory, which is quite a lot, but not infinite) but at some point the transaction counter will need to roll over or reset.
+Remember, there are four conditions necessary for a deadlock to take place:
 
-Generation of the timestamps is fairly simple, it would seem, but what are they for? Timestamps are used for serializability order in the schedule; the system must ensure that the schedule executed is equivalent to a serial schedule in which transactions are ordered according to their timestamps (ascending)~\cite{dsc}. Note that this is very different from two-phase locking. In two phase locking, a schedule is serializable by being equivalent to some schedule that is permitted under the locking rules; in timestamp ordering the schedule is equivalent to the a particular serial ordering matching ascending transaction timestamps~\cite{fds}.
-
-Every data element in the database is associated with separate timestamps for reading and writing. The notation can vary: in~\cite{fds} they are called \textbf{read\_TS} and \textbf{write\_TS}; in~\cite{dsc} they are \textbf{r-timestamp} and \textbf{w-timestamp}. To save space I might personally like $T\!S_{r}$ and $T\!S_{w}$. Each time the a data element $X$ is read or written, its appropriate timestamp is updated to the timestamp of the transaction performing the read or write.
-
-The formal definition of the read timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully read $X$. So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has read $X$ successfully~\cite{fds}.
-
-The formal definition of the write timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully written $X$. So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has written $X$ successfully~\cite{fds}.
-
-Unfortunately, simple timestamp ordering does not avoid the risk of cascading rollback. Schedules are not guaranteed to be recoverable. This leads us to the \textit{timestamp ordering protocol} as described in~\cite{dsc}.
-
-For a read operation $T_{i}$ is performing on $X$:
 \begin{enumerate}
-	\item If $T\!S(T_{i}) < T\!S_{w}(X)$ then $T_{i}$ needs to read a value of $X$ that was already overwritten -- and therefore the read operation is not permitted and $T_{i}$ is rolled back.
-	\item If $T\!S(T_{i}) \geq T\!S_{w}(X)$ the read operation is executed and $T\!S_{r}$ is set to $\max ( T\!S(T_{i}),~T\!S_{r}(X))$.
+	\item \textbf{Mutual Exclusion}: A resource belongs to, at most, one transaction at a time.
+	\item \textbf{Hold-and-Wait}: A transaction that is currently holding some resources may request additional resources and may be forced to wait for them.
+	\item \textbf{No Preemption}: A resource cannot be ``taken'' from the transaction that holds it; only the transaction currently holding that resource may release it.
+	\item \textbf{Circular-Wait}: A cycle in the resource allocation graph.
 \end{enumerate}
 
-For a write operation $T_{i}$ is performing on $X$:
-\begin{enumerate}
+We could choose not to handle deadlock. This option is certainly convenient for database system designers: we simply pretend that deadlock can never happen, or if it does happen, it is the application developers' fault. While it is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. If two transactions get deadlocked, the user may simply see no progress and just feel bad about it. But sad users are not a good thing, now, are they?
 
-\item If $T\!S(T_{i}) < T\!S_{r}(X)$ then the value that $T_{i}$ is producing was needed previously but the system assumed it wasn't going to happen and proceeded without it; thus the write is not permitted and $T_{i}$ is rolled back.
-\item If $T\!S(T_{i}) < T\!S_{w}(X)$ then $T_{i}$ is attempting to write an obsolete value; the write is not permitted and $T_{i}$ is rolled back.
-\item Otherwise, the write proceeds and $T\!S_{w}(X)$ is updated to $T\!S(T_{i})$. 
+Although in theory it would be nice to prevent deadlock from ever occurring, in practice it is probably more likely that we will simply try to detect it and deal with it if it occurs. But prevention is worth looking at.
 
-\end{enumerate}
+\subsection*{Deadlock Prevention}
 
-When a transaction is rolled back and restarted, the transaction is assigned a new timestamp. The timestamp ordering protocol does provide us with conflict serializability, because conflicting operations are processed in timestamp order. Because there are no locks, there cannot be deadlocks -- but can starvation still occur? The answer is yes, a very long transaction might be constantly frustrated by shorter transactions constantly swooping in and making changes that force a rollback of the long transaction. Unfortunately it might be necessary to block other transactions and let the long one finish~\cite{dsc}.
+ The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening. If we prevent the circular wait from occurring, we are still in a world where deadlock can occur but we cleverly avoid it taking place based on how we allow locks to occur.
 
-In the example below, transaction $T_{25}$ reads values $A$ and $B$ , and transaction $T_{26}$ modified both $A$ and $B$:
+\paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution.
+
+\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. One plausible solution is that the transaction must request all resources at the beginning of the program. So if the program is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program, all three must be requested right at the beginning and held throughout the transaction. No further resources may be requested at any time during execution~\cite{osc}.
+
+When talking about processes, actually we said this requires some amount of clairvoyance: a process has to know in advance all of the resources that it will need. Remember that a file is a resource, and even a simple program like a text editor can be used by the user to open an arbitrary file; how do we know in advance which will be requested? But with database transactions, actually, we can actually evaluate what data items are needed. That might not be trivial, but at least for databases it is possible.
+
+This also has performance implications: a transaction cannot start until it has all the resources it will ever need, even if it will not need them until much later. Thus, transactions might spend a lot of time waiting before starting; something that users may not tolerate. In theory, a transaction might never start if one or more of the resources it needs is always in use (so this is vulnerable to starvation).
+ 
+
+
+\paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a transaction. In the database context, if we have to preempt a transaction, it means the transaction in question is rolled back and then restarted. To work out an ordering, transactions are assigned a timestamp. If a transaction is rolled back, its timestamp remains the same~\cite{dsc}. There are two approaches for what happens if we need to do pre-emption:
+
+The first is called \textit{wait-die}: if a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. $T_{i}$ will be allowed to wait if it is older (i.e. its timestamp is a smaller number) than $T_{j}$, otherwise it ``dies'' (is rolled back). 
+
+The second is \textit{wound-wait}: if a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. If $T_{i}$ is the younger transaction (its timestamp is larger), then $T_{i}$ can wait. Otherwise, $T_{j}$ is ``wounded'' by $T_{i}$ and $T_{j}$ is rolled back.
+
+So, in case of a conflict, one of the two transactions is going to be rolled back. And it is always the younger one. This is not because older transactions vote in higher numbers, but because it tends to be more expensive to restart an older transaction. A transaction that has been running for a long time, if it is restarted, has to do a lot more work to get to the point where it was terminated than a younger transaction. Another reason: if the oldest transaction were constantly the one selected, that transaction itself might never get to run to completion (starvation) because it is constantly killed before it finishes. A third reason is somewhat more subtle: if the killing transaction is very aggressive then perhaps no tasks run to completion because each transaction, shortly after becoming the oldest, is claimed by the deadlock recovery transaction. Therefore, young transactions tend to be the ones selected.
+
+In either approach there may be unnecessary rollbacks~\cite{dsc}.
+
+Instead we could also have locks that have timeouts: when a lock is requested there is a defined maximum time the transaction is willing to wait. If that time limit is reached, the transaction rolls back automatically and begins again. The obvious difficulty lies in choosing the length of time that the transactions will wait: too long and a deadlock persists for a lengthy period of time; too short and transactions do not complete because they are rolled back repeatedly. And that is generally unfortunate. This sort of approach is not especially recommended. 
+
+\paragraph{Circular Wait.}
+We have already discussed the idea of using two phase locking to put an ordering on the locks and we need not repeat that yet again. 
+
+\subsection*{Deadlock Detection}
+
+In previous courses you may have covered algorithms like the banker's algorithm and the graph algorithm for detecting deadlock. It is the second one that is interesting in the database.
+
+A quick review of the graph algorithm follows, then. If resources have only a single instance, we may reduce the graph to a simplified version called the \textit{wait-for} graph. This removes the resource boxes from the diagram and indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that happens to be held by $P_{j}$. An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$~\cite{osc}. Consider the example below:
 
 \begin{center}
-	\includegraphics[width=0.3\textwidth]{images/timestamp-schedule}\\
-	A schedule produced with timestamp ordering~\cite{dsc}.
+\includegraphics[width=0.5\textwidth]{images/rag-waitfor.png}\\
+(a) A resource allocation graph and (b) its corresponding wait-for graph~\cite{osc}.
 \end{center}
 
-It is worth noting that neither two phase locking nor the simple timestamp ordering protocol covers all serializable schedules; that is, there are some that are valid under one but not valid under the other~\cite{fds}. That's fine, as far as we are concerned -- we don't need to consider all possibilities; we will get enough choices.
-
-If we would like to recoverability we can have strict timestamp ordering. In strict timestamp ordering, a transaction $T_{i}$ that issues a read or write of an item $X$ where $T\!S(T_{i}) > T\!S_{w}(X)$, then the read or write operation is delated until the transaction that last wrote $X$ has either committed or aborted. This, in some way, requires simulating locking item $X$ until a previous write has been committed or aborted, but there cannot be a deadlock because a transaction can only wait on an older transaction (one with a  lower timestamp)~\cite{fds}.
-
-\paragraph{Thomas's Write Rule.} A modification of the basic algorithm called Thomas's Write Rule (or the Thomas\footnote{Named after the author of the paper describing this rule, Robert H. Thomas} Write Rule) allows greater concurrency than the basic algorithm and also, hopefully, rejects fewer writes. To explain it simply, it is ``ignore outdated writes''.
-
-More formally, the write item checks are modified to the following~\cite{fds}:
-\begin{enumerate}
-	\item If $T\!S_{r}(X) > T\!S(T_{i})$ then abort and roll back $T_{i}$ (write rejected).
-	\item If $T\!S_{w}(X) > T\!S(T_{i})$, then do not execute the write, but continue executing (do not roll back the transaction).
-	\item Otherwise, the write proceeds and $T\!S_{w}(X)$ is updated to $T\!S(T_{i})$. 
-\end{enumerate}
-
-This requires some explanation. If a transaction $T_{i}$ is going to write an old value, under the previous scheme that write would be rejected. Under Thomas's Write Rule, we will just skip doing the write (the value to be written is outdated) and we just carry on. Essentially we just pretend that the write happened but was immediately overwritten by the more up to date value. 
-
-\section*{Validation-Based Protocols}
-
-As you know, a transaction that is read-only does not interfere with any other read-only transaction. If a database has many more reads than writes, then a concurrency control routine might do a lot of really unnecessary work and maybe delay transactions unnecessarily. If we could instead just step in where transactions may be in conflict, that would be better, but it is necessary then to find out what transactions are the ones that have the potential for conflict...~\cite{dsc}.
-
-The validation protocol means that transactions have three phases (although read only transactions skip the last one). The phases are described in~\cite{dsc} as:
-
-\begin{enumerate}
-	\item \textbf{Read Phase.} The transaction is executed, reading the value of items and storing them in temporary variables local to that transaction. Writes are also done on temporary local variables without any changes to stored data.
-	\item \textbf{Validation Phase.} A validation test is applied (described below). If the transaction passes the test, it may proceed to step 3; if it fails, then the transaction is aborted.
-	\item \textbf{Write Phase.} The temporary local variables are written written out. Obviously, read-only transactions have nothing to do in this phase and may skip it altogether.
-	
-\end{enumerate}
-
-The validation test for the current transaction $T_{i}$, for each transaction $T_{k}$ where $T\!S(T_{k}) < T\!S(T_{i})$, one of the following conditions must hold:
-
-\begin{enumerate}
-	\item $T_{k}$ finishes before the start of $T_{i}$: serializability order is maintained because the current transaction starts after the previous one finished.
-	\item The set of data items written by $T_{k}$ does not intersect with the set of data items read by $T_{i}$, and $T_{k}$ finishes writing before $T_{i}$ starts its validation phase. This ensures that the writes of these transactions do not overlap.
-\end{enumerate} 
-
-To make this work out as expected we need, now, three timestamps for each transaction: one for the start of the transaction, one for the start of the validation phase, and then a final timestamp for when the transaction is finished.
-
-Validation prevents cascading rollbacks because the writes don't really take place until the validation phase has taken place. This is called \textit{optimistic concurrency control} because transactions execute optimistically, assuming that they are going to finish (and we'll sort it out if something goes wrong)~\cite{dsc}. The locking and timestamp approaches re a bit more pessimistic because they force a rollback if there is a potential for a conflict. The potential for a conflict is not a guarantee that one will occur.
-
-That potentially leads to an interesting discussion on the subject of whether an optimistic or pessimistic type approach is better. The general recommendation is that optimistic approaches are lower overhead and better for situations where we expect there is not much contention. We get more concurrency out of optimistic schemes, which would theoretically mean better performance.
-
-A small example to demonstrate the validation routine:
+Because locks are unique (there is always only one instance) then there is no need to use the resource allocation graph and we can always use the simplified wait-for graph for transactions as below:
 
 \begin{center}
-	\includegraphics[width=0.3\textwidth]{images/validation}\\
-	A schedule produced in a validation scheme~\cite{dsc}.
+\includegraphics[width=0.25\textwidth]{images/transaction-waitfor.png}\\
+Transaction wait-for graph~\cite{dsc}.
 \end{center}
 
-\section*{Multiversion Schemes}
 
-Thus far we have said that a transaction must be either delayed or denied (aborted) to ensure serializability. In a multiversion scheme, we have multiple versions of the data at the same time; instead of rejecting a read because a write has taken place in the meantime, the read is provided an older version of the item. Choosing which one is meant to be read is the hard part of this routine, of course.
+Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work. We must execute an algorithm to determine if there is a cycle. A cycle exists in the wait for graph if and only if a deadlock exists in the system. Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph. Though not a formal proof and probably not acceptable to write on a data structures and algorithms examination, the premise of the algorithm is: for each node $n$ in the graph, examine each possible path from that node. If a node is reached from which no further path is available, examine the next path. If node $n$ is reached on the current path, a cycle is detected and the algorithm terminates. 
 
-This does require more storage space to maintain multiple versions of the data. Old versions might be maintained anyway for recovery, or just record keeping purposes~\cite{fds}. Many databases are used in environments where all changes must be tracked for legal reasons, with data like the changer, change time, and what the data changed was. If that is the case then there is no additional cost to storing the data since the older versions are already present regardless. 
+The runtime characteristic of the simple deadlock detection algorithm was identified as $\Theta(n^{2})$. This means that the deadlock detection routine is expensive to execute.
 
-If that is not the case, then yes, multiple versions take extra space. The amount of space is determined by how many data items are modified, in a given period of time and how long we would like to maintain older versions. More writes means more space needed. And the longer we maintain them, the more space is needed. 
+This prompts a question: how often should the deadlock detection algorithm be run? One strategy is to run it every time a resource is requested. Running the algorithm might be rather expensive, so perhaps this is too often. An obvious optimization: it should only run every time a resource request cannot be granted (that is, a transaction is waiting). Another idea: run it periodically instead.
 
-\paragraph{Timestamp Ordering.} In the multi version technique using timestamps, for a data element $X$, there are multiple versions $X_{1}, X_{2}, X_{3}, ... , X_{k}$. For each $X_{i}$ there are read and write timestamps. The read timestamp is the largest timestamp that has successfully read $X_{i}$; the write timestamp is the timestamp of the transaction that wrote the value of this version of $X$~\cite{fds}. 
+When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs. If deadlock happens a lot, checking for deadlock often will make sense. If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible.
 
-Whenever a transaction is allowed to update a value, a new version of $X$ is created. As it has never been read, yet, the read timestamp should be the same as the write timestamp (until it is read of course). If a read takes place, then the read timestamp is updated if the transaction doing the read has a larger value than the current read timestamp.
+\subsection*{Deadlock Recovery}
 
-Ensuring serializability requires holding to just two rules~\cite{fds}:
+It is clear that our recovery strategy in the database context is rollback. But rather than just simply rolling transactions back and restarting them. 
+
+On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide, but there exist a number of other possible criteria~\cite{dsc}:
 
 \begin{enumerate}
-	\item If transaction $T$ tries to write item $X$, and version $i$ of $X$ has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$, and the read timestamp of $X_{i}$ is larger than the timestamp of $T$, the abort the transaction $T$ and roll it back. Otherwise, create a new version of $X$ with read and write timestamps equal to the timestamp of $T$.
-	
-	\item If transaction $T$ wants to read item $X$, find the version of $X$ ($X_{i}$) that has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$. Update the read timestamp of $X_{i}$ to the maximum of its current read timestamp and the timestamp of $T$.
+\item How long the process has been executing.
+	\item How long is remaining in execution (see the estimates from the execution plan).
+	\item What resources the process has used.
+	\item Future resource requests, if known.
+	\item How many times, if any, the process has been selected as a victim (to prevent starvation).
 \end{enumerate}
 
-The goal is that read operations are always successful, even if they read an older version. A write, however, might not be permitted if it comes ``too late'' -- trying to write a version that another transaction would have read. The drawback is that every read requires us to update the read timestamp, which is itself a write operation (and may result in a disk access).
+After a victim has been selected, we might reason, it's pretty easy from here: simple roll that transaction back. That would be a total rollback: undo all the steps of the transaction and start from the beginning once again. There exists, however, the ability to do a \textit{partial rollback}. 
 
-When do we know that we can get rid of an old version? An old version is no longer needed when its write timestamp is younger than that of the oldest transaction in the system. But one must be careful then to only delete old versions; at least the current version must be maintained. But also it means that in a period in which there are no transactions active, we may clean up any old versions. That may not occur frequently enough in a heavily used database, so it might be a periodic task to simply trash very old versions.
+The goal of the partial rollback is to rollback the transaction back only as much as is necessary to break the deadlock;  this is accomplished by maintaining the sequence of lock requests and grants. By finding the lock(s) that are implicated in the deadlock, we can roll back a transaction to where it obtained the first of such locks~\cite{dsc}. This can be beneficial if the amount of work saved is large enough to outweigh the effort required to determine where the lock conflict occurs. For small transactions, a full restart is probably sensible; for longer ones it might be worth it to try to do a partial rollback instead.
 
-A major drawback of this scheme is that we resolve any conflicts on writes through rollbacks, which are expensive, rather than through waiting (which is unpleasant but tolerable)~\cite{dsc}. Then instead, an alternative:
+\section*{Lock Granularity}
 
-\paragraph{Multiversion Two Phase Locking.} What if we said we want an all-of-the-above solution that combines two phase locking with the multiversion scheme? This is that solution. The advantage of multiversion schemes is that reads don't fail. The advantage of two phase locking is that locks allow transactions to wait rather than roll back, and deadlock is avoided. The plan is thus to allow each transaction to be handled in the way they like best. Thus, read-only transactions are differentiated from the update transactions.
+We have choices about the granularity of locking, and it is a trade-off (like always). Locks' extents constitute their {\it granularity}: that is, how much data is being protected by such a lock.
 
-Update transactions use two phase locking, with the restriction that they hold locks up until the end of the transaction, meaning that there his only one timestamp for the transaction, which is used to both serialize the transactions and to assign the version of the data written~\cite{dsc}. The timestamp under this scheme is an incrementing counter rather than the actual time of the transaction. 
+\textit{Coarse-grained} locking is easier to implement, but it can significantly reduce opportunities for parallelism. \textit{Fine-grained locking} requires more careful design, increases locking overhead and is more prone to bugs (deadlock etc).  
+In coarse-grained locking, you lock large sections of your data with a big lock; in fine-grained locking, you divide the locks and protect smaller sections with multiple smaller locks.
 
-Read-only transactions are assigned a timestamp based on the current value of the counter for update transactions, at the time when the read transaction is created. Multiple read transactions can have the same value of their timestamp. In effect, the read transaction's timestamp $k$ is declaring that its view of the data is the version at time $k$. A transaction that reads some data $X$ with its timestamp $k$ gets the version of $X$ with the largest timestamp less than or equal to $k$. 
+In the database we could define multiple levels of granularity. As in the diagram below:
 
-If an update transaction wants to read an item, it acquires a shared lock on the latest version of the item; to do an update it acquires an exclusive lock and creates a new version of that item with the timestamp being the maximum value (effectively: infinity)~\cite{dsc}. The new version has this infinite timestamp so it won't be read by any read transaction, but it will be overwritten when the write transaction commits:  the commit operation sets the timestamp on all newly-modified variables to be the value of the transaction performing the update plus one. Then the timestamp counter is incremented. This does mean that only one transaction can commit at a time.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/granularity-hierarchy}\\
+Granularity hierarchy showing four levels~\cite{dsc}
+\end{center}
 
-When do we know that we can get rid of an old version? An old version is no longer needed when its write timestamp is younger than that of the oldest read-only transaction in the system. But also it means that in a period in which there are no transactions active, we may clean up any old versions. That may not occur frequently enough in a heavily used database, so it might be a periodic task to simply trash very old versions.
+In this diagram, there are four levels of the hierarchy. At the lowest level, individual records may be lockable. Above that, it may be at file level (i.e., relation level). The third level from the bottom is an ``area'' -- this is usually a grouping of one or more relations that form a logical group. The root of the tree is the database itself: the entire database can be locked if needed. A lock of a node in this hierarchy also implicitly locks all descendants of that node.
+
+This leads to a fair amount of headaches: if a transaction $T_{i}$ wants to lock a node $x$ then all the children of $x$ must be examined to see if they are locked. Also, we have to look to see if any of the nodes between the root and $x$ are locked (including the root). And this applies every time an item is to be locked! This is painful. 
+
+The more efficient route recommended by~\cite{dsc} is called \textit{intention lock modes}, which are put on the ancestors of a node before the node is locked. These intention locks can be checked while traversing the tree. The following modes are possible:
+
+\begin{itemize}
+	\item \textbf{Shared} (S) - This is as before, directly locking an item in shared mode.
+	\item \textbf{Exclusive} (X) - Directly locking an item in exclusive mode.
+	\item \textbf{Intention Shared} (IS) - There is at least one shared lock at a lower level of the tree, but no exclusive locks.
+	\item \textbf{Intention Exclusive} (IX) - There is least one exclusive lock at a lower level of tree, and there can be shared ones as well.
+	\item \textbf{Shared Intention Exclusive} (SIX) - The current node is locked in shared mode, and there is at least one exclusive lock at a lower level (and maybe shared ones too).
+\end{itemize} 
+
+Then a transaction must follow the six rules below~\cite{dsc}:
+
+\begin{enumerate}
+	\item All attempts to lock must observe the table (below) as to whether they are permitted to proceed (or wait).
+	\item The transaction must lock the root of the tree first (in any mode, but it must pick one).
+	\item A node $n$ can be locked in \textbf{S} or \textbf{IS} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{IS} mode.
+	\item A node $n$ can be locked in \textbf{X}, \textbf{SIX}, or \textbf{IX} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{SIX} mode.
+	\item A node $n$ may only be locked if the transaction has not previously unlocked any nodes.
+	\item A node $n$ may only be unlocked if none of the children of $n$ are locked by this transaction.
+\end{enumerate}
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|} \hline
+	Compatibility & \textbf{IS} & \textbf{IX} &\textbf{S} &\textbf{SIX} &\textbf{X}\\ \hline
+\textbf{IS} & \checkmark &\checkmark  & \checkmark & \checkmark & $\times$ \\ \hline
+\textbf{IX} & \checkmark & \checkmark & $\times$ & $\times$ & $\times$	\\ \hline
+\textbf{S} & \checkmark & $\times$ & \checkmark & $\times$ & $\times$ \\ \hline
+\textbf{SIX} & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+\textbf{X} & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+	
+\end{tabular}
+\end{center}
+
+It is noteworthy that locks must be acquired in a top-down manner and then released in a bottom-up manner. 
 
 \input{bibliography.tex}
 

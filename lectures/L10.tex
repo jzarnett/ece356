@@ -2,155 +2,138 @@
 
 \begin{document}
 
-\lecture{ 10 --- Decomposition: Functional-Dependency Theory }{\term}{Jeff Zarnett}
+\lecture{ 10 --- Normalization }{\term}{Jeff Zarnett}
 
-\section*{Functional-Dependency Theory}
+\section*{Normalization}
+So far, we learned the syntax to create tables, and how to turn modelling diagrams into tables and all the various bits and pieces about how modelling diagrams work. The modelling diagrams give us some guidance and tell us about wrong ways to represent the data, but we don't yet have enough guidance as to what is correct. If we do a good job the relation will be in a \textit{normal form}. Yes, \textit{a} normal form... there are several.
 
-Earlier we talked about the closure of a set of functional dependencies. Recall from earlier that the closure contains all the functional dependencies that are explicitly satisfied as well as those that are logically implied. That is, if $A \rightarrow B$ and $B \rightarrow C$ then it is implied that $A \rightarrow C$ and this is true no matter how many steps are in between. because this is transitive. More formally, if the functional dependencies is $A \rightarrow B$ and $B \rightarrow C$ then we know that for two tuples $t_{1}$ and $t_{2}$ if $t_{1}[A] = t_{2}[A]$ then $t_{1}[B] = t_{2}[B]$ and $t_{1}[C] = t_{2}[C]$. The notation to show the closure of a set $F$ of functional dependencies is $F^{+}$ as previously discussed.
+An example from~\cite{dsc} gives us an opportunity to do something wrong and show bad design: if we combine instructor (having the attributes id, name, department, salary) with department (having an id, faculty, budget) then our combined table means one larger relation replaces two smaller ones. This isn't total nonsense because instructors do have a relationship with a department, but is this a good way to model the data? Intuition might tell you no, but think about why. In the combined relation, if there are two instructors, say, Sedra and Smith, both members of department of electrical \& computer engineering, in both tuples there will be an entry for the budget of the department. The budget data is duplicated and risks becoming inconsistent.
 
-It is unlikely, however, that we want to compute $F^{+}$ from the definition of functional dependencies; if $F$ is large there are many rules and many implied rules and we have to construct every logically implied element of $F^{+}$ from first principles. Instead, we would like to use \textit{axioms}, handy rules of inference, that allow us to reason about the dependencies in a simpler way. The first three axions are simple enough and are called \textit{Armstrong's Axioms}, named after the person who came up with them~\cite{dsc}:
+Our intuition may tell us this is bad, but we would like a way to express it formally. Informally the rule is that each value of department name corresponds to at most one budget. The formal description is a \textit{functional dependency} and it is written \textit{dept\_name} $\rightarrow$ \textit{budget}. A functional dependency specified that if there is a schema that consists just of the attributes for department name and budget, then the department name attribute could be the primary key~\cite{dsc}. Combining instructor and department breaks this rule, because we have duplicate entries for department and therefore this can't work.
 
-\begin{itemize}
-	\item \textbf{Reflexivity}: If $\alpha$ is a set of attributes and $\beta$ is contained within $\alpha$, then $\alpha \rightarrow \beta$ holds.
-	\item \textbf{Augmentation}: If $\alpha \rightarrow \beta$ holds and $\gamma$ is a set of attributes, then $\gamma\alpha \rightarrow \gamma\beta$ holds.
-	\item \textbf{Transitivity}: If $\alpha \rightarrow \beta$ holds and $\beta \rightarrow \gamma$ holds, then $\alpha \rightarrow \gamma$ holds.
-\end{itemize}
+The functional dependency shows us that data is duplicated and that indicates that we need to split the combined relation in a process called \textit{decomposition}.
 
-These axioms are considered both sound and complete, because they do not produce any errors and they allow generation of $F^{+}$ given $F$. There are proofs of these properties, but we prefer to omit those and just focus on using them. This is a minimal set, though, and there are some rules that we can derive some more from Armstrong's rules that would be convenient shortcuts~\cite{dsc}:
+The previous example is very egregiously and obviously wrong, making it simple to identify that there is a problem. In reality, a database will have many more tables and it will be harder to find out what the functional dependencies are, but there is an algorithm for that which will be covered soon enough.
 
-\begin{itemize}
-	\item \textbf{Union}: If $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds, then $\alpha \rightarrow \beta\gamma$ holds.
-	\item \textbf{Decomposition}: If $\alpha \rightarrow \beta\gamma$ holds, then  $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds (reverse of previous rule).
-	\item \textbf{Pseudotransitivity}: If $\alpha \rightarrow \beta$ holds and $\gamma\beta \rightarrow \delta$ holds, then $\alpha\gamma \rightarrow \delta$ holds.
-\end{itemize}
+Another example from~\cite{dsc} shows us that decomposition on its own is not always good: we should split up things that don't belong together, but it is possible to go overboard. If the relation is \textit{employee( ID, name, street, city, province, postalcode )}, we might think that we can decompose this into two schemas: \textit{employee(ID, name), address(name, street, city, province, postcode)}. Does this work? No -- two employees could have the same name and that is likely in the real world, as some names are extremely popular. 
 
-We'll work on the example in the textbook(\cite{dsc}) which says that the relation $r$ has the attributes $(A, B, C, G, H, I)$ and the functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CH \rightarrow I$, (5) $B \rightarrow H$.
+If instead of defining the address relation to be based on name, we could use the ID instead, and it would work: \textit{employee(ID, name), address(employeeID, street, city, province, postcode)}. This is an acceptable decomposition and we call it \textit{lossless} because no information is lost. The first attempt at this caused a loss of information (if two employees have the same name, there is the possibility of confusion), so it is called a \textit{lossy} decomposition. We do not perform lossy decompositions.
 
-Based on the rules that we have, what logically implied functional dependencies can we observe? 
+\subsection*{Atomic Domains and the First Normal Form}
 
-There are three~\cite{dsc}:
-\begin{itemize}
-	\item $A \rightarrow H$ which is found by transitivity ($A \rightarrow B$ and $B \rightarrow A$).
-	\item $CG \rightarrow HI$ which is found by the union rule ($CG \rightarrow H$ and $CG \rightarrow I$).
-	\item $AG \rightarrow I$ which is found by pseudotransitivity ($A \rightarrow C$ and $CG \rightarrow I$). 
-\end{itemize}
+Our E-R model allows attributes to be non-atomic, that is to say, divisible. If a course code is ``ECE356'', that attribute is non-atomic because it can be divided into two parts, the ``ECE'' (department) and ``356'' (course number) components. The same is true of something like an address: ``48 Main Street Southwest Unit 2A'' might be the street attribute, but that is divisible into several parts. Those are non-atomic attributes values. If the domain is indivisible units, e.g., an integer, it is atomic.
 
-The full algorithm for building up the closure just uses Armstrong's rules and is as below. The algorithm terminates when there is nothing left to add, which is certain to happen because the worst case scenario is that everything is functionally dependent on everything else which would mean if there are $n$ attributes, there are $2^{n} \times 2^{n}$ possible functional dependencies. Now, the algorithm~\cite{dsc}:
+A relation $R$ is said to be in the \textit{first normal form} (abbreviated as 1NF) if the domain of all attributes of $R$ are atomic. If some attribute is not atomic, then we could subdivide it to put it into 1NF. Instead of course being ``ECE356'' we could split  it up into department ``ECE'' and number ``356''. The primary key could still be composed of those two elements, mind you.
 
-\begin{enumerate}
-	\item The initial condition is that $F^{+}$ begins as $F$.
-	\item For each functional dependency $f$ in F+ $F^{+}$:
-	\begin{enumerate}
-		\item apply the transitivity rule to $f$ and add it to $F^{+}$
-		\item apply the augmentation rule to $f$ and add it to $F^{+}$
-	\end{enumerate}
-	\item For each pair of functional dependencies $f_{1}$ and $f_{2}$, if they can be combined using transitivity, add the newly created combination to $F^{+}$.
-	\item If anything was added in steps 2 or 3, go back to step 2; otherwise the algorithm terminates.
-\end{enumerate}
+Does this mean that a string (varchar) attribute can never be atomic, as one may take a subset? No, what really matters is how they are used in the database. If the application logic requires breaking up the attribute for some reason, then it is non-atomic. The ``ECE356'' example is not atomic because there are situations where you would want to subdivide this. To answer the question ``how many courses in the Winter 2018 term are ECE courses?'', we need to look at all course codes and figure out which ones begin with ``ECE''. If employee numbers are generated in the format ``AA1234'' and can never be subdivided (e.g., the first two letters don't indicate anything like department) then they are atomic. 
 
-\paragraph{Closure of Attribute Sets.} Suppose we have some attribute(s) $\alpha$ and we wish to determine if it is a superkey. The strategy we will use requires us to compute the set of attributes that are \textit{functionally determined} by $\alpha$. An attribute $B$ is functionally determined by $\alpha$ if $\alpha \rightarrow B$. Then the  simple algorithm requires us to compute $F^{+}$ as above and then take all functional dependencies where $\alpha$ is the left hand side and the union of the right hand side of all dependencies, but this is difficult and expensive because $F^{+}$ may be large. Instead, a more efficient algorithm follows~\cite{dsc}.
+More than this, though, we don't like set-valued attributes. If we wanted to model all the departments that belong to a faculty, what we don't want is for the faculty tuple to have an attribute called departments which then contains multiple elements... For example, Engineering is a faculty, and the list of departments would be ECE, MME, SYDE, etc. This would not be in the first normal form, because the attribute of departments could be split up into each department. This can cause confusion and redundancy. What about Software Engineering? It belongs to the faculty of Engineering and Math... Data could be related.
 
-\begin{enumerate}
-	\item The initial condition is that $\alpha^{+}$ begins as $\alpha$.
-	\item For each functional dependency $\beta \rightarrow \gamma$ in $F$,
-		if $\beta$ is contained in $\alpha^{+}$, then $\gamma$ is added to $\alpha^{+}$
-	\item If anything was added in step 2, repeat step 2; if nothing was added, the algorithm terminates.
-\end{enumerate}
+\subsection*{Decomposition with Functional Dependencies}
 
-Much like computing the closure of $F$, here we compute the closure of $\alpha$. 
+The schema that we create is supposed to model entities and their relationships in the real world. The real world understanding tells us important information about how the data should be modelled: students have a student ID number and the student ID number is unique. If the database does not represent that information in some way, we have done something wrong. The real world constraints may be represented as a key or as a functional dependency.
 
-Going back to the earlier example with the five functional dependencies, we would like to evaluate something to see if it is a superkey. Given the rules, is $A$ a superkey? Let's go through the steps. 
+The schema is just the data model, and we care if the data in the tables conforms to the constraints. If the data in the table meets all the real-world constraints, that instance of the relation is called a \textit{legal instance}. If all tables in the database are a legal instance of that relation, then we can say the instance of the database is a legal instance of the database schema~\cite{dsc}.
 
-The initial condition is that $A$ is in $\alpha^{+}$ (the result). Based on the rules, we can look at the rule $A \rightarrow B$ and see that we can add to the result $B$, which is now $AB$. The next rule that says $A \rightarrow C$ allows us to add $C$ to the result so $ABC$. The rules that require $CG$ on the left hand side cannot be added, at least not yet, because $CG$ does not appear in the result ($C$ does, but not $G$). We can look at the rule for $B \rightarrow H$ and add $H$ to the result meaning the result is $ABCH$. This is not the full set ($ABCGHI$) and therefore we conclude that $A$ is not a superkey.
+A \textit{superkey} is a subset $K$ of a relation $R$ if, in any legal instance of $R$, for all pairs, of tuples $t_{1}$ and $t_{2}$ in the instance of $r$, if $t_{1} \neq t_{2}$ then $t_{1}[K] \neq t_{2}[K]$~\cite{dsc}. This is to say that no two tuples in a legal instance of the relation may have the same values the subset of attributes $K$, or if you prefer, the attributes in $K$ allow a tuple in the relation to be uniquely identified.
 
-This procedure can be repeated for any individual attribute and we will quickly find that no single attribute is a superkey for this relation. This is perhaps somewhat obvious from our list of functional dependencies. If we look carefully at them we can notice that neither $A$ nor $G$ ever appears on the right hand side of any of the functional dependencies, but all the other attributes do. That gives us a hint that a superkey might be $AG$, and that assumption can of course be tested by following the rules as above.
+Suppose that attributes $\alpha$ and $\beta$ are part of a relation $r$. A functional dependency $\alpha \rightarrow \beta$ is satisfied if for all pairs of tuples $t_{1}$ and $t_{2}$ such that $t_{1}[\alpha] = t_{2}[\alpha]$ it is the case that $t_{1}[\beta] = t_{2}[\beta]$. If this functional dependency holds on every legal instance of the relation, we can say the functional dependency holds on the schema~\cite{dsc}.
 
-If our candidate is $AG$ as suggested, we start off by saying the result is $AG$. Then  iterating through the functional dependencies: the first rule of $A \rightarrow B$ means we can add $B$ to get $ABG$. The next rule of $A \rightarrow C$ lets us make the result $ABCG$. The dependency $CG \rightarrow H$ allows us to add $H$ and get $ABCGH$, and the dependency $CG \rightarrow I$ means the result is $ABCGHI$ which encompasses all attributes and we can terminate the algorithm here; our guess based on the hints was a good one.
+If it helps you to imagine this, a functional dependency tells us that for a given value of $x$, we know what the value of $y$ will be. In this way it is like a function in math, if we know the value of $x$ we know the value of $f(x)$ (namely, $y$). And most importantly, for every value of $x$ there is at most one $y$. 
 
-There are three ways we can use this attribute closure algorithm~\cite{dsc}:
-\begin{itemize}
-	\item As above, to test if $\alpha$ is a superkey.
-	\item Check if a functional dependency holds (by determining if it is in $\alpha^{+}$.
-	\item As another way to compute $F^{+}$; we just compute the $\alpha^{+}$ for each $\alpha$ and then combine them. 
-\end{itemize}
+We can say that $K$ is a superkey of $R$ if the functional dependency $K \rightarrow R$ holds on this instance of the relation. That means, formally, that if $t_{1}[K] = t_{2}[K]$ then it means $t_{1} = t_{2}$ because a superkey identifies a tuple uniquely.
 
-\subsection*{Canonical Cover}
-Suppose we have a set of functional dependencies $F$ on a relation. Whenever a user wants to update the data inside this relation, the database system must check that all functional dependencies in $F$ are still satisfied (i.e., no key constraints or other rules are broken)~\cite{dsc}. It is worth noting that in real life the rules are only enforced if you actually tell the database about them. If an update or insertion is inconsistent with the established rules, it is not permitted to happen.
-
-Rather than checking every single functional dependency exactly as it is written, which may have some redundancy, we would like to simplify the set to a minimal number of rules that has the same closure. For example, if the rules say $A \rightarrow B$ and $B \rightarrow C$ and $A \rightarrow C$ we can immediately identify that there is redundancy and we could remove the rule $A \rightarrow C$ and still get the same closure, because that rule is implied and need not be checked separately.
-
-You could argue that this sort of thing should not be necessary: designers should not introduce redundant rules and if they do it is their own fault. That is nice, but we don't live in a perfect world. Database designers who sit down and work out functional dependencies in advance and draw diagrams and plan ahead will probably have few redundant rules. But that's not what happens a lot of the tine, either the system is designed well and then grows to have duplicate rules over time, or, very commonly, people just create some tables without thinking about it much and ``we'll fix it later if we have to'' is the approach. But it's hard to fix later, and in the meantime, the database has done a lot of unnecessary work...
-
-Formally speaking, an attribute of a functional dependency is \textit{extraneous} (unnecessary) under the following two scenarios~\cite{dsc}:
-\begin{itemize}
-	\item $A$ is extraneous in $\alpha$ if $A$ is in $\alpha$ and $F$ logically implies $(F - (\alpha \rightarrow \beta)) \cup ((\alpha - A) \rightarrow \beta))$.
-	\item $A$ is extraneous in $\beta$ if $A$ is in $\beta$ and the set of functional dependencies $(F - (\alpha \rightarrow \beta)) \cup (\alpha \rightarrow (\beta - A))$ logically implies $F$.
-\end{itemize}
-
-The first scenario is about removing a redundant attribute $A$ from the left hand side of an implication; the second is about removing it from the right hand side. An example of the first is if our rules say $AB \rightarrow C$ and $A \rightarrow C$, then we could remove $B$ from the left hand side. For the other scenario, if $AB \rightarrow CD$ and $A \rightarrow C$ are the functional dependencies, then $C$ is extraneous in the right hand side~\cite{dsc}.
-
-To check if $A$ is extraneous on the right hand side, the routine is fairly simple; remove $A$ from the right hand side ($\beta$) from the rule that it is in (e.g., if the rule is $D \rightarrow AB$, replace it with $D \rightarrow B$) and then compute the canonical cover of $\alpha$ (in this example, $D$). If the canonical cover included $A$, then $A$ was extraneous in $\beta$.
-
-To check if $A$ is extraneous on the left hand side, the idea is pretty much the same: remove $A$ from the left hand side ($\alpha$) and check if this reduced set still functionally determines $\beta$. So if the rule is $DF \rightarrow GH$, remove $F$ and we are left with the uncertain rule $D \rightarrow GH$, which we need to test to be sure. We compute the closure of $D$ without this modified rule and see if it includes $GH$ (actually, all attributes in $\beta$). If it does, then $F$ was extraneous in the left hand side.
-
-The canonical cover for $F$ is denoted $F_{c}$ and it is a minimal representation of $F$. It requires two rules: (1) no functional dependency in $F_{c}$ has an extraneous attribute, and (2) the left side of each functional dependency is unique. The second rule means we can't have two rules that say $A \rightarrow B$ and $A \rightarrow C$ respectively; we must combine them in one single rule $A \rightarrow BC$. By making the minimal set, it makes it easier to test if the functional dependencies are satisfied.
-
-Let's do an example from~\cite{dsc}: The schema is simple $(A, B, C)$ and our functional dependencies are ($A \rightarrow BC, B \rightarrow C, A \rightarrow B, AB \rightarrow C$). Well, anyway, it is simple enough, we can use the union rule to combine the rule $A \rightarrow BC$ and $A \rightarrow B$ (pretty obvious). And then we can remove extraneous attributes to get this down to $A \rightarrow B$ and $B \rightarrow C$. This is slightly redundant and we can figure out by transitivity that $A \rightarrow BC$. These rules are pretty easy to test and we prefer to test these two versus the original four. This is a pretty terrible schema, actually, because there are way too many dependencies and only three attributes. 
-
-Let's try instead a different one from~\cite{fds}: our schema has more attributes and the functional dependencies are ($B \rightarrow A, D \rightarrow A, AB \rightarrow D$). In this case, all the left hand sides are different, s o we can't combine any that way. The right hand sides are all single attributes so we don't need to look for extraneous attributes there. But we should look at the left hand side. The only one that is not minimal there is the functional dependency $AB \rightarrow D$ and we would like to know if we can eliminate $A$ or $B$ from the left side. Looking at the rule that says $B \rightarrow A$ we can probably reason pretty well that if $B \rightarrow A$ then $B \rightarrow AB$  (which you can also reason as adding $B$ to both sides of the rule $B \rightarrow A$ becomes $BB \rightarrow AB$ and $BB$ is just $B$). So we can replace the one double-left-side rule with $B \rightarrow D$. Then we have a set that is equivalent: ($B \rightarrow A, D \rightarrow A, B \rightarrow D$). There is some redundancy here, though, and we could find out that $B \rightarrow A$ can be eliminated, leaving us with ($B \rightarrow D, D \rightarrow A$).
-
-Because canonical cover is about finding a minimal equivalent set, it is not necessarily that there is only one correct answer. If there is redundancy, we may need to delete one of two attributes (but not both). Let's go back to the example from earlier with the three attributes. Our functional dependencies are still ($A \rightarrow BC, B \rightarrow C, A \rightarrow B, AB \rightarrow C$). If we test $A \rightarrow BC$ we will find that both $B$ and $C$ are extraneous. This is normally not an issue, because we just test one of the two, and if it is redundant, we delete it and move on to testing other attributes in the modified set. But one person might choose to delete $B$ and another person might choose to delete $C$. Neither choice is wrong, but they will produce two different canonical cover sets, both of which are equally correct. The more functional dependencies there are with redundancy to be eliminated, the more possible correct answers there are. 
-
-
-\subsection*{Lossless Decomposition}
-
-Decomposition is breaking up a relation into two or more smaller ones. The motivations for doing so are something we will come back to later on, but for the moment, just assume there are good reasons. A decomposition is \textit{lossless} if no information is lost by splitting a relation $r$ into smaller relations $r_{1}$ and $r_{2}$; if information is loss it is called \textit{lossy} (and that is undesirable). The more precise definition of this is specified in relational algebra as $\Pi_{R_{1}}(r) \bowtie \Pi_{R_{2}}(r) = r$ (or in SQL, the natural join of the two tables with all attributes)~\cite{dsc}. 
-
-How can we tell if a join is lossless or lossy? You may have guessed just from the placement in the topics covered that this has something to do with the functional dependencies (meta gaming the lectures?) and that would be correct. If the decomposition is lossless then every functional dependency $f$ in $F$ holds in spite of the fact that the relation is split. But we can't really cheat and just ``forget'' to put in the functional dependencies to make it work, now can we?
-
-Thinking carefully about the way the decomposition must work, there needs to be some attribute or attributes that link together the two tables. This does mean some data is duplicated. One relation needs to have some way of referencing another, something like an address that references a person meaning the address relation contains the identifier of the person. 
-
-The formal definition for a lossless decomposition says that one of the following must hold on the two relations: $R_{1} \cap R_{2} \rightarrow R_{1}$ or  $R_{1} \cap R_{2} \rightarrow R_{2}$. That is to say, the intersection of the two relations most be sufficient to uniquely identify one of the two of them. 
-
-If we have employee with \textit{id, name, street, city, province, postalcode} and we tried to split it into $r_{1}$ as \textit{id, name}, and $r_{2}$ as \textit{name, sweet, city, province, postcode}. Is this going to work? The intersection of these two is \textit{name} and this is not a superkey for either $r_{1}$ or $r_{2}$ because names are not unique.
-
-There is a formal way for testing that dependencies have been preserved. There is a computationally expensive algorithm outlined in the textbook, as well as one that is premised on the idea that if each functional dependency $f$ can be tested on one relation only, then just test it on that relation and we're done. Unfortunately that last assumption is not necessarily true; it could happen that a functional dependency is across tables...
-
-Our solution is then a modified algorithm that does not require us to compute the closure of $F$. The algorithm is as follows, executed for each functional dependency $\alpha \rightarrow \beta$ ~\cite{dsc}:
-
-
-\begin{enumerate}
-	\item $result$ = $\alpha$
-	\item for reach relation $R_{i}$ in the decomposition
-	\begin{enumerate}
-		\item $result = result \cup (  (result \cap R_{i})^{+} \cap R_{i} )$
-	    \item if $result$ did not change at all, break out of the for loop
-	    \end{enumerate}
-\end{enumerate}
-
-If $result$ contains all attributes in $\beta$, then the dependency is preserved. And this must hold for all dependencies $\alpha \rightarrow \beta$.
-
-Which is explained in two key ideas as follows. The first idea is testing if each dependency $\alpha \rightarrow \beta$ is satisfied in $F'$, where $F'$ is the union of the \textit{restrictions} of $F$. That is, when we take the part of $F$ that can be applied to a relation $R_{i}$ we get $F_{i}$ and $F'$ is the union of all $F_{i}$s. We compute the closure of $\alpha$ under $F'$ to see if that includes $\beta$. The second idea is to use a modified version of the attribute closure algorithm to compute closure under $F'$ without actually computing $F'$ which would be expensive. For full details, see~\cite{dsc}, but keep in mind this is polynomial time rather than exponential time like computing $F^{+}$ would be.
-
-\subsection*{Algorithms for Decomposition}
-
-We have looked at very simple schemas (and probably will continue to look at very simple ones in this course). For those it is not too difficult to see how to get the schema into BCNF or 3NF or design it that way in the first place. But if we need to take a schema and decompose it, for a sufficiently complex schema, there are some algorithms that make this process consistent.
-
-\paragraph{BCNF.}To decompose to BCNF, the algorithm is as follows~\cite{dsc}. The initial state is the relations that we have, and we also need to then compute $F^{+}$. Then the steps are:
-
+Functional dependencies are used for both design and verification purposes. We use them in the design process to identify and record the constraints that our database schema should be designed around. They will be used as a way to decide what entities should be formed and how their relationships to others appear. And when we have a set of functional dependencies, we can use them to verify if an instance of the database is legal; that is, check if all constraints are satisfied. If the answer is yes, then we say the set of functional dependencies holds.
+ 
 \begin{center}
-\includegraphics[width=0.7 \textwidth]{images/bcnf-algorithm}\\
-BCNF Decomposition algorithm in pseudocode~\cite{dsc}
+\includegraphics[width=0.2\textwidth]{images/fd-1}\\
+A sample relation with dummy data~\cite{dsc}
 \end{center}
 
-The algorithm is both in BCNF and a lossless decomposition. This is because when we replace a schema $R_{i}$ with $(R_{i} - \beta)$ and $(\alpha, \beta)$ then the intersection of these two relations is $\alpha$.
+In the sample data above, we can identify the dependency $A \rightarrow C$ because for each tuple where the value of $A$ is $a_{1}$, the value of $C$ is the same ($c_{1}$), where $A$ is $a_{2}$, $C$ is $c_{2}$, and where $A$ is $a_{3}$, $C$ is $c_{2}$. That is, by knowing the value of $A$ we can know the value of $C$. We can also see that $C \rightarrow A$ does not hold.
 
-\paragraph{3NF.} If instead we wanted to put things in 3NF, it is a somewhat more complicated algorithm. It is also dependency preserving and lossless. It explicitly builds a schema for each dependency in a canonical cover, ensuring that each schema contains a candidate key. Unlike the BCNF decomposition algorithm, this builds the relations up rather than breaks them down. A formal proof of the algorithm below is in~\cite{dsc}: 
+You are probably thinking that this relation has only five tuples in it and it may just be a coincidence that $A \rightarrow C$ holds on this relation. And that is entirely possible. Our data is observational here, not prescriptive. Without knowing a bit about what $A$ and $C$ are we don't know if it should be the case. Based on what we have here we can only verify if certain functional dependencies hold, if they are provided. 
+
+There are also \textit{trivial} functional dependencies because they are always true and not even the smallest bit interesting. The functional dependency $A \rightarrow A$ is an example of a trivial dependency, and not very useful. A formal definition of a trivial relation is that $\alpha \rightarrow \beta$ is trivial if $\beta$ is a contained within $\alpha$ (in set thinking)~\cite{dsc}.
+
+Functional dependencies can be transitive: if $A \rightarrow B$ and $B \rightarrow C$, then $A \rightarrow C$. For each $A$ there can be only one value of $B$ and for that value of $B$ there is only one corresponding $C$. If a set of functional dependencies is $F$, the notation that includes all of these implied dependencies is $F^{+}$, the \textit{closure} of $F$~\cite{dsc}.
+
+\subsection*{Boyce-Codd Normal Form}
+
+The \textit{Boyce-Codd Normal Form}, known as BCNF, eliminates all redundancy that can be found using functional dependencies (but it does not eliminate all redundancy). A schema $R$ is in BCNF with respect to a set of functional dependencies in $F$, if, for all functional dependencies in $F^{+}$ of the form $\alpha \rightarrow \beta$ either (1) the functional dependency is trivial, or (2) $\alpha$ is a superkey for schema $R$~\cite{dsc}. A database is in BCNF if all its relations are in BCNF.
+
+Calling back to the earlier example where we looked at merging instructor and relation, we can see that this is not in BCNF fairly easily. A department has a budget, yes, but in this relationship a the department name is not a superkey because we had two entries (Sedra, Smith) that were in the same department and those had the same budget. A department cannot have two budgets.
+
+Our real-world understanding tells us that there is a dependency that says a department has a budget, and only one budget (even if the department chair would like to have the sum of the budgets...). That tells us there should exist a functional dependency. Given that a functional dependency should exist, check it against he conditions for BCNF. It is not trivial, nor is department name a superkey for this combined relation.
+
+The general approach to decompose things that are not in BCNF from~\cite{dsc}. If it is not in BCNF there is at least one nontrivial functional dependency $\alpha \rightarrow \beta$ where $\alpha$ is not a superkey for $R$. Then we need to split up $R$ into two relations: (1) $(\alpha \cup \beta)$ and (2) $(R - (\beta - \alpha))$. The rule is stated in this way because sometimes we need to have attributes that appear on both sides of the arrow. We may need to repeat that process on one of the new relations until it is in BCNF.
+
+\paragraph{Dependency Preservation.} Avoiding duplication of data is not our only goal in a database design. Constraints also need to be checked. Although we have not yet seen how joins are performed, or why they are expensive (really), for now we should just understand that joins are expensive and we would like to avoid them. Checking if a constraint is satisfied may require a computationally expensive join if the relations are in BCNF.
+
+Consider an example from~\cite{dsc}: the previous relationship between student and advisor has been altered. Now, if a student wishes to have multiple advisors, that is permitted, but the student may only have at most one advisor from a given department. How realistic this scenario may be is not really the goal.
 
 \begin{center}
-\includegraphics[width=0.7\textwidth]{images/3nf-algorithm}\\
-3NF Decomposition algorithm in pseudocode~\cite{dsc}
+\includegraphics[width=0.5\textwidth]{images/advise-3}\\
+E-R diagram for ternary advisor-student-department relationship~\cite{dsc}
 \end{center}
+
+The relation in the diagram above to represent \textit{dept\_advisor} will contain three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know, the functional dependencies are \textit{instructor\_id} $\rightarrow$ \textit{dept\_name} (an instructor belongs to one department). and \textit{student\_id, dept\_name} $\rightarrow$ \textit{instructor\_id} (a student has at most one advisor per department). 
+
+This design is not in BCNF, because \textit{instructor\_id} is not a superkey. An instructor ID alone is not enough to identify the relationship, because multiple students can be advised by the same individual. So we need to perform the decomposition procedure and that will produce two relations: \textit{(student\_id, instructor\_id)} and \textit{(instructor\_id, dept\_name)}.
+
+Those are in BCNF, but it is difficult to verify the constraint that requires us to verify that each triple of \textit{(student\_id, instructor\_id, dept\_name}) is unique. That is because performing this check requires a join on the two relations in the previous paragraph. That is computationally expensive, as we will soon see. 
+
+Because it is now hard to check this dependency, the design is said to not be \textit{dependency preserving}. It is not that it is impossible to check the dependency, although the terminology might seem to imply that data is somehow lost. It is not lost, just harder to check and verify.
+
+\subsection*{Third Normal Form}
+The Third Normal Form, or 3NF, is weaker than BCNF that allows dependencies to be preserved. Now wait, you say, third normal form? What happened to the second normal form? Is BCNF the second normal form? No, it is separate from BCNF. A table is in the second normal form if it is in the first normal form and all non-key columns are dependent on the table's primary key~\cite{secnorm}. The second normal form is not especially popular and is mostly here for completeness. It is the third normal form that we are interested in. 
+ 
+The 3NF rules are a small modification of the BCNF rules. In particular, we would like to allow some nontrivial functional dependencies whose left side (the $\alpha$) is not a superkey. 
+
+A schema $R$ is in 3NF with respect to a set of functional dependencies in $F$, if, for all functional dependencies in $F^{+}$ of the form $\alpha \rightarrow \beta$ one of the following holds: (1) the functional dependency is trivial, or (2) $\alpha$ is a superkey for schema $R$~\cite{dsc}, or (3) Each attribute $A$ in $\beta - \alpha$ is contained in a candidate key for $R$. Any one of those conditions suffices. Remember also that a candidate key is a minimal superkey. Note also that the third condition does not mean a single candidate key must contain all attributes in $\beta - \alpha$; as long as each attribute appears in at least one candidate key~\cite{dsc}.
+
+Remember that a schema that is in BCNF would satisfy case 1 or 2 for each of the functional dependencies, so anything in BCNF is already in 3NF. 3NF, however, is slightly less restrictive and allows functional dependencies that are not permitted in BCNF, so something in 3NF may or may not be in BCNF.
+
+Recall: the relation in the diagram in the previous subsection to represent \textit{dept\_advisor} contains three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know of the functional dependencies, this relation is already in 3NF. The step we took to do the decomposition to BCNF is unnecessary here if we can accept 3NF. There are tradeoffs, but we can come back to what those are...
+
+How do we know the new definition of \textit{dept\_advisor} is in 3NF? We know that the current definition has a functional dependency that does not meet condition 1 or 2, otherwise it would be in BCNF. So the rule we will check is the third rule and we'll find that this is valid because \textit{instructor\_id} is contained in a candidate key: \textit{(student\_id, instructor\_id)} is a candidate key, because it is minimal and sufficient to identify any row. If the student with ID x999chan is supervised by Professor Sedra, we have enough information to figure out that the department is ECE.
+
+\subsection*{Higher Normal Forms}
+This isn't even my final form! In addition to the first, second, third, and BCNF normal forms there are more... Fourth, fifth, and beyond. The 
+
+The fourth normal form is built upon the third normal form, so the first requirement for something being in 4NF is that it is in BCNF. The new requirement is that a record type cannot have more than one multivalued dependency. A multivalued dependency exists between two attributes if, for each value of the first attribute $\alpha$ there is more than one value of the second attribute $\beta$~\cite{fournorm}. 
+
+Consider the following table representing students. It lists their department and their research areas. 
+
+\begin{center}
+\begin{tabular}{|l|l|l|} \hline
+	\textbf{id} & \textbf{department} & \textbf{research\_area} \\ \hline
+	20000001 & ECE & Security \\ \hline
+	20000002 & CS & Software \\ \hline
+    20000003 & ECE & Circuits \\ \hline
+    20000004 & SYDE & HCI \\ \hline
+    20000005 & ECE & Networks \\ \hline
+    20000005 & CS & Security \\ \hline
+\end{tabular}
+\end{center}
+
+In this table there are two multivalued dependencies:  \textit{id} $\rightarrow$ \textit{department} and \textit{id} $\rightarrow$ \textit{research\_area}. To put this table into 4NF, we need to split it up into two tables, one with attributes \textit{(id, department)} and one with attributes \textit{(id, research\_area)}. Multivalued dependencies are usually written $\alpha \rightarrow\rightarrow \beta$.
+
+The formal 4NF decomposition algorithm looks something like this~\cite{dsc}:
+
+\begin{enumerate}
+	\item Compute $D^{+}$ (the implied set of constraint for the schema)
+	\item Check all relations to see if they are in 4NF.
+	\item If all relations are in 4NF with respect to the constraints, the algorithm terminates.
+	\item Otherwise let $\alpha \rightarrow\rightarrow \beta$ be a multivalued dependency in the relation $R_{i}$ that has two or more multivalued dependencies. 
+	\item Split the relation into two new ones, $(R_{i} - \beta)$ and $(\alpha, \beta)$.
+	\item Go back to step 2.
+\end{enumerate}
+
+
+We have likely thus far observed that the process of putting a relation into a higher normal form means we break things up into more, smaller tables. The trend continues into higher normal forms.
+
+The fifth normal form, as described in the MariaDB documentation, is one where you can't make tables any smaller with different keys. People have also tried to design sixth normal forms and there's some talk in the literature about domain key normal form but these are mostly of theoretical or academic research interest only. So we will focus on BCNF and 3NF mostly, perhaps with a little bit of 4NF. Our next step will be to examine functional-dependency theory and reason a bit more formally about the subject.
 
 \input{bibliography.tex}
 

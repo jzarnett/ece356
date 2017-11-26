@@ -2,138 +2,122 @@
 
 \begin{document}
 
-\lecture{ 9 --- Normalization }{\term}{Jeff Zarnett}
+\lecture{ 9 --- Reduction to Relational Schema, Design Decisions }{\term}{Jeff Zarnett}
 
-\section*{Normalization}
-So far, we learned the syntax to create tables, and how to turn modelling diagrams into tables and all the various bits and pieces about how modelling diagrams work. The modelling diagrams give us some guidance and tell us about wrong ways to represent the data, but we don't yet have enough guidance as to what is correct. If we do a good job the relation will be in a \textit{normal form}. Yes, \textit{a} normal form... there are several.
+\section*{Modelling Diagrams into Tables}
+If we have an entity-relation diagram, eventually we will want to turn that into a set of database tables. The conversion routine is not especially complicated and after a small amount of practice it is likely that you will be able to do it quickly and efficiently.
 
-An example from~\cite{dsc} gives us an opportunity to do something wrong and show bad design: if we combine instructor (having the attributes id, name, department, salary) with department (having an id, faculty, budget) then our combined table means one larger relation replaces two smaller ones. This isn't total nonsense because instructors do have a relationship with a department, but is this a good way to model the data? Intuition might tell you no, but think about why. In the combined relation, if there are two instructors, say, Sedra and Smith, both members of department of electrical \& computer engineering, in both tuples there will be an entry for the budget of the department. The budget data is duplicated and risks becoming inconsistent.
+\paragraph{Strong Entity.} Strong entities are the easiest to turn into tables. The name of the table will be the name of the entity (surprise) and the attributes in the diagram become the attributes in the relation. The primary key in the table will be the same as the primary key in the diagram. If the diagram says an instructor has \textit{(id, name, salary)} and \textit{id} is the primary key, then the create table statement will assign types and lengths to these fields. 
 
-Our intuition may tell us this is bad, but we would like a way to express it formally. Informally the rule is that each value of department name corresponds to at most one budget. The formal description is a \textit{functional dependency} and it is written \textit{dept\_name} $\rightarrow$ \textit{budget}. A functional dependency specified that if there is a schema that consists just of the attributes for department name and budget, then the department name attribute could be the primary key~\cite{dsc}. Combining instructor and department breaks this rule, because we have duplicate entries for department and therefore this can't work.
+\paragraph{Weak Entity.} Weak entities are more interesting. If $A$ is a weak entity set and the strong attribute it depends on is $B$. The weak entity table is created using the attributes of $A$ as well as the primary key of $B$, the entity it depends upon. If the weak entity is the section of a course, as before, and course is the strong entity, then the section entity would be created with all attributes of the section (weak) entity and the primary key  of the course entity (course id).
 
-The functional dependency shows us that data is duplicated and that indicates that we need to split the combined relation in a process called \textit{decomposition}.
+It is also sensible to add constraints to this table that says the attribute(s) referencing the primary key of the strong entity  must exist in the strong entity table (not null and foreign key). In the weak entity table, the primary key is formed by the key referencing the strong entity plus the discriminator~\cite{dsc}.
 
-The previous example is very egregiously and obviously wrong, making it simple to identify that there is a problem. In reality, a database will have many more tables and it will be harder to find out what the functional dependencies are, but there is an algorithm for that which will be covered soon enough.
+Suppose that the weak entity is a list of something and the strong entity a container of some sort. Suppose you have a shipment: a single shipment is made up of items and those items are, let's say, weak entities in the example. Then the primary key would be the unique identifier of the shipment plus the discriminator, where the discriminator is an integer identifying the position in the list. So if the unique ID for a shipment is ABC12345, then the items for that shipment would have primary keys be \textit{(ABC12345, 0), (ABC12345, 1), (ABC12345, 2), (ABC12345, 3)...}. This also provides a nice way to sort them.
 
-Another example from~\cite{dsc} shows us that decomposition on its own is not always good: we should split up things that don't belong together, but it is possible to go overboard. If the relation is \textit{employee( ID, name, street, city, province, postalcode )}, we might think that we can decompose this into two schemas: \textit{employee(ID, name), address(name, street, city, province, postcode)}. Does this work? No -- two employees could have the same name and that is likely in the real world, as some names are extremely popular. 
+\paragraph{Relationships.} 
+A relationship is possibly represented as a table in the database as well. As a first step, we will define the attributes for that table as if it will be a standalone table. Later, we might combine the table with another one to eliminate redundancy or simplify (see below) but for now the first step will be the naive table creation.
 
-If instead of defining the address relation to be based on name, we could use the ID instead, and it would work: \textit{employee(ID, name), address(employeeID, street, city, province, postcode)}. This is an acceptable decomposition and we call it \textit{lossless} because no information is lost. The first attempt at this caused a loss of information (if two employees have the same name, there is the possibility of confusion), so it is called a \textit{lossy} decomposition. We do not perform lossy decompositions.
+The table is created using (1) the primary key of each of the entities participating in the relationship, plus (2) any attributes that have been assigned to the relationship itself. That's pretty much it; the real question is what should form the primary key for this table? It depends on the nature of the relationship~\cite{dsc}:
 
-\subsection*{Atomic Domains and the First Normal Form}
+\begin{itemize}
+	\item For binary many-to-many relationships, the union of the primary keys of each entity participating in the set forms the primary key.
+	\item For binary one-to-one relationships, the primary key of either set (but no need for both); either is fine.
+	\item For binary many-to-one (or one-to-many) relationships, the primary key of the entity on the ``many'' side is the primary key for the relationship.
+	\item For $n$-ary relationships where none of the relationships are ``to one'', the union of the primary key from participating entity sets makes up the primary key for the relationship.
+	\item For $n$-ary relationships where there is a ``to one'' participant, the primary key is the union of primary keys of all the OTHER participating entities (but not the one that's ``to one''). 
+\end{itemize}
 
-Our E-R model allows attributes to be non-atomic, that is to say, divisible. If a course code is ``ECE356'', that attribute is non-atomic because it can be divided into two parts, the ``ECE'' (department) and ``356'' (course number) components. The same is true of something like an address: ``48 Main Street Southwest Unit 2A'' might be the street attribute, but that is divisible into several parts. Those are non-atomic attributes values. If the domain is indivisible units, e.g., an integer, it is atomic.
+The foreign key constraints should be added from the relationship table referencing the entities participating in the relationship. Now, some of the tables generated by this process are redundant and some can be combined to make things simpler and a little bit clearer...
 
-A relation $R$ is said to be in the \textit{first normal form} (abbreviated as 1NF) if the domain of all attributes of $R$ are atomic. If some attribute is not atomic, then we could subdivide it to put it into 1NF. Instead of course being ``ECE356'' we could split  it up into department ``ECE'' and number ``356''. The primary key could still be composed of those two elements, mind you.
+\paragraph{Redundancy.}
+The relationship linking a weak entity to the corresponding strong entity. Weak entities are modelled as being many to one and the relationships have no descriptive entities. Because the weak entity has the primary key of the related strong entity as one of its attributes (thanks the the relations being resolved into the entities it links). Thus, for this reason, a relation that specifically links the weak entity to the strong entity is fully redundant. 
 
-Does this mean that a string (varchar) attribute can never be atomic, as one may take a subset? No, what really matters is how they are used in the database. If the application logic requires breaking up the attribute for some reason, then it is non-atomic. The ``ECE356'' example is not atomic because there are situations where you would want to subdivide this. To answer the question ``how many courses in the Winter 2018 term are ECE courses?'', we need to look at all course codes and figure out which ones begin with ``ECE''. If employee numbers are generated in the format ``AA1234'' and can never be subdivided (e.g., the first two letters don't indicate anything like department) then they are atomic. 
+Example: the weak entity of a section of a course linked to a strong entity of a course~\cite{dsc}. A section a section id, semester, and a year. It is related to a course that has a course ID. So when we have done the work of turning the relationship into some tables we'll find that the table for section we already have course ID as one of the attributes. So we would not need a table that actually links them anymore, as it would be totally redundant. 
 
-More than this, though, we don't like set-valued attributes. If we wanted to model all the departments that belong to a faculty, what we don't want is for the faculty tuple to have an attribute called departments which then contains multiple elements... For example, Engineering is a faculty, and the list of departments would be ECE, MME, SYDE, etc. This would not be in the first normal form, because the attribute of departments could be split up into each department. This can cause confusion and redundancy. What about Software Engineering? It belongs to the faculty of Engineering and Math... Data could be related.
+\paragraph{Combination.}
+Sometimes our diagram presents us a number of entities which we would like to combine when we are creating tables (and we'll see in an upcoming lecture whether this is a good idea or not). 
 
-\subsection*{Decomposition with Functional Dependencies}
+If a relationship exists between two tables $A$ and $B$ that is many-to-one (many $A$ correspond to one $B$), we might naively create tables for $A$, $B$, and one for the relation $AB$. If it is (almost) always the case that $A$ participates in the relation then we could actually combine $A$ and $AB$ to make a single relation that is the union of both attributes~\cite{dsc}. In a practical sense that may mean that $A$ simply gets an attribute that references $B$. If participation is not total, the use of null is appropriate.
 
-The schema that we create is supposed to model entities and their relationships in the real world. The real world understanding tells us important information about how the data should be modelled: students have a student ID number and the student ID number is unique. If the database does not represent that information in some way, we have done something wrong. The real world constraints may be represented as a key or as a functional dependency.
+The one-to-many relationship is just the reverse of the previous paragraph -- instead of adding the attribute(s) to $A$, add the attribute(s) to $B$ instead. In the case of a one-to-one relationship between $C$ and $D$, the attributes of the relation can be added to either one of the entities, $C$ or $D$, but not both. If we have a many-to-many relationship, then we cannot combine the tables (obviously). 
 
-The schema is just the data model, and we care if the data in the tables conforms to the constraints. If the data in the table meets all the real-world constraints, that instance of the relation is called a \textit{legal instance}. If all tables in the database are a legal instance of that relation, then we can say the instance of the database is a legal instance of the database schema~\cite{dsc}.
+If we have combined two tables, then obviously, we don't need foreign keys to link them anymore (because, of course, it would make no sense). However, a foreign key that would have appeared on a relationship $AB$ that references some other entity needs to be created on the merged tables as well.
 
-A \textit{superkey} is a subset $K$ of a relation $R$ if, in any legal instance of $R$, for all pairs, of tuples $t_{1}$ and $t_{2}$ in the instance of $r$, if $t_{1} \neq t_{2}$ then $t_{1}[K] \neq t_{2}[K]$~\cite{dsc}. This is to say that no two tuples in a legal instance of the relation may have the same values the subset of attributes $K$, or if you prefer, the attributes in $K$ allow a tuple in the relation to be uniquely identified.
-
-Suppose that attributes $\alpha$ and $\beta$ are part of a relation $r$. A functional dependency $\alpha \rightarrow \beta$ is satisfied if for all pairs of tuples $t_{1}$ and $t_{2}$ such that $t_{1}[\alpha] = t_{2}[\alpha]$ it is the case that $t_{1}[\beta] = t_{2}[\beta]$. If this functional dependency holds on every legal instance of the relation, we can say the functional dependency holds on the schema~\cite{dsc}.
-
-If it helps you to imagine this, a functional dependency tells us that for a given value of $x$, we know what the value of $y$ will be. In this way it is like a function in math, if we know the value of $x$ we know the value of $f(x)$ (namely, $y$). And most importantly, for every value of $x$ there is at most one $y$. 
-
-We can say that $K$ is a superkey of $R$ if the functional dependency $K \rightarrow R$ holds on this instance of the relation. That means, formally, that if $t_{1}[K] = t_{2}[K]$ then it means $t_{1} = t_{2}$ because a superkey identifies a tuple uniquely.
-
-Functional dependencies are used for both design and verification purposes. We use them in the design process to identify and record the constraints that our database schema should be designed around. They will be used as a way to decide what entities should be formed and how their relationships to others appear. And when we have a set of functional dependencies, we can use them to verify if an instance of the database is legal; that is, check if all constraints are satisfied. If the answer is yes, then we say the set of functional dependencies holds.
- 
-\begin{center}
-\includegraphics[width=0.2\textwidth]{images/fd-1}\\
-A sample relation with dummy data~\cite{dsc}
-\end{center}
-
-In the sample data above, we can identify the dependency $A \rightarrow C$ because for each tuple where the value of $A$ is $a_{1}$, the value of $C$ is the same ($c_{1}$), where $A$ is $a_{2}$, $C$ is $c_{2}$, and where $A$ is $a_{3}$, $C$ is $c_{2}$. That is, by knowing the value of $A$ we can know the value of $C$. We can also see that $C \rightarrow A$ does not hold.
-
-You are probably thinking that this relation has only five tuples in it and it may just be a coincidence that $A \rightarrow C$ holds on this relation. And that is entirely possible. Our data is observational here, not prescriptive. Without knowing a bit about what $A$ and $C$ are we don't know if it should be the case. Based on what we have here we can only verify if certain functional dependencies hold, if they are provided. 
-
-There are also \textit{trivial} functional dependencies because they are always true and not even the smallest bit interesting. The functional dependency $A \rightarrow A$ is an example of a trivial dependency, and not very useful. A formal definition of a trivial relation is that $\alpha \rightarrow \beta$ is trivial if $\beta$ is a contained within $\alpha$ (in set thinking)~\cite{dsc}.
-
-Functional dependencies can be transitive: if $A \rightarrow B$ and $B \rightarrow C$, then $A \rightarrow C$. For each $A$ there can be only one value of $B$ and for that value of $B$ there is only one corresponding $C$. If a set of functional dependencies is $F$, the notation that includes all of these implied dependencies is $F^{+}$, the \textit{closure} of $F$~\cite{dsc}.
-
-\subsection*{Boyce-Codd Normal Form}
-
-The \textit{Boyce-Codd Normal Form}, known as BCNF, eliminates all redundancy that can be found using functional dependencies (but it does not eliminate all redundancy). A schema $R$ is in BCNF with respect to a set of functional dependencies in $F$, if, for all functional dependencies in $F^{+}$ of the form $\alpha \rightarrow \beta$ either (1) the functional dependency is trivial, or (2) $\alpha$ is a superkey for schema $R$~\cite{dsc}. A database is in BCNF if all its relations are in BCNF.
-
-Calling back to the earlier example where we looked at merging instructor and relation, we can see that this is not in BCNF fairly easily. A department has a budget, yes, but in this relationship a the department name is not a superkey because we had two entries (Sedra, Smith) that were in the same department and those had the same budget. A department cannot have two budgets.
-
-Our real-world understanding tells us that there is a dependency that says a department has a budget, and only one budget (even if the department chair would like to have the sum of the budgets...). That tells us there should exist a functional dependency. Given that a functional dependency should exist, check it against he conditions for BCNF. It is not trivial, nor is department name a superkey for this combined relation.
-
-The general approach to decompose things that are not in BCNF from~\cite{dsc}. If it is not in BCNF there is at least one nontrivial functional dependency $\alpha \rightarrow \beta$ where $\alpha$ is not a superkey for $R$. Then we need to split up $R$ into two relations: (1) $(\alpha \cup \beta)$ and (2) $(R - (\beta - \alpha))$. The rule is stated in this way because sometimes we need to have attributes that appear on both sides of the arrow. We may need to repeat that process on one of the new relations until it is in BCNF.
-
-\paragraph{Dependency Preservation.} Avoiding duplication of data is not our only goal in a database design. Constraints also need to be checked. Although we have not yet seen how joins are performed, or why they are expensive (really), for now we should just understand that joins are expensive and we would like to avoid them. Checking if a constraint is satisfied may require a computationally expensive join if the relations are in BCNF.
-
-Consider an example from~\cite{dsc}: the previous relationship between student and advisor has been altered. Now, if a student wishes to have multiple advisors, that is permitted, but the student may only have at most one advisor from a given department. How realistic this scenario may be is not really the goal.
+\paragraph{Generalization (Specialization).} To transform a generalization into an entity set, we have two choices. The most obvious approach is something along the lines of what Java will do in the background when you create a subclass of an object: the properties of the superclass appear on the subclass. Recall this diagram from earlier:
 
 \begin{center}
-\includegraphics[width=0.5\textwidth]{images/advise-3}\\
-E-R diagram for ternary advisor-student-department relationship~\cite{dsc}
+\includegraphics[width=0.35\textwidth]{images/specialization-generalization}\\
+An E-R diagram showing specialization and generalization~\cite{dsc}.
 \end{center}
 
-The relation in the diagram above to represent \textit{dept\_advisor} will contain three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know, the functional dependencies are \textit{instructor\_id} $\rightarrow$ \textit{dept\_name} (an instructor belongs to one department). and \textit{student\_id, dept\_name} $\rightarrow$ \textit{instructor\_id} (a student has at most one advisor per department). 
+In this case then we would define tables for instructor, secretary, and student. We might or might not have one for employee, depending on our rules. If, of course, we don't allow ``instantiation'' of a person, but instead a person must be either an employee or student, we would not create a table for the person relation. You may liken this decision to whether the class person is abstract or not.
+So let's assume that instructor then created as \textit{(ID, name, address, salary, rank)} with \textit{ID} as the primary key. There will be some repetition here as the secretary relation will also have most of the attributes the same, except instead of rank it will have hours per week.
 
-This design is not in BCNF, because \textit{instructor\_id} is not a superkey. An instructor ID alone is not enough to identify the relationship, because multiple students can be advised by the same individual. So we need to perform the decomposition procedure and that will produce two relations: \textit{(student\_id, instructor\_id)} and \textit{(instructor\_id, dept\_name)}.
+The alternative representation is to break it up so that we have instructor created as \textit{(ID, rank)}, which necessitates creating employee as \textit{(ID, salary)}, and person as \textit{(ID, name, address)}. This does require a fair amount of repetition in the primary key attribute since it will appear in all tables. The primary key is then the only one that is repeated. With some foreign keys set up to make the IDs match up, of course.
 
-Those are in BCNF, but it is difficult to verify the constraint that requires us to verify that each triple of \textit{(student\_id, instructor\_id, dept\_name}) is unique. That is because performing this check requires a join on the two relations in the previous paragraph. That is computationally expensive, as we will soon see. 
+That's interesting, both of these things will have some redundancy. But how much will we have? Depends: if the generalization is both disjoint and complete, the first approach is better. Disjoint and complete means that no entity is a member of two lower-level entity sets directly below a higher-level set, and if every entity in the higher level set is in one of the lower-level sets~\cite{dsc}. If that's not the case, we might get some duplicate data, such as if a student can also be an employee: things like name and address appear twice for a person who is both. So perhaps the alternative approach is preferable if these two conditions do not hold.
 
-Because it is now hard to check this dependency, the design is said to not be \textit{dependency preserving}. It is not that it is impossible to check the dependency, although the terminology might seem to imply that data is somehow lost. It is not lost, just harder to check and verify.
+\paragraph{Aggregation.} Aggregation is actually relatively easy to work out. The tables for the elements inside the aggregation are created as normal. Then the rules for creating the key constraints can just as easily be applied to any relationship that involves the aggregation. The primary key of the aggregation is the primary key of its defining set, so just use that (and no relation is created to specifically represent the aggregation)~\cite{dsc}.
 
-\subsection*{Third Normal Form}
-The Third Normal Form, or 3NF, is weaker than BCNF that allows dependencies to be preserved. Now wait, you say, third normal form? What happened to the second normal form? Is BCNF the second normal form? No, it is separate from BCNF. A table is in the second normal form if it is in the first normal form and all non-key columns are dependent on the table's primary key~\cite{secnorm}. The second normal form is not especially popular and is mostly here for completeness. It is the third normal form that we are interested in. 
- 
-The 3NF rules are a small modification of the BCNF rules. In particular, we would like to allow some nontrivial functional dependencies whose left side (the $\alpha$) is not a superkey. 
+\subsection*{Design Decisions}
 
-A schema $R$ is in 3NF with respect to a set of functional dependencies in $F$, if, for all functional dependencies in $F^{+}$ of the form $\alpha \rightarrow \beta$ one of the following holds: (1) the functional dependency is trivial, or (2) $\alpha$ is a superkey for schema $R$~\cite{dsc}, or (3) Each attribute $A$ in $\beta - \alpha$ is contained in a candidate key for $R$. Any one of those conditions suffices. Remember also that a candidate key is a minimal superkey. Note also that the third condition does not mean a single candidate key must contain all attributes in $\beta - \alpha$; as long as each attribute appears in at least one candidate key~\cite{dsc}.
+In creating our E-R diagrams we have implicitly or explicitly made some key design decisions about how we would like to implement the design. In some cases there are better choices and worse choices, but in other cases there are alternatives that are equally valid that we could choose between.
 
-Remember that a schema that is in BCNF would satisfy case 1 or 2 for each of the functional dependencies, so anything in BCNF is already in 3NF. 3NF, however, is slightly less restrictive and allows functional dependencies that are not permitted in BCNF, so something in 3NF may or may not be in BCNF.
+\paragraph{Entity vs. Attribute.} A decision we need to make frequently is whether a new piece of data should be added as an attribute or as a new entity. Let's say we want to add an e-mail address to users.
 
-Recall: the relation in the diagram in the previous subsection to represent \textit{dept\_advisor} contains three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know of the functional dependencies, this relation is already in 3NF. The step we took to do the decomposition to BCNF is unnecessary here if we can accept 3NF. There are tradeoffs, but we can come back to what those are...
+If the relationship is anything other than 1:1 then it is very unlikely we will choose a new attribute. How many e-mail addresses are users allowed to have in the system? If it is just one, our decision is more interesting. If a user can have multiple e-mail addresses, we must choose a new entity to represent e-mails. What about letting multiple users share an e-mail address? We might not want to forbid that specifically (although we can), but it still takes us back to the decision of whether a user can have one e-mail address or many.
 
-How do we know the new definition of \textit{dept\_advisor} is in 3NF? We know that the current definition has a functional dependency that does not meet condition 1 or 2, otherwise it would be in BCNF. So the rule we will check is the third rule and we'll find that this is valid because \textit{instructor\_id} is contained in a candidate key: \textit{(student\_id, instructor\_id)} is a candidate key, because it is minimal and sufficient to identify any row. If the student with ID x999chan is supervised by Professor Sedra, we have enough information to figure out that the department is ECE.
+Let's assume that a user can have exactly one e-mail address. Then putting it in an attribute is a viable choice. What if we put it in another entity? That might not be the best choice here, because we would have an entity for e-mail address that contains nothing but the e-mail address and then the attribute to link it to the user. 
 
-\subsection*{Higher Normal Forms}
-This isn't even my final form! In addition to the first, second, third, and BCNF normal forms there are more... Fourth, fifth, and beyond. The 
+What if instead, we were thinking of adding multiple related fields instead of one field? Then it might make more sense to group those things separately in an entity of their own. An address, for example, is a number of related fields, street, city, postal code, et cetera. If a user has one address we could put all those fields on the user entity, but it might make more sense to move them to a different entity. Performance considerations may come into play (eventually) because large entities are unwieldy. 
 
-The fourth normal form is built upon the third normal form, so the first requirement for something being in 4NF is that it is in BCNF. The new requirement is that a record type cannot have more than one multivalued dependency. A multivalued dependency exists between two attributes if, for each value of the first attribute $\alpha$ there is more than one value of the second attribute $\beta$~\cite{fournorm}. 
+But the real decision is more philosophical... What is an attribute and what is better as a set? There is not a bright line between the two and it may depend more on the real-life situation being modelled than any actual technical consideration.
 
-Consider the following table representing students. It lists their department and their research areas. 
+There is a wrong choice, though, and that is using the primary key of an entity as an attribute of another, instead of a relationship~\cite{dsc}. Remember that in a relationship, in reality of course, the table will need to contain some reference to the other. But in the E-R diagram it should be represented as a relationship (especially because it allows the opportunity to assign more attributes to the relationship, that otherwise might not have been in the right place). Simply writing, for example, \textit{student\_id} as an attribute in a \textit{instructor} entity as an alternative way of showing that there is a relationship (advisor) is suboptimal.
+
+It's also worth noting that a common mistake is to write redundant attributes on the relationship~\cite{dsc}. If a relationship is drawn between tables $r_{1}$ and $r_{2}$ in the diagram, there is no need to put the primary key of either $r_{1}$ or $r_{2}$ as attributes on that relation, because they are already implied by the fact that there exists a relationship between the two types. 
+
+\paragraph{Entity vs. Relationship.} We are also sometimes faced with the decision about whether to make a particular object an entity or a relationship. There are things that are clearly an entity (e.g., a customer) and those that are clearly a relationship (e.g., a shopping cart) but there are other things that fall within a marginal category where it could go either way. In an online shopping scenario, though, what about order history? This is different from the idea of a shopping cart because if an item changes attributes before purchase, the data in the cart needs to be updated... if it changes after, for example, the price decreases, it does not change the already-purchased orders.
+
+There are arguments for the relationship approach: it eliminates duplicate data and ensures that if a product is updated then the latest data is shown in the order. That might, actually, be an argument for the alternative. If a product is purchased then it might make sense to ``freeze'' in place some of its data at the time of purchase (e.g., price) so it is perhaps advisable to make an entity for a purchase order made. 
+
+Another example in the university schema is what to do with registration: when a student takes a class should that be represented by a relation that says the student with the id $x$ registered in the section $y$? Consider the E-R diagram as below:
 
 \begin{center}
-\begin{tabular}{|l|l|l|} \hline
-	\textbf{id} & \textbf{department} & \textbf{research\_area} \\ \hline
-	20000001 & ECE & Security \\ \hline
-	20000002 & CS & Software \\ \hline
-    20000003 & ECE & Circuits \\ \hline
-    20000004 & SYDE & HCI \\ \hline
-    20000005 & ECE & Networks \\ \hline
-    20000005 & CS & Security \\ \hline
-\end{tabular}
+	\includegraphics[width=0.7\textwidth]{images/reg-split}\\
+	Registration entity created to replace a more complex relationship~\cite{dsc}.
 \end{center}
 
-In this table there are two multivalued dependencies:  \textit{id} $\rightarrow$ \textit{department} and \textit{id} $\rightarrow$ \textit{research\_area}. To put this table into 4NF, we need to split it up into two tables, one with attributes \textit{(id, department)} and one with attributes \textit{(id, research\_area)}. Multivalued dependencies are usually written $\alpha \rightarrow\rightarrow \beta$.
+My personal take on this is that this is worse than just representing student enrolment in a section as a simple relationship. This approach has more entities, more relationships, and is perhaps not as easily matched to a theoretical model of the university. That a student is registered in a course is less tangible than a shopping cart in the online shopping scenario, so it seems strange to make registration an entity. Then again, you could argue that registration corresponds to a card kept in a file somewhere but that is probably not how it really works (but the mysteries of the registrar's office are not for humans to know...).
 
-The formal 4NF decomposition algorithm looks something like this~\cite{dsc}:
+\paragraph{Binary vs. Non-Binary Relationships.}
+When we have a $n$-ary relationship, that is an $n$-way relationship such as we have seen before, we could choose instead to represent it as a number of binary relationships. Consider a work term report: it has an author (a student) and an evaluator (lab instructor). We could make it a three-way relationship or we could instead break it up into two relationships, one between work report and student, and one between work report and lab staff. If it was in one relationship, a work report that has no marker assigned yet would just have \texttt{null} as its assigned value until a marker is assigned.  
 
-\begin{enumerate}
-	\item Compute $D^{+}$ (the implied set of constraint for the schema)
-	\item Check all relations to see if they are in 4NF.
-	\item If all relations are in 4NF with respect to the constraints, the algorithm terminates.
-	\item Otherwise let $\alpha \rightarrow\rightarrow \beta$ be a multivalued dependency in the relation $R_{i}$ that has two or more multivalued dependencies. 
-	\item Split the relation into two new ones, $(R_{i} - \beta)$ and $(\alpha, \beta)$.
-	\item Go back to step 2.
-\end{enumerate}
+It is always possible to replace an $n-ary$ relation with some number of binary relationships, although we may need to put an entity in the middle of it to make it all work out. Suppose we have a ternary (3 entity) relationship $R$ that connects entities $A$, $B$, and $C$. Any attributes of the ternary relationship become an entity $E$ and then three binary relations are created: $R_{A}$ relating $A$ and $E$, $R_{B}$ relating $B$ and $E$, and $R_{C}$ relating $C$ and $E$~\cite{dsc}.
 
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/ternary-to-binary}\\
+Converting a ternary relationship (a) into three binary relationships (b)~\cite{dsc}.
+\end{center}
 
-We have likely thus far observed that the process of putting a relation into a higher normal form means we break things up into more, smaller tables. The trend continues into higher normal forms.
+Even though it is possible to turn a ternary relationship into binary relationships, there are reasons why this is undesirable. In fact, we can immediately consider three reasons why this is not always a great idea~\cite{dsc}:
 
-The fifth normal form, as described in the MariaDB documentation, is one where you can't make tables any smaller with different keys. People have also tried to design sixth normal forms and there's some talk in the literature about domain key normal form but these are mostly of theoretical or academic research interest only. So we will focus on BCNF and 3NF mostly, perhaps with a little bit of 4NF. Our next step will be to examine functional-dependency theory and reason a bit more formally about the subject.
+\begin{itemize}
+	\item When a single relationship is split into two or more, it may no longer be clear the split relationships have any connection. 
+	\item An identifying attribute needs to be created for the new entity ($E$ in the above example) and this needs to be stored and maintained. Then there would be more relationships which would make the diagram more difficult to follow and ultimately also mean more tables that are created in the database.
+	\item Constraints that exist in a ternary (or more) relationship may be difficult or impossible to express in binary relationships. If a constraint says the relationship is many-to-one from $(A, B)$ to $C$, i.e., each $AB$ pair is associated with at most one $C$ entity, this cannot be expressed with cardinality constraints on relations $R_{A}, R_{B}, R_{C}$.
+\end{itemize}
+
+\paragraph{Placement of Relationship Attributes.} 
+
+In the case of one-to-one and one-to-many relationships we could choose to create a table for the relation, but we don't have to... We could instead associate the attributes of the relationship with one of the entities. If we have a work report entity and we want to relate it to its author, we could have a table that relates the two... or a work report entity might end up with an attribute for the student ID to connect the two. But this wouldn't work for a book and author relationship, because a book can have more than one author and an author can write more than one book.
+
+This discussion takes us back full circle to the entity vs. relationship discussion from earlier. If the relationship to be modelled is a many-to-many relationship then there isn't really a lot of choice. If an attribute $A$ in the relationship is determined uniquely only by the combination of the entities' identifiers, then $A$ needs to be placed on that relationship and cannot be put on either side. If the relationship is a shopping cart in an online store, and a discount code has been applied, the discount code's application belongs neither to the customer nor any individual item in the cart.
+
+\paragraph{Security.} Remember, permissions are handed out at the level of the table and that makes it sometimes necessary to divide some tables so that the appropriate security constraints can be applied. 
+
+\paragraph{Conclusion.} There are, fortunately, some formal and precise ways for making a determination about whether our designs are appropriate. We would like our designs to be ``normal'' and there is a precise definition of what normal is. 
 
 \input{bibliography.tex}
 

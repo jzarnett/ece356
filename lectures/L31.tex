@@ -2,12 +2,29 @@
 
 \begin{document}
 
-\lecture{ 31 --- Recovery: Repair, Probability} {\term}{Jeff Zarnett}
+\lecture{ 31 --- Recovery: Repairing Inconsistent Data }{\term}{Jeff Zarnett}
 
-\section*{Probabilistically Answering Queries}
+\section*{Inconsistent data? In my database? It's more likely than you think!}
 
+Inconsistent databases are a difficult problem for database designers to deal with. As the definition of inconsistent suggests, one or more integrity constraints have been violated, and one might conclude that queries on the database would be impossible or the answers meaningless. Research on the subject, specifically in the fields of repairing inconsistencies and answering queries despite the status of the database, has provided several options. The works we examine restrict themselves to relational databases, and not any of the other possible types.
 
-Residues and repairs are not the only way to return consistent answers. When there are several options, as in Table~\ref{inconsistent1}, we can examine these options and make a determination of which is more likely. We form candidates - pretenders to the throne of the correct database -  by breaking up the possibilities for repair into all of their possible variants; in each candidate database, one tuple from each cluster is selected. We see that in the example of Table~\ref{inconsistent1}, both candidate databases will receive a probability of being the ``correct" database.
+We cannot proceed without first providing a working definition of what is meant when we say that a database is consistent. We say a database $D$ is \textit{consistent} if $D$ satisfies the set of integrity constraints $C$ in the standard sense \cite{CQI}. If any of these constraints are not met, the database is \textit{inconsistent} (or has inconsistencies). When there are inconsistencies whereby there are multiple tuples reflecting the same real-world entity, we name that a \textit{cluster}~\cite{CA}.
+
+The obvious source of how databases may become inconsistent is: errors. Data can be entered that violates integrity constraints. That can happen if the database was implemented without certain important integrity constraints (e.g., foreign keys) added, or a new rule is being added. It can also happen because database integrity constraints can be turned off (yikes!) which is usually intended for mass data import, or perhaps because the database engine (myISAM anyone?) just does not enforce those constraints. So in all cases, the inconsistency was added in error. 
+
+However, it is not the case, that by simply relying on error-detection and rule enforcement, we can be certain that no inconsistencies will ever arise. We will look at some ideas of how databases may become inconsistent in the first place, aside from the obvious answer of errors. Papers \cite{CQI} and \cite{CQ} offer some plausible scenarios where inconsistencies may be introduced. The first is from data warehousing; when data is imported from various sources and may need cleaning before storing. The second is database integration; when some data is stored across many databases stitched together, there may be different constraints at a local level than at the higher level, resulting in a locally consistent, yet globally inconsistent, database. It is possible that integrity checking may simply be too costly from a performance standpoint, and the database must proceed without it. Finally, we might, under some circumstances, choose to allow a temporary inconsistency, such as warehouse stock levels being allowed to fall below a minimum when replenishments have already been ordered. It is clear from these three scenarios that there exist plausible reasons why a database might be inconsistent, and why this subject is not rendered irrelevant in an error-free system.
+
+We would like the answer from a query against an inconsistent database to be the same as that of the consistent database, but with partial information, we may not know what the consistent database would return. At the very least, we are interested in getting a consistent answer to a query, even in the presence of inconsistent data. We may also be interested in repairing the database, so that the inconsistencies may be removed entirely.
+
+\subsection*{Repairing Inconsistencies}
+When presented with an inconsistent database, we might be able to repair it. The nature of the repair will obviously be context-dependent. The basic definition of a repair $D'$ of a database $D$ is that $D'$ is a modification of $D$ such that $D'$ meets the constraint set $C$.
+
+\paragraph{Basic Principles of Repairs}
+There are infinitely many such database repairs that can be performed. We add a further restriction; that the new database $D'$ is changed only minimally from the original $D$. Making the minimal set of changes necessary to meet all constraints $C$ has nice properties: if a database is consistent, then the minimal repair is to do nothing ($D'$ is equal to $D$). Furthermore, we will always be able to find a repair to the the database, since we can make changes as needed to reach a consistent state, although in the worst case, it may mean emptying the database entirely. \cite{CQI}
+
+With that in mind, it is sometimes undesirable to make the minimal set of changes, because that may simply be deletion of the offending tuple(s). While deletion may bring the database into a consistent state, it also may mean data loss, and that is generally not our first choice. We are therefore forced to keep our minds open to repairs that are not the minimal set of changes, but as minimal as possible without data loss.
+
+We will now look at an example using table of employee salaries, Table~\ref{inconsistent1}. In this example, we show only a subset of this relation; columns ``employee\_name" and ``salary" are depicted. The sole constraint is that each employee may have only one salary.
 
 \begin{table}[h]\begin{center}
         \begin{tabular}{r | c  c} 
@@ -20,112 +37,112 @@ Residues and repairs are not the only way to return consistent answers. When the
         \caption[Inconsistent Salaries Table]{Inconsistent Salaries Table~\cite{CQ}\label{inconsistent1}}
 \end{center}\end{table}
 
-\paragraph{Finding Consistent Answers}
-Andritsos, Fuxman, and Miller in \cite{CA} take the approach of examining various probabilities of each tuple in a cluster being the correct answer. In the simplest solution, the database will just answer queries and attach the probability of the answer's correctness as another attribute of the tuple. Referring back to the salary example, below in Table~\ref{inconsistent2} is Table~\ref{inconsistent1} modified with the respective probabilities of each item:
-
+The constraint is violated for the user ``J. Page"; he has two salaries (rows 1 and 2 in Table~\ref{inconsistent1}) - \$50~000 and \$80~000 (cluster size of 2). There are two possible repairs that we can make to this database, depicted in Table~\ref{consistent1} and Table~\ref{consistent2}:
 
 \begin{table}[h]\begin{center}
-        \begin{tabular}{r | c  c  c} 
-					salaries & employee\_name & salary & probability\\ \hline
-	           		 & J. Page  & 50 000 & 0.1 \\ 
-	         		 & J. Page  & 80 000 & 0.9 \\ 
-					 & V. Smith & 35 000 & 0.4 \\ 
-					 & M. Stowe & 75 000 & 1 \\ 
+        \begin{tabular}{r | c  c} 
+					salaries & employee\_name & salary \\ \hline
+	         		 & J. Page  & 80 000 \\ 
+					 & V. Smith & 35 000 \\ 
+					 & M. Stowe & 75 000 \\ 
         \end{tabular}
-        \caption[Inconsistent Salaries Table with Probabilities]{Inconsistent Salaries Table with Probabilities \cite{CQ} \cite{CA}\label{inconsistent2}}
+        \caption[Possible Repair of Salaries Table (Option 1)]{Possible Repair of Salaries Table (Option 1) \cite{CQ}\label{consistent1}}
 \end{center}\end{table}
-
-If the query being asked were all the names of all employees making more than \$70~000, a probabilistic assessment would be performed to decide what certainty we could indicate the answers with. In the trivial case, M. Stowe's salary is certainly greater than \$70~000, since its probability is 1 (completely certain). Uncertainty enters the picture when examining the J. Page tuples. We note probability of his salary being \$80~000 is 0.9, so we include him in the return set and indicate the attached probability. If the query were names of employees making more than \$45~000, then we would return J. Page with probability 1, since the sum of the probabilities of the tuples wherein his salary exceeds \$45~000 is 1. 
-
-Andritsos, Fuxman, and Miller simply modify the requested queries to include the probability attributes. If the original query was:\\
-\texttt{SELECT s.employee\_name FROM salaries s WHERE s.salary > 70~000}\\
-then the only changes are the addition of\texttt{SUM(s.probability)} and \texttt{GROUP BY s.employee\_name}, so that the rebuilt query reads:\\
-\texttt{SELECT s.employee\_name, SUM(s.probability) FROM salaries s WHERE s.salary $>$ 70~000 \\ GROUP BY s.employee\_name}\\
-
-In a more complex query, we simply multiply the probabilities. Consider the following query \cite{CA}: \\
-\texttt{SELECT o.id, c.id FROM order o, customer c  WHERE o.cIdFk = c.id AND c.balance > 10000 } \\
-This query is modified in the same way as that of the preceding paragraph, except the sum statement reads \texttt{SUM(o.probability * c.probability)} and the group statement is \texttt{GROUP BY o.id, c.id}.
-
-\paragraph{Determining Probabilities}
-The most pressing question is how we determine the probabilities. We note there are definite conditions attached to being able to determine these. See Figure \ref{formula} for the detailed breakdown of the procedure to map the tuples' probability to the interval [0, 1].
-
-\begin{figure}[!h]
-  \centering \includegraphics{images/formula.pdf}
-  \caption[Tuple Probability Assignment Formula]{Tuple Probability Assignment Formula \cite{CA}}
-  \label{formula}
-\end{figure}
-
-Though most of the algorithm is self-explanatory, some components merit clarification, also provided in \cite{CA}. Tuples within a cluster must be exclusive events, or the algorithm will fail. Representatives are determined by commonality. Representatives contain the most common features in the cluster, so the similarity between the tuples will give an indication of which tuple is most likely to be representative. To clarify, a short example, Table~\ref{rep}:
 
 \begin{table}[h]\begin{center}
-        \begin{tabular}{r | c  c  c  c } 
-					customers & name & market\_segment & country & address\\ \hline
-	           		 & Mary   & building & USA    & 123 Jones Ave. \\ 
-	         		 & Mary   & banking  & Canada & 123 Jones Ave. \\ 
-					 & Marion & banking  & USA    & 123 Jones Ave. \\ 
+        \begin{tabular}{r | c  c} 
+					salaries & employee\_name & salary \\ \hline
+	           		 & J. Page  & 50 000 \\ 
+					 & V. Smith & 35 000 \\ 
+					 & M. Stowe & 75 000 \\ 
         \end{tabular}
-        \caption[Inconsistent Customers Table]{Inconsistent Customers Table \cite{CA}\label{rep}}
+        \caption[Possible Repair of Salaries Table (Option 2)]{Possible Repair of Salaries Table (Option 2) \cite{CQ}\label{consistent2}}
 \end{center}\end{table}
 
-When examining this with a human's eyes, we might conclude that the most common values in the database are probably the correct ones, so the resultant representative tuple would show the customer Mary as part of banking in the USA with an address of 123 Jones Ave. The algorithm shown in Figure \ref{formula} follows this same intuition. The tuple we will consider correct is the one closest to the representative. For numerical data, similarity between two figures can be computed, and a pair can be more or less similar than another pair of figures (456 and 385 are more similar than 750 and 385). For data for which there is no obvious distance measure, we term them \textit{categorical data}, and we proceed using information loss as the distance metric \cite{CA}. Information loss is simply a measure of the difference between  the tuple in question and the representative. 
+Rows 3 and 4 of Table~\ref{inconsistent1} are unchanged (as this is a minimal repair), and the two options are to delete either the first row (Table~\ref{consistent1}) or the second (Table~\ref{consistent2}). In either case, we return to a consistent database, because the sole constraint is now correctly enforced. Bertossi and Chomicki clearly demonstrate in~\cite{CQ} an important point: throwing away all tuples that participate in the violation results in the loss of J. Page's data. They overlook the minor point that doing so would not be the minimal set of changes to the system - throwing away one would be enough.
 
-\paragraph{Analytical Shortcomings}
+There are some specific circumstances under which we might face infinitely many or infeasibly many repairs; such as how to repair a string such that it is unique in the relation. The number of possible strings which meet this condition is infinite (though it may be constrained from infinite to infeasible by limiting the string length attribute (for example, to 255 characters). Under those circumstances, the repair we undertake is to insert a \texttt{null} into that attribute, and therefore compress the infinite or infeasible set down to one possible repair \cite{CQ}. The proponents of this system acknowledge that it is imperfect, however, because the relational data model may forbid a null in that attribute.
 
-The strategy presented is imperfect, however, since we might fail to produce clean answers for some classes of query. Andritsos, Fuxman, and Miller present in \cite{CA} the following case as unable to succeed: \texttt{select c.id from order o, customer c  where o.quantity < 5 and o.cIdFk = c.id and c.balance > 25~000}. This fails because the join between \texttt{c} and \texttt{o} incorrectly double-counts some probabilities. Obviously, query rewriting cannot succeed for all cases, so the algorithm is limited to only those which we can reliably rewrite. Andritsos, Fuxman, and Miller argue -- without proof -- that  such un-rewritable queries occur only infrequently, and that the algorithm is still valid most of the time.
+\paragraph{Specifying Repairs with Annotations}
+The pressing question now is what repairs to perform. Annotated logic, specifically, \textit{Annotated Predicate Calculus} as in \cite{CQ}, provides a method. We must move beyond classical logic, otherwise inconsistencies (logical contradictions) would prove problematic. In APC, we annotate database atoms (components) with true ($t$), false ($f$), contradictory ($\top$), and unknown ($\bot$). Below in Figure \ref{TruthLattice} is the lattice of logical values. In this figure, the intersection points represent truth values ($t$, $f$, et cetera) and the edges represent paths along which reasoning moves when additional data is found.
 
-Overlooked in this analysis is determining how we might find a representative sample when it is not obviously in a majority-rules scenario. Given two prima facie equally plausible tuples, how do we decide which is the better choice to consider the representative? Whichever is picked to be the representative will not differ from the representative (by definition), so it will receive a probability of 1. Thus, whatever we (perhaps randomly) choose to be our representative is the eventual winner and will be considered correct. It is clear that we need to come to some decision, but reporting 100\% certainty about data which is, at best, 50\% certain is misleading. 
+The truth values in the lattice are as follows, all from \cite{CQ}:
 
-This analysis also equates popular with correct. If an incorrect answer appears in the database twice and a correct answer once, then the incorrect answer will be chosen and deemed correct, since it is more popular. That aside, there is not much that can be done about this problem; even a human observing the database might be more likely to conclude that the popular answer is the correct one, in the absence of additional, external knowledge.
-
-\section*{Computational Complexity of Repair \& Probability}
-Computational complexity is broken down into a short analysis on each of the methods detailed above. Each approach has its own properties. Computational complexity may disqualify a method from being practically useful, should it take too much time to reach a reasonable answer.
-
-\paragraph{Repairing Databases}
-Assuming that we are looking at repairs that are subsets of the original database, then repair checking is in polynomial time, for arbitrary constraints combined with acyclic dependencies \cite{CQ}. Should any of these constraints not hold, the problem is pushed into the realm of co-NP-complete problems, although additional orthogonal restrictions might lead to more polynomial time cases \cite{CQ}.
-
-Having considered the spectre of computationally infeasible or impossible situations, Bertossi and Chomicki \cite{CQ} develop various methods of finding consistent answers without explicitly computing every possible repair to the database. One of the ways that they suggest is compact repair representation - use information present to construct an efficient representation of all the possible repairs, and use this representation to answer all queries. However, this is not explored in the paper.
-
-\paragraph{Query Transformation} 
-The process of query transformation in \cite{CQ} is shown to have a polynomial time computability of result tuples, as the transformed query will be first order as long as the original query is as well. In fact, because the query transformation does not require examining all the possible repairs, so we can evaluate a query with an exponential number of possible repairs in polynomial time.
-
-\paragraph{Aggregate Query Transformation}
-The approach presented in \cite{CQ} is to aggregate queries is to build a conflict graph; a standard graph with nodes and edges. In the graph, maximal independent sets - that is, sets that are the farthest apart in terms of data equality - represent possible repairs of the database. As long as there is at most one nontrivial constraint, all operators except \texttt{COUNT} are polynomial time. If there are many nontrivial constraints, then the problem of finding lower and upper bounds becomes NP-complete. The \texttt{COUNT} operation is always NP-complete, even in the case of a single nontrivial constraint. Finally, it is noted that the \texttt{AVG} function's polynomial time algorithm is iterative, and cannot be formulated using SQL. 
-
-Under special circumstances, Bertossi and Chomicki found some better behaviour for the \texttt{COUNT} function, but even approximating is difficult; the concept of a maximal independent set reportedly has bad approximation properties.
-
-\paragraph{Probabilistic Complexity}
-Andritsos, Fuxman, and Miller include in \cite{CA} a note on the computational complexity of their work.  specifically a graph showing the performance as the size of the database grows, reproduced here as Figure \ref{CAPerformance}:
+\begin{itemize}
+\item \textit{Basic Values}: $t$, $f$, $\top$, and $\bot$, as explained in the preceding paragraph. 
+\item \textit{Database Values:} $t_d$ for atoms in the original database and $f_d$ for those not in it.
+\item \textit{Constraint Values:} $t_c$ and $f_c$ to annotate database literals appearing in the disjunctive normal form of the constraints. Built-in atoms in the constraints receive simply $t$ and $f$.
+\item \textit{Advisory Values:} $t_a$ and $f_a$ are used to resolve situations where the database does not conform to the integrity constraints. 
+\end{itemize}
 
 \begin{figure}[!h]
-  \centering \includegraphics[width=4in]{images/CAPerformance.pdf}
-  \caption[The Effect of Database Size on Probabilistic Evaluation]{The Effect of Database Size on Probabilistic Evaluation \cite{CA}}
-  \label{CAPerformance}
+  \centering \includegraphics[width=3.5in]{images/TruthLattice.pdf}
+  \caption[Truth Value Lattice]{Truth Value Lattice \cite{CQ}}
+  \label{TruthLattice}
 \end{figure}
 
-It is clear from a cursory examination that the behaviour of the queries is linear, with the exception of some corner cases (like Query 3). However, they sidestep the issue that the number of candidate databases is possibly exponential - if there are \textit{n} inconsistencies each with clusters of size \textit{m}, the total possibilities might be as large as $n^{m}$. Computing probabilities for such a set might be exceedingly difficult, but the whole issue is glossed over with a single comment.
 
-\subsection*{Future Work \& Suggestions}
+Using Figure \ref{TruthLattice}, we provide some clarifying examples. In the simplest case, if we have something true in the database ($t_d$), and true in the constraints ($t_c$), then we can move simply to true ($t$), without problem. If we find something true in the database ($t_d$) yet false according to the constraints ($f_c$), then we can move to $f_a$ - suspected false. If we have an irresolvable conflict, for example, finding one thing certainly true and the other certainly false, we move to $\top$ (showing there is nothing we can do to resolve this).
 
-In \cite{CQI}, Arenas, Bertossi, and Chomicki warn that their proofs of termination and completeness properties of the query transformation are only preliminary and partial. Surely this will be addressed in the future. They also find that completeness for disjunctive and and existential queries, they will need to move beyond simple query transformations. In addition, they do not yet have upper bounds on the size of the transformed query, and they lack some complexity information on different classes of query. This particular paper (\cite{CQI}) is a more detailed examination of some sections of \cite{CQ}), with two authors in common, so suggestions for improving it are combined with that of its successor.
+We consider data to be fallible, but constraints to be correct. Thus, if an atom gets both $t_d$ and $f_c$ (true in the database but not permitted by the constraints), we will resolve that conflict as $f_a$; we think it should be false. At the end of the evaluation, in order to repair the database, things we believe to be false will be removed, and things we believe to be true will be inserted into the database. Bertossi and Chomicki in \cite{CQ} assert that for every repair to a database $D$ with respect to constraints $C$, there is a one-to-one relationship with a model of a minimal set of atoms tagged $f_a$ and $t_a$.
 
-Database repairs examined in the \cite{CQ} fashion are based on differences against the whole tuple and does not permit modifying attributes of tuples. Bertossi and Chomicki suggest that a \textit{flexible} (attribute-level) repairs. They further identify majority-based approaches to consistency, which is very similar to how the probabilistic approach decides what to do.
+If we apply this principle to an inconsistent database, then the results we will get will indicate our best course of action. The results received will simply be a set of advice: add this; delete that. A program can use the set of advisory values to repair the database.
 
-Further in that paper, the section on logic programs to compute database repairs is rather light on details and seems mostly an aggregation of examples. We suggest that the paper might be improved by including more detail on the subject, since a lot has been left out, or reducing the amount of space dedicated to what is clearly a side point implementation detail. 
+\paragraph{Specifying Repairs with Logic Programs}
 
-In this same vein, there is a note about computationally constructing compact repair representations, yet there is not much talk about how we might do this, aside from a side note about placing \texttt{null} into a field when there are infeasibly many repairs. We suggest expanding compact repair representations, or clarifying the note about them (which implies that there is a wealth of information on the topic coming).
+A reference in \cite{CQ} presents a way to create a disjunctive program out of the set of advisory clauses produced using the annotated logic method. This program is used to process that advice and produce a repaired database. However, the program uses the annotations as additional data points, and it is therefore not an annotated (i.e. standard) logic program. Such a program will work for arbitrary first-order queries and for arbitrary constraints.
 
-The probabilistic paper presents no future extensions or future directions to its work. As suggestions for them, they could certainly investigate the computational complexity further. Specifically, why some cases are more difficult than others to handle (see query 3 in Figure \ref{CAPerformance}). They also appear to lack a strategy for dealing with a large set of inconsistencies. 
 
-Noting the scenario in which 50\% certain data may be reported 100\% certain, my suggestion for such forced-guess scenarios is to report the uncertainty associated with this answer and confess that we cannot find any better solution without additional input.
+We can also make use of a logic program alone to find repairs. In \cite{CQ} we consider a logic program with exceptions to these rules. The exceptions naturally have a higher priority than the rules. Most of the time, when we repair a database, most data is preserved, but some tuples will be removed. We can combine the appropriate logic program with the idea of logical consequence, and use this to compute repairs. To do so, we must find atoms true in every answer set of the program. This approach functions for all first-order queries, but it may be impractical because the size can quickly get out of hand.
 
-Finally, the set of queries that they cannot rewrite is claimed to be small, but no proof or evidence is offered to convince the reader that this is really the case. Surely a subsection or followup would be rather more persuasive than simply taking it on faith.
+\paragraph{Aggregate Queries}
 
-\subsection*{Conclusion}
+Aggregate queries are important to databases. Basic operators like \texttt{MIN}, \texttt{MAX}, and \texttt{SUM} are valid queries and should not be excluded. It might be possible that some such queries could be expressed as a first order query, but in \cite{CQ} it is acknowledged that we cannot handle such things using query transformation. 
 
-There appears to be no single right answer when dealing with an inconsistent database. However inconsistent it may be, it is unlikely that we will be able to unequivocally say what is correct and what is not. All of the examined options present viable alternatives to solving the problem, but they can easily slip into computational infeasibility in the event of complex constraints or a great number of inconsistencies. With these techniques, we can certainly get back consistent answers to our queries. The success of aggregate queries is less certain, but the chances are still reasonable.
+In some circumstances, the answers to aggregate queries are easy. If we look once again at the examples in Tables \ref{inconsistent1}, \ref{consistent1}, and \ref{consistent2}. As an example, we want to select the minimum salary. V. Smith's salary of \$35~000 is returned under all possible repairs. If instead we sought the maximum, both repairs offer different answers. The solution Bertossi and Chomicki present is that we cannot return a single answer. Instead, we return an interval where the minimum is the lower bound from all possible repairs, and the maximum is the upper bound. In this example, we consider [75~000,~80~000] to be a consistent answer to the aggregation query \cite{CQ}. 
 
-Some techniques report uncertainties, and others ignore anything about which we are uncertain. Ultimately, how to handle the situations comes down to the decision of the database administrator or designer. He or she will need to choose the solution he or she feels appropriate to the situation. 
 
+
+\paragraph{Open Issues}
+
+The major open issue they identify is how to deal with global constraints in a composite database system. It is unclear what a consistent answer is in such a context, and similarly unclear what a repair means \cite{CQ}. Bertossi and Chomicki further suggest that they are uncertain about how we can query such a composite system.
+
+The final suggestion they put forward is to move this mechanism into the database management system. This would allow soft integrity constraints (not explicitly enforced), and different users could have different constraints, should they so choose. Under these circumstances, different consistent answers are returned depending on the query's origin.
+
+\subsection*{Query Transformation}
+
+Bertossi and Chomicki presented another option: query transformation. Instead of modifying the database and then running the query on the new database, we transform the query and run it against the unaltered database. We change the query such that for every possible database $D'$ the answers to said query is equal to the consistent answers (in light of constraints $C$ in the original database $D$).
+
+As in \cite{CQ}, we will consider first-order queries, and only universal integrity constraints. We iterate the transformation of the query by conjoining the \textit{residues} to the results of the query, until the query in iteration $n$ is identical to that in $(n-1)$ \cite{CQ}. If there are no residues, then the query needs no alterations.
+
+\paragraph{Residues}
+But what is a residue? Consider the following example constraint set from \cite{CQ}:
+\begin{center}
+$C = \{\forall x.[R(x) \bigvee \neg P(x) \bigvee \neg Q(x)], \forall x.[P(x) \bigvee \neg Q(x)] \}$ 
+\end{center}
+
+We will focus on $Q(x)$ as our target query. The residue of $Q(x)$ with respect to the first constraint is $R(x) \bigvee \neg P(x)$; if the constraint and $Q(x)$ are true, then the residue must also be. The residue with respect to the second constraint is $P(x)$. Finally, the $\neg Q(x)$ component does not have any residues, because the integrity constraints do not constrain it. It is not necessary in this example, but in general, we might need to iterate the procedure, because the residues might themselves have residues.
+
+Instead of running the query $Q(x)$, we ask $Q(x)$ together with each of its residues. More formally, it is $Q(x)$ is logically AND-ed with each residue, as follows:
+
+\begin{center}
+$Q(x) \bigwedge (R(x) \bigvee \neg P(x)) \bigwedge P(x)$
+\end{center}
+
+The effect of this altered query is to return only the answers to $Q(x)$ for which the constraints hold. Looking at the previous example of Table~\ref{inconsistent1}, the modified query will ask for the names and salaries of all employees ($Q(x)$) where there is only one entry in the relation for that user (the residue, derived from the uniqueness constraint). This will return two tuples (V. Smith and M. Stowe). No data will be returned for tuples where there is a violation (J. Page), so no data is shown reflecting our uncertainty about his salary.
+
+\paragraph{Algorithmic Validity} Arenas, Bertossi, and Chomicki acknowledge that the algorithm hangs on three fundamental principle: soundness, completeness, and termination. While these are not examined in \cite{CQ}, they reference \cite{CQI}, and all three principles are examined therein.
+
+The soundness principle is the most obvious - every answer to the altered query must be a consistent answer to the original. The soundness principle is shown for all universal or non-universal but domain-independent queries. However, this excludes non-universal yet domain dependent queries like $\exists x \neg P(x)$ \cite{CQI}.
+
+Completeness is necessary so that every consistent answer to the original query appears as an answer to the transformed one. They prove completeness for binary and generic constraints, but do not prove it in general. In fact, in the event of disjunctive or existential queries, this method may fail to produce all answers \cite{CQ}. 
+
+Finally, termination means that there will always be a reachable point at which we may stop the query modification iterations because the query no longer changes between iterations. Fortunately, as long as the constraints set is acyclic, then termination occurs for any kind of  query~\cite{CQI}\cite{CQ}.
+
+\paragraph{Open Issues}
+If we apply query transformation to the initial database in Table~\ref{inconsistent1}, this will certainly return only the consistent answers from the database (V. Smith and M. Stowe). Neither of the tuples for J.Page will be returned, because they are inconsistent. This may sometimes be desirable, if we do not wish to report information we are uncertain about. However, under some circumstances, it is probably undesirable to simply ignore the tuples that are inconsistent. Surely J. Page would prefer that the discrepancy in his paycheque be alerted to someone rather than have his information not shown in the accounting department's reports. To that end, he would almost certainly prefer to take home the lower amount than nothing at all. Query rewriting is useful, but not a complete solution.
+
+The analysis in \cite{CQI} shows that query rewriting fails in the case of a disjunctive or existential queries, but only fails in the completeness category. The methodology is intended only to handle universal integrity constrains, and therefore existential qualifiers present problems. Arenas, Bertossi, and Chomicki assert that existential qualifiers may lead to co-NP-completeness, and computational feasibility issues prevent the fulfillment of the completeness criterion. 
 
 
 \input{bibliography.tex}

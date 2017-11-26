@@ -2,158 +2,146 @@
 
 \begin{document}
 
-\lecture{ 16 --- Query Processing, Continued }{\term}{Jeff Zarnett}
+\lecture{ 16 --- Query Processing }{\term}{Jeff Zarnett}
 
-\section*{Query Processing, Continued}
+\section*{Query Processing}
 
-Having examined in some detail the idea of different strategies for carrying out a select operation. The next thing we would like to do is expand to more advanced queries, specifically, join queries. Join queries will be cripplingly inefficient if they operate on unsorted data. Remember that in a join, we need to match a tuple of the left hand relation with a tuple of the right hand relation. If for every tuple we had to linearly search the right hand relation, that would be painful. One way or another, we probably have to sort one of the relations to make this work.
+Imagine you are given an assignment in a course and you are going to do it now. To get the assignment done, you will probably (1) figure out what exactly the assignment is asking you to do; (2) figure out how you are going to go it (e.g., must do part 1 first because part 2 depends on it...); and finally (3) do it! 
 
-\subsection*{Digression: Sorting}
+The procedure for the database server to carry out the query are the same~\cite{dsc}:
 
-So let us take a few minutes to talk about sorting. Wait, I hear you say, you already know ALL about sorting, insertion sort and selection sort and bogo sort and radix sort. Yes, also merge sort and quick sort. When you learn about sorting in a data structures and algorithms context, you are sorting a manageable amount of data. Manageable in the previous sentence means the full set of data can be fit into memory. For those, we can use all the standard algorithms. In the world of databases we need an algorithm that does not depend on loading everything into memory.
-
-Sorting relations that do not fit into memory is called external sorting, and we will learn the external sort-merge algorithm from~\cite{dsc}. The basic plan works a lot like the merge sort algorithm works: divide the data into smaller units, sort the smaller units, then merge the smaller sorted units into a larger sorted unit. The sorting of each smaller unit will take place in memory, as per normal, and then we need to do an N-way merge where $N$ is the number of smaller units to be merged. Let's expand on this.
-
-Step one of the algorithm is to divide the file into $N$ chunks of size $M$ where $M$ is the number of blocks that can fit into the area of memory available for sorting. Each chunk is as big as it can be for the constraints of the system, but no bigger. This chunk is called a \textit{run}. Each run $i$ is then sorted and it is written to a temporary file called $R_{i}$.
-
-Step two of the algorithm now merges it. If $N$ is less than $M-1$ we have the simpler case and we can complete the merge in one pass. In that case we load the first block of $R_{i}$ for each $i$ from $0$ to $N-1$ into memory and we allocate an output block. Then we choose the first tuple from the all of the blocks, and move it into the output block. If a block $R_{i}$ becomes empty, replace it with the next block in that run (if there is one). If the output block becomes full, write it out and allocate a new output block. Continue this algorithm until all runs are empty. 
-
-If $N$ is large enough that we cannot do it all in a single pass, we will do multiple passes. We will combine the first $M-1$ runs into a temporary file, and then the next (up to) $M-1$ runs, and so on, until the last run has been processed. Then we repeat the process using the larger runs as input until we produce the sorted file.
-
-An example may help to clarify. Suppose the file consists of 10~000 blocks and we can fit 50 blocks in memory to do the sort. We can therefore create runs of 10~000/50 = 200 blocks each. Each run is sorted. Then we come to merge them. We cannot fit a block from each of the 200 runs inside the 49 available (50 - 1 block for output) so we must do multiple passes. The first pass sorts runs 1 through 49 into a new run (let's call it $R'_{1}$, then runs 50 - 98 into $R'_{2}$, et cetera, until the last one which is then 197-200 in $R'_{5}$. These larger $R'$ runs are then combined using the same merge procedure as before. Since there are only 5 we are sure the merge will complete in this second pass and we have the output file we wanted.
-
-A visual representation of a two step sort merge from~\cite{dsc}:
-
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/external-merge}
-\end{center}
-
-Sorting has a cost, of course and the cost analysis also follows from~\cite{dsc}. If the number of blocks in the relation $r$ is $b_{r}$, the first step of the algorithm requires us to read in each block of the relation and write it out again for a cost of $2b_{r}$. The number of runs decreases by $M-1$ in each merge pass, so the number of merge passes is $\lceil log_{M-1}(b_{r}/M)\rceil$. Each pass reads reads every block of the relation and writes it once, except the last pass doesn't need to write the last output to disk as it is just going to send it on elsewhere. So the total number of block transfers is $b_{r}(2\lceil log_{M-1}(b_{r}/M)\rceil + 1)$. 
-
-The total number of disk seeks is more complicated: If each run has $b_{b}$ blocks, then each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. And we need to then write the output which costs  $2\lceil b_{r}/b_{b}\rceil$ for ever merge pass, except the last, since it gets sent on. So the total number of seeks is $2\lceil b_{r}/b_{b}\rceil + \lceil b_{r}/b_{b}\rceil(2 \lceil log_{M-1}(b_{r}/M)\rceil - 1)$.
-
-What a fun equation that was! Referencing the two sep merge above, we get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks if the value of $b_{b}$ is set at 1.
-
-\subsection*{Join Operation}
-
-There are several ways to compute a join, and we will analyze the costs of a few of the different approaches. Whatever route is actually taken, it's important to note that joins can be very expensive depending on how this is to be computed. The join we are looking to examine is the one introduced in relational algebra as $\Join_{\theta}$, specifically $r_{1} \Join_{r_{1}.a = r_{2}.b} r_{2}$ (or in SQL, an \texttt{INNER JOIN} with an explicit \texttt{ON} predicate). As before, the strategies described come from~\cite{dsc}.
-
-\subsubsection*{Nested-Loop Joins}
-
-The simple way to do a join is using one of the nested-loop strategies. It's called the nested loop strategy because that's exactly what it is: we have two nested for loops.
-
-\paragraph{Join Strategy 1: Nested-Loop}
-As with the select operation, the first option we are going to look at is basically a linear search and most likely has terrible performance characteristics. It is, however, a fallback option that we can always choose even if we can't choose anything else. This requires no index exist on either field $a$ or $b$ (the join attributes).
-
-The algorithm described in pseudocode is:
-\begin{verbatim}
-1. for each tuple i in r1
-2.   for each tuple j in r2
-3.     if i.a equals j.b
-4.       add (i join j) to the result
-5.     end if
-6.   end for
-7. end for
-\end{verbatim}
-
-This is, after all, the brute force algorithm, so we expect that the number of tuples that needs to be examined is the number of tuples in $r_{1}$ (let's call it $n_{1}$) multiplied by the number of tuples in $r_{2}$ ($n_{2}$). In the best case scenario, both relations fit in memory at the same time and the cost is just two seeks plus a transfer for each of the blocks of $r_{1}$ (which we will call $b_{1}$) and a transfer for each of the blocks of $r_{2}$ ($b_{2}$). In the worst case we get only one block of each relation at a time. The inner loop then is one seek plus $b_{2}$ transfers to read it into memory. The outer loop requires one seek and one transfer for each block of $r_{1}$, plus one run of the inner loop for each tuple in $b_{1}$. So the total amount of seeks is $2 b_{1}$ and the number of blocks to be transferred is $b_{1} + n_{1} \times b_{2}$.
-
-To illustrate with an example the difference between the best and worst case scenario, let us assign some numbers to $n_{1}$, $b_{1}$ and $b_{2}$. Suppose $n_{1}$ is 1600, $b_{1}$ is 100 blocks, $n_{2}$ is 10000, and $b_{2}$ is 500. Sticking with values used earlier, a seek takes 4~ms and a transfer 0.1~ms. In the best case scenario, the cost is 2 seeks plus a transfer for each block, or: $2 \times t_{s} + (b_{1} + b_{2}) \times t_{T} = 2 \times 4 + (100 + 500) \times 0.1 = 8 + 60 = 68$ ms. In the worst case scenario, the number of seeks is $2b_{1}$ plus the number of transfers as $b_{1} + n_{1} \times b_{2}$, or: $2 \times b_{1} \times t_{s} + (b_{1} + n_{1} \times b_{2}) \times t_{T} = 2 \times 100 \times 4 + (100 + 1600 \times 500) \times 0.1 = 200 \times 4 + 800000 \times 0.1 = 800 + 80000 = 80800$ ms. Yikes. That is a really huge difference. Conclusion: buy more RAM.
-
-Assuming that $b_{1}$ is not equal to $b_{2}$ we can actually observe something interesting: it could be worse! The so-called worst case scenario is actually the second-worst case scenario. Imagine if the order of the relations is switched in the join loop). Let's do the math again: $2 \times b_{2} \times t_{s} + (b_{2} + n_{2} \times b_{1} \times t_{T} = 2 \times 500 \times 4 + (500 + 10000 \times 100) \times 0.1 = 1000 \times 4 + 1000500 \times 0.1 = 4000 + 100050 = 104050$ ms. So much worse. That's about 1.29 times more just based on the choice of which relation is $b_{1}$ and which is $b_{2}$.
-
-Under this strategy it matters quite a lot which relation is the outer loop and which one is the inner loop. It would be vastly preferable to make the outer loop the smaller of the two relations since it minimizes the number of seeks as well as reduces the number of transfers. 
-
-\paragraph{Join Strategy 2: Block Nested-Loop}
-The previous strategy could be improved by thinking in terms of block operations rather than in terms of individual tuples. Instead of running the inner loop once for each tuple in the outer loop, we could run it once for each block in the other relation and that might be a lot less painful in terms of count of disk reads. Again, we are still assuming that no index is available, so we have to do this the ``hard'' way.
-
-If everything fits in memory, then the block nested-loop strategy is really no improvement over the regular nested loop algorithm. It gains an advantage if there will be more memory reads. The primary improvement is that instead of loading the inner blocks once for every tuple of the outer relation, they are loaded once per block of the outer relation. Thus there are $b_{1} \times b_{2} + b_{1}$ transfers and $2\times b_{1}$ seeks that take place.
-
-To once again use the same values as before, there are now $2 \times b_{1} = 2 \times 100 $ seeks which at a cost of 4 ms = $200 \times 4 = 800$ ms seek time, plus $b_{1} \times b_{2} + b_{1} = 100 \times 500 + 100 = 50100$ at a cost of 0.1 ms = $5010$ ms. Summed up a total of $5810$ ms to complete this.
-
-As before it could be worse if we swapped the order of the relations. $2 \times b_{2} = 2 \times 500 $ seeks which at a cost of 4 ms = $1000 \times 4 = 4000$ ms seek time, plus $b_{2} \times b_{1} + b_{2} = 500 \times 100 + 500 = 50500$ at a cost of 0.1 ms = $5050$ ms. The total is then $9050$ ms which is about 1.56 times the cost of the other ordering. 
-
-Of course, you may not lose sleep over this considering that the slower approach here is only 11\% of the cost of even the faster simple nested-loop approach. But why not choose the strategy that is 7\%? 
-
-\paragraph{Join Strategy 3: Index Nested-Loop}
-Suppose an index is available on one of the two relations. If so, then we don't have to do this in the most painful way; we can use the index instead. Since we will iterate over the inner relation more times, we want the index to be on the inner relation, if we have only one index to work with.
-
-To find which tuples in the inner relation match the outer relation tuple $t_{1}.a$ then we do an index lookup on $r_{2}$ to find the tuple(s) that match. The worst case scenario will once again be that we can only get one block of the relation into memory. We will need to do one seek for each block of the outer relation $b_{1}$ and then one transfer for it. We will also need to, once for each tuple in $b_{1}$ look into the relation $r_{2}$. The formula is $b_{1} ( t_{s} + t_{T} ) + n_{1} \times c$  where $c$ is the cost of doing a single selection in that table using an index (if available). We already know everything we need to know about how to estimate $c$ since we already discussed four strategies for how to do a selection with an equality condition.
-
-As before, the run time is faster if $n_{1}$ is the smaller value; that is, the outer relation should have fewer tuples. 
-
-\subsubsection*{Merge Join}
-The merge join might be more properly called the \textit{sort merge join} approach. Suppose relations $r_{1}$ and $r_{2}$ have some set of common attributes $r_{1} \cap r_{2}$ and we wish to compute the natural join. If both relations are sorted on  $r_{1} \cap r_{2}$ then we can do a merge-sort-like algorithm to compute the join.
-
-\paragraph{Join Strategy 4: Merge-Join}
-A description of the algorithm in pseudocode is in~\cite{dsc} but it it sensible to approach the concepts before looking at what is a long algorithm. The algorithm has one pointer for each relation, initialized to the first tuple in that relation. Then advance those pointers. Then each tuple of $r_{1}$ with the same value of the join attributes is read into a temporary block. Then the tuples of $r_{2}$ are read and processed as they go.
-
-The aforementioned temporary block does need to be big enough to contain all the tuples of $r_{1}$ for each value of the join attributes. That is usually not a problem since we hope not too many tuples match that particular condition. If they do, we would expect either that (1) the database server has a lot of data and therefore needs a lot of RAM and can have the space to do this; or (2) the index is on an inappropriate field (e.g., boolean value) and we should not be trying to use this algorithm. The fallback plan is then the block nested-loop strategy.
-
-Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we one seek for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
-
-There is also an assumption that the relations in question are sorted on the attributes of the join. While that may be true if one of them is a primary key attribute, it is probably not the case for the other relation. As you would imagine, a join of employees and departments relies on relations employee and department and it is unlikely that employees will be sorted based on department ID or vice versa. Each will have their own primary key. 
-
-\paragraph{Join Strategy 5: Hybrid Merge-Join}
-
-We can execute a variant of the merge-join approach on unsorted tuples if a secondary index exists on the join attribute(s). Normally if we are accessing the second relation through an index of some sort, we get the tuples in sorted order (from the view of that index), but they could be anywhere in the disk blocks meaning that each time we go to the next tuple is potentially another disk seek and transfer.
-
-To save ourselves some work we can use the hybrid merge-join algorithm. The basic idea here is to merge the sorted relation $r_{1}$ with the leaf entries of $r_{2}$'s secondary index. The output is then made up of tuples of $r_{1}$ and pointers to the tuples of $r_{2}$. This file can then be sorted on the pointers to $r_{2}$ tuples so that accesses to $r_{2}$ go in physical storage order rather than jumping everywhere back and forth.
-
-\paragraph{Join Strategy 6: Hash Join}
-Another important strategy can be used for joining relations and it relies on hashing as we have already discussed. However, the complexity of the hash join is high and we will consider it beyond the scope of this course. Those who are curious can find more information in~\cite{dsc}.
-
-\subsection*{Other Considerations in Query Processing}
-
-There are a few more situations beyond the select and join scenarios that we will care about when we have to actually execute a query. Let us see a few more things from~\cite{dsc} that note some extra work we may have to do if the query is slightly more complex.
-
-\paragraph{Distinct.} Often times in performing a query we are asked to remove duplicates (e.g., select distinct). This is easy enough if we are sorting the data because two identical values will be next to each other for merging. Alternatively, we could simply avoid writing them to the output at all if the sort-inserted routine finds something already in the designated space for that value. This can be expensive, so this is generally done only if we really ask for it.
-
-\paragraph{Projection.} Projection should probably get a mention: it is pretty much just throwing away any columns of the relation that we don't need in some way. Projection could happen in several steps; if employee ID is used in a where condition, for example, but not asked for in the output, we might first project the full tuple down to the output fields plus those used in the where condition, then later throw away some more when presenting the final results. The same is true of an order-by clause: if that field is not needed in the output we will toss it out once the ordering is complete.
-
-\paragraph{Set Operations.} Set operations (union, intersection, difference) are fairly self explanatory as well. Sorting the data is necessary, generally, to make this efficient. If there is no index, we might need to build one. Each relation $r_{x}$ is partitioned into different parts which we will label $r_{x_{0}}, r_{x_{1}}...$. A quick recap from~\cite{dsc} on how to do the various operations:
-
-\begin{itemize}
-	\item Union
-	\begin{enumerate}
-		\item Build an in memory hash index on the $r_{1_{i}}$
-		\item Add the tuples $r_{2_{i}}$ to the index if they are not present
-		\item Add the tuples referenced in the index to the result.
-	\end{enumerate}
-	
-	\item Intersection
-	\begin{enumerate}
-		\item Build an in memory hash index on the $r_{1_{i}}$
-		\item For each of the tuples in $r_{2_{i}}$, see if it is already in the index, and if so, add it to the output.
-	\end{enumerate}
-	
-	\item Difference
-	\begin{enumerate}
-		\item Build an in memory hash index on the $r_{1_{i}}$
-		\item For each of the tuples in $r_{2_{i}}$, see if it is already in the index, delete it from the index.
-		\item Add the tuples referenced in the index to the result.
-	\end{enumerate}
-
-\end{itemize}
-
-\paragraph{Outer Join.}
-The outer join operation requires us to add some tuples that don't have a match in the other relation. A nested loop algorithm isn't too bad: if there is no match then pad the tuples with nulls on the appropriate side(s) and add it to the output. An alternative strategy is then to compute the (regular) join, then do a select on all tuples, subtracting those without a match, and pad those tuples and add them to the result.
-
-\paragraph{Aggregation.} One approach to aggregation is more or less the same as the idea of duplicate removal. We select all the ones we need to aggregate, then take a second pass through the data to sort it, and then merge the values as are necessary. But this is probably not the best way, as might occur to you when thinking about count. Count might be done slightly more efficiently since we can skip the sort and merge entries part by simply keeping a running count. That might also be applied to min, max, sum if we are clever enough to maintain those values and update them accordingly. Average would require maintaining two values and then performing a division... but somehow this seems rather possible.
-
-\paragraph{Order of Operations.} When dealing with simple expressions there is one operator and we have seen that it can sometimes matter in which order the operands occur. This problem of order of operations becomes larger when we start having complex queries. $r_{1} \bowtie r_{2} \bowtie r_{3}$ could be executed with two different groupings and with different orders of operands: 
 \begin{enumerate}
-\item $(r_{1} \bowtie r_{2}) \bowtie r_{3}$,  
-\item $(r_{2} \bowtie r_{1}) \bowtie r_{3}$, 
-\item $r_{3} \bowtie (r_{1} \bowtie r_{2})$,
-\item $r_{3} \bowtie (r_{2} \bowtie r_{1})$,
-\item $r_{1} \bowtie (r_{2} \bowtie r_{3})$. 
-\item $r_{1} \bowtie (r_{3} \bowtie r_{2})$. 
-\item $(r_{2} \bowtie r_{3}) \bowtie r_{1}$
-\item $(r_{3} \bowtie r_{2}) \bowtie r_{1}$
+	\item Parsing and translation -- interpreting the SQL query in a form the computer can work with.
+	\item Optimization -- figuring out how best to carry out the query.
+	\item Evaluation -- execution of the query according to the plan just developed.
 \end{enumerate}
 
-Sometimes we do not have quite this degree of freedom, however, and an order is necessarily implied, such as a subquery. In the next topics we will examine evaluations of expressions and look in more detail at how we decide which approach is likely to be best.
+To break these steps down into more detail, as in~\cite{fds}, the steps are a bit more like this. First, the scanner needs to figure out what are keywords and attribute names and relation names to figure out the text of the query. The parser will then check that it is valid SQL syntax. If so, then it will be validated to make sure that the attribute and relation names are valid inside the schema of the database being queried. Then this query is turned into a query tree or graph, which is used to devise the execution strategy. Then finally we can execute the query.
+
+A quick visual summary of all the steps we are going to go through~\cite{dsc}:
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/query-processing-overview}
+\end{center}
+
+We will not spend time talking about the scanning, parsing, and verification steps of query processing. While they are all very important things and we need them, that is the sort of material that belongs in compiler textbooks and you may have already covered (or at least begun to cover) such material in a compilers course. In the meantime, if a query is syntactically invalid, or contains misspelled attributes, or something to that effect, we can't really do anything with it a query with an error is simply rejected and  goes no further through the process. We therefore will give them no further consideration.
+
+Usually a query is expressed in SQL and that must then be translated into an equivalent relational algebra expression. Complex SQL queries are typically turned into \textit{query blocks}, which are translatable into relation algebra expressions. A query block has a single select-from-where expression, as well as related group-by and having clauses; nested queries are a separate query block~\cite{fds}.
+
+A query like \texttt{SELECT salary FROM employee WHERE salary > 100000;} consists of one query block. The relational algebra for this expression is pretty easy to work out, and it gives us two possibilities. We can select all tuples where salary is more than 100~000 and then perform a projection of the salary field of that result (e.g., throw away the fields we do not need). The alternative is to do the projection of salary first and then perform the selection on the cut-down intermediate relation.
+
+Suppose there is a subquery, like \texttt{SELECT name, street, city, province, postalCode FROM address WHERE id IN (SELECT addressID FROM employee WHERE department = 'Development');}. Then there are two query blocks, one for the subquery and one for the outer query. If there are multiple query blocks, then they do not have to follow the same strategy; they can be optimized separately if desired. 
+
+The relational algebra is not quite enough to actually carry out the operation. What we need instead is a \textit{query execution plan}\footnote{\url{https://www.youtube.com/watch?v=fQk_832EAx4}}. To build that up, each step of the plan needs annotations that specify how to evaluate the operation, including information such as what algorithm or what index to use. An algebraic operation with the associated annotations about how to get it done is called an \textit{evaluation primitive}. The sequence of these primitives forms the plan, that is, how exactly to execute the query~\cite{dsc}. 
+
+If there are multiple possible way to carry out the plan, which there very often are, then the system will need to make some assessment about which plan is the best. It is not expected that users will write optimal queries; instead the database server should choose the best approach via \textit{query optimization}. Optimization is perhaps the wrong name for this because we are not choosing the optimal approach; instead we will make some estimates about the query plans and try to choose the one that is most likely to be best. The subject of query optimization is something we will touch on now, but also come back to when we have more understanding.
+
+\subsection*{Measures of Query Cost}
+
+If you are asked to drive a car from point A to point B and there are multiple routes, you can evaluate your choices. To do so you need to break it down into different sections, such as drive along University Avenue, then get on Highway 85, then merge onto 401... Each segment has a length and a speed, such as knowing that you will drive 4 km along University Avenue and it is signed at 50 km/h (although with red lights and traffic and whatnot the actual average speed may be more like 30 km/h). By combining all of the segments, you get an estimate of how long that particular route will take. If you do this for all routes, you can see which route is the best. 
+
+Of course, it may turn out that real life gets in the way: if there is a crash on the highway, traffic really sucks and your decision that taking this particular route would be fastest turns out to be wrong. Short of being able to see into the future, this is more or less inevitable: estimates are just informed opinions and things may be worse (or better) than expected. 
+
+Where does the time go in executing a query? The biggest component is most likely loading blocks from disk, considering how slow the disk operations are. Although we can improve this via use of SSDs, many large databases still use hard disk drives. CPU speeds are pretty fast, to the point even where memory accesses seem slow from the perspective of the CPU. So, no matter what we do, disk accesses likely account for far more of the time than CPU computation. In reality, CPU time is a nonzero part of query optimization, but we will ignore this (as does~\cite{dsc}) for simplicity's sake and use only the disk accesses to assess cost.
+
+The number of block transfers (data moved in and out of memory) and the number of disk seeks (repositioning where on the disk we are reading from) are the important measures of interest here. SSDs have no seek time and have faster transfer speeds, but the number of block transfers is still relevant. To compute the estimate of how long we think it will take to perform an operation, the formula is $b \times t_{T} + S \times t_{s}$ where $b$ is the number of block transfers, $t_{T}$ is the time to transfer, $S$ is the number of seeks, and $t_{s}$ the time it takes to seek~\cite{dsc}. For a hard drive, transfer times are on the order of 0.1~ms and seek times are about 4~ms.
+
+We will follow the estimating strategy in~\cite{dsc} which comes with a few caveats, explained in this paragraph. Sometimes writes can be twice as expensive as reads. This is because the disk subsystem may read back the written data to check that the write succeeded, but we will assume that does not happen here. Similarly, at this first level we are not including the amount of time it takes to write a final result back (that depends on the query... a select, for example, may not need it, where an update will). That cost would be accounted for separately. And the asterisk here is that the size of memory makes a big difference -- if the buffer is large enough that all of the database fits in it, then disk reads are almost never needed. We will imagine the worst case scenario, that is, only one block per relation can be in memory at a time. If we are ``wrong'' and the data we need is already in memory, the actual cost is less than the estimated cost (which is better than the reverse). 
+
+The estimates calculate only the amount of work that we think it will take to complete the operation. Unfortunately, there are several factors that will potentially affect the actual wall-clock time it takes to carry out the plan:
+
+\begin{itemize}
+	\item How busy the system is -- if there are multiple concurrent operations then any particular operation may be queued or blocked or otherwise not able to proceed immediately, leading to a longer time to completion.
+	\item What is in the buffer -- if partial data is in the buffer that will speed up completion of the operation since some planned disk operations can be skipped.
+	\item Data layout -- if the data is packed well on disk then we need to do fewer seek operations (or shorter ones, perhaps); likewise, if the data is distributed over multiple physical disks we can sometimes do some reads in parallel, but it's hard to know exactly how much parallelization is possible.
+\end{itemize}
+
+You can probably think of various other factors that will affect the time it takes to execute the query in reality. The estimate is just an educated guess that we will use to plan how to do the work; it's not a promise of exactly how long it will take.
+
+Note also that the lowest cost approach is not necessarily the fastest. Sometimes we can go faster by using more resources, but the approach the database often takes is the lowest cost (specifically, fewest disk reads). Recalling the earlier driving analogy, you can think of this as perhaps driving a longer route that involves more highway driving and therefore less time, even if it means more fuel consumption due to the increased distance and speed. When driving, we generally prefer to choose the lowest time estimate, but there are also people (``hypermilers'') who are really obsessed with getting maximum fuel economy... and the database is one of those people!
+
+\subsection*{Select Operation}
+The first example we will see about estimating cost is how to do a select operation. We will consider a lot of possibilities, some of which are obviously sub-optimal. We should consider all options (this is good advice in science in general, consider all possibilities, even the null hypothesis) even if we are pretty sure one of them is going to be terrible... we might be surprised. In other cases, a seemingly-terrible algorithm is our last resort, such as if we have to find something that has no index, we perform the painstaking linear search approach. The strategies considered in this section come from~\cite{dsc}.
+
+We will assume that we have a select-from-where condition to be evaluated on a single relation.  The relation itself is stored in a single file and this file contains only records of that single relation. 
+
+\subsubsection*{General Selection}
+
+The first approach is general and really needs no introduction.
+
+\paragraph{Select Strategy 1A: Linear Search.} The linear search is exactly what it sounds like: scan each file block from beginning to end to see if the selection condition is satisfied. We can assume the file is stored efficiently so we have only one seek to start reading the file, and then the transfer time for each block. Thus there is one seek plus one transfer for each block of the file and the cost estimate is $t_{s} + n \times t_{T}$ where $n$ is the number of blocks in the file (worst case scenario). 
+
+As mentioned earlier, linear search is probably inefficient if we have any other alternative. However, if there is no index and the file is not ordered on the search predicate, we may not have any other choice. But as a last resort, we can be sure this will work.
+
+\subsubsection*{Selection with Equality}
+
+We would much prefer, if we can, to use an index of some sort. If we have that, we can access a lot fewer records than we would otherwise need to. The following group of strategies are applicable when the where condition contains an equality test, e.g., ``province equals Ontario''.
+
+\paragraph{Select Strategy 1B: Binary Search}
+Binary search is also exactly what we are pretty well familiar with. If the file is ordered on something other than the primary key, and this is the where condition, we can search using a binary search algorithm. Binary search would then mean we can significantly reduce the number of blocks we need. But we will assume generally from here that we will look at B$^{+}$ trees.
+
+\paragraph{Select Strategy 2: Primary Index, Equality on Key}
+If the select's where clause specifies equality on a primary index, i.e., the way the file is organized, it is very efficient. We will have to traverse the tree to get to the leaf containing the pointer to the record. That means one seek and one transfer for each of the levels of the tree. Then finally we access the data directly, which is another seek and another transfer. Thus the cost estimate is $(h_{i} + 1) \times (t_{s} + t_{T})$ where $h_{i}$ is the height of the index B$^{+}$ tree.
+
+\paragraph{Select Strategy 3: Primary Index, Equality on Non-Key}
+If the primary index for the file is a non-key (non-unique) field then instead of getting one record we may get multiple records. Of course, this should be a rare occurrence because the primary index being a non-key is not recommended. But if such a query has to be carried out we need an estimate of the cost. The multiple records will be consecutive, because it is the primary index. Thus the cost will be $h_{i} \times (t_{s} + t_{T}) + b \times t_{T}$ where in this case $b$ is the number of block containing the target search key. Because the blocks with the actual data are stored sequentially we don't need to check the index again for the next ones, nor do we need to seek to them.
+
+Estimating $b$ can be somewhat difficult. If we know there are two matches they could be in the same block or in two different blocks. We may need to guess about how many match.
+
+\paragraph{Select Strategy 4: Secondary Index, Equality}
+If the secondary index is on a unique field, then the cost estimate is the same as strategy 2:  $(h_{i} + 1) \times (t_{s} + t_{T})$.
+
+If the key is not unique then the cost is higher. Unlike strategy 3, we cannot rely on the fact that the records are consecutive. In fact, they are almost certainly not. We make the opposite assumption, that each record requires a seek and a transfer of a new block. This the estimate is $(h_{i} + k) \times (t_{s} + t_{T})$ where $k$ is the number of records matching the condition.
+
+As with $b$ in strategy 3, estimating the value of $k$ is probably difficult. In the worst case it means reading from every block of the file because there is (at least) one matching record in each block.
+
+\subsubsection*{Selection with Comparison}
+
+Until this point we just handled an equality condition, where we looked for an exact match. A comparison is more complex. We can still use the linear search approach, if we must, but if we have an index we may still prefer to use that. We will continue to assume that the file index is organized in a B$^{+}$ tree.
+
+\paragraph{Select Strategy 5: Primary Index, Comparison}
+Suppose our desired search value is $x$. If the attribute being compared is $A$, then our possibilities are (1) $A > x$ or $A \geq x$, (2) $A < x$ or $A \leq x$.
+
+For the first case, we use the tree to go to the first tuple where $A = x$ or $A > v$ respectively. Then we do a file scan from start to the end of the file. In that case, our cost estimates are like those of strategy 3.
+
+For the second case, we start at the beginning of the file and go until the first tuple with $A = x$ or $A > x$ respectively. This is more or less a linear scan that may end early. When doing this comparison, the index contributed absolutely nothing (although we could look at it, one imagines, to refine the estimate of where the reading will end).
+
+\paragraph*{Select Strategy 6: Secondary Index, Comparison}
+This case very much resembles the case of strategy 4, equality on a non-key field. Fetching the actual data is a pain, of course. If the number of records to be fetched is large, because of all the jumping back and forth, it might actually be worse than simply performing a linear search.  It depends on the value of $k$, how many records will match. 
+
+\subsubsection*{Complex Selection}
+
+The previous strategies, aside from linear search, assumed the predicate had one clause. Before we start, a quick review of the ideas of conjunction, disjunction, and negation (from basic algebra) from~\cite{dsc}:
+
+A conjunctive selection involves the logical and operation. In relational algebra, the selection operation is written $\sigma_{\theta_{1}} \wedge \sigma_{\theta_{2}} \wedge ... \wedge \sigma_{\theta _{n}}( r )$. This describes selection of all the tuples that match all of the predicate clauses.
+
+A disjunctive selection involves the logical or operation. In relational algebra, the selection operation is written $\sigma_{\theta_{1}} \vee \sigma_{\theta_{2}} \vee ... \vee \sigma_{\theta _{n}}( r )$. This describes selection of all the tuples that match one or more of the predicate clauses. This is equivalent to the union of all the tuples matching each of the individual $\theta_{i}$ conditions.
+
+A negation selection $\sigma_{\neg \theta}(r)$ is the set of all tuples of $r$ for which the condition $\theta$ evaluates to false. 
+
+\paragraph{Select Strategy 7: Conjunction, One Index}
+Since we need to satisfy all conditions, we will first find all records that satisfy one of the simple conditions, and then throw away any of the retrieved that do not match the remaining conditions. One of the previous strategies (2 through 6) will suffice, and the cost is pretty much determined by which of those strategies is used. We would take estimates for each strategy and choose the one with the lowest expected cost.
+
+Ah, but which simple condition do we choose? If only one has an index, then we use the one index. That was easy. If there are multiple choices, ideally we choose the most restrictive -- the one that will match the fewest tuples. That would then result in less loading of tuples that we are just going to throw away. This is another case where, as you might imagine, it is not immediately clear how to know which condition matches the fewest tuples. There are approaches for making good decisions, which will be a topic of future discussion. 
+
+\paragraph{Select Strategy 8: Conjunction, Composite Index}
+Recall from the discussion of indexing that a composite index is one that is on multiple attributes. If the selection has multiple simple conditions, a subset of which exist in a composite index on the relation, that is very helpful. Then we can use the index directly. If the complex where predicate is exactly equal to the composite index, we will be using one of strategies 2, 3, or 4. If there are some conditions that form the composite index and others that do not, our strategy looks more like strategy 7. Again, take some estimates of each possible execution plan to decide what to do.
+
+\paragraph{Select Strategy 9: Conjunction, Intersection}
+Another way we could do the conjunction would be to look at the record pointers. We get a list of record pointers for each simple condition that has an index and compute the intersection of these. If there are any conditions on attributes without an index, then we must further look through the results to throw away those records that don't meet all conditions.
+
+The cost here is the sum of the cost of looking through each index, plus the cost of loading the records after the intersection is computed. In theory we can reduce the amount of work necessary by simply sorting the pointers before we retrieve data, which would make the disk reads closer to sequential and minimize the amount of seeking that needs to be done.
+
+\paragraph{Select Strategy 10: Disjunction, Union}
+Much like the conjunction strategy, we get a list of record pointers for each of the conditions where there is an index. Instead of computing the intersection, we find the union (no duplicates) of these pointers. Again, sorting may make the disk reads closer and speed things along significantly.
+
+If there is at least one condition that does not have an index, then it is makes sense to just linear scan since we are going to have to do that anyway.
+
+\paragraph{Select Strategy 11: Negation}
+The authors in~\cite{dsc}, as they are known to do, leave the explanation of this strategy ``as an exercise'' for the reader.  Although one can, of course, do a linear scan to find those that, unlike usual, do NOT meet the given conditions, what can one do? 
+
+If we have an index on the field that might help: we can evaluate the index and decide which records match the not condition, and only load those. As the last resort, the linear search approach will be necessary.
+
+
 
 \input{bibliography.tex}
 

@@ -2,131 +2,155 @@
 
 \begin{document}
 
-\lecture{ 11 --- Storage and Block Structure }{\term}{Jeff Zarnett}
+\lecture{ 11 --- Decomposition: Functional-Dependency Theory }{\term}{Jeff Zarnett}
 
-\section*{Physical Storage}
+\section*{Functional-Dependency Theory}
 
-Until this point in the course we have looked at databases more from the perspective of application developers: people who use the database for a specific purpose. This conceptual level has been useful for telling us about how to interact with databases and even how to (re)design data storage in the database to meet certain goals. That may have been entirely review for those who have significant experience with using databases. Now it is time to move into the implementation side of the database. Treating the database as some sort of black box may be convenient, but we are interested in knowing how it does what it does. 
+Earlier we talked about the closure of a set of functional dependencies. Recall from earlier that the closure contains all the functional dependencies that are explicitly satisfied as well as those that are logically implied. That is, if $A \rightarrow B$ and $B \rightarrow C$ then it is implied that $A \rightarrow C$ and this is true no matter how many steps are in between. because this is transitive. More formally, if the functional dependencies is $A \rightarrow B$ and $B \rightarrow C$ then we know that for two tuples $t_{1}$ and $t_{2}$ if $t_{1}[A] = t_{2}[A]$ then $t_{1}[B] = t_{2}[B]$ and $t_{1}[C] = t_{2}[C]$. The notation to show the closure of a set $F$ of functional dependencies is $F^{+}$ as previously discussed.
 
-Our first foray into the behind-the-scenes will be about how the data is stored. This will call back to what you have learned in operating systems about memory and storage. If you need to, now is a good time to review that material to read up on it. Although we will give a quick summary. 
+It is unlikely, however, that we want to compute $F^{+}$ from the definition of functional dependencies; if $F$ is large there are many rules and many implied rules and we have to construct every logically implied element of $F^{+}$ from first principles. Instead, we would like to use \textit{axioms}, handy rules of inference, that allow us to reason about the dependencies in a simpler way. The first three axions are simple enough and are called \textit{Armstrong's Axioms}, named after the person who came up with them~\cite{dsc}:
 
-The fastest form of memory is registers, storage locations within the CPU itself. Then there is cache (often several levels of it), main memory, and finally, stable storage (solid state devices, magnetic hard drives, optical storage, and tapes). Memory is a series of size/speed/cost tradeoffs, with faster memory being relatively small due to its cost. Your operating system course will have covered, probably at length, caching and replacement algorithms. To avoid repetition, we will not spend any time on that.
+\begin{itemize}
+	\item \textbf{Reflexivity}: If $\alpha$ is a set of attributes and $\beta$ is contained within $\alpha$, then $\alpha \rightarrow \beta$ holds.
+	\item \textbf{Augmentation}: If $\alpha \rightarrow \beta$ holds and $\gamma$ is a set of attributes, then $\gamma\alpha \rightarrow \gamma\beta$ holds.
+	\item \textbf{Transitivity}: If $\alpha \rightarrow \beta$ holds and $\beta \rightarrow \gamma$ holds, then $\alpha \rightarrow \gamma$ holds.
+\end{itemize}
 
-The most salient fact that we need to think about is that there is primary (volatile, that is, lost if power is cut) storage, also known as main memory, and then secondary (non-volatile) storage (whether SSD, hard drive, tape, etc, doesn't much matter right now). To actually do any of the operations we want to do in a reasonable time, the data must be moved from secondary storage to primary storage, and eventually if the data is to be saved/updated it has to be written back to secondary storage. Secondary storage is generally very slow compared to primary storage, and therefore how we store our data becomes important because it determines how many times we need to access the slow storage (and how much time we spend waiting for it). 
+These axioms are considered both sound and complete, because they do not produce any errors and they allow generation of $F^{+}$ given $F$. There are proofs of these properties, but we prefer to omit those and just focus on using them. This is a minimal set, though, and there are some rules that we can derive some more from Armstrong's rules that would be convenient shortcuts~\cite{dsc}:
 
-It's not as simple, unfortunately, as just packing as much into a block of storage as possible. We will still want to do that (usually) but there is more to it than just getting six records into a space where five used to fit. What is perhaps more important is: which five (or six) records to put in this particular block?
+\begin{itemize}
+	\item \textbf{Union}: If $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds, then $\alpha \rightarrow \beta\gamma$ holds.
+	\item \textbf{Decomposition}: If $\alpha \rightarrow \beta\gamma$ holds, then  $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds (reverse of previous rule).
+	\item \textbf{Pseudotransitivity}: If $\alpha \rightarrow \beta$ holds and $\gamma\beta \rightarrow \delta$ holds, then $\alpha\gamma \rightarrow \delta$ holds.
+\end{itemize}
 
-Do we have to do this? Well, yes. Consider three reasons~\cite{fds}: (1) databases are too big for main memory (usually); (2) power outages and crashes DO happen, so nonvolatile storage is necessary; (3) secondary storage is affordable.
+We'll work on the example in the textbook(\cite{dsc}) which says that the relation $r$ has the attributes $(A, B, C, G, H, I)$ and the functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CH \rightarrow I$, (5) $B \rightarrow H$.
 
-Data is stored in files, and files correspond to blocks on disk. The \textit{primary file organization} determines how the file records are physically placed on disk (in the file, in the blocks)~\cite{fds}. This obviously determines how we can access them. This is part of what determining the primary key is about. 
+Based on the rules that we have, what logically implied functional dependencies can we observe? 
 
-Remember from earlier that tuples of a relation as returned by a select query do not have a guaranteed ordering (unless there is an order-by clause). That is because they could be stored in a primary organization in multiple ways. Our options could be~\cite{fds}:
+There are three~\cite{dsc}:
+\begin{itemize}
+	\item $A \rightarrow H$ which is found by transitivity ($A \rightarrow B$ and $B \rightarrow A$).
+	\item $CG \rightarrow HI$ which is found by the union rule ($CG \rightarrow H$ and $CG \rightarrow I$).
+	\item $AG \rightarrow I$ which is found by pseudotransitivity ($A \rightarrow C$ and $CG \rightarrow I$). 
+\end{itemize}
+
+The full algorithm for building up the closure just uses Armstrong's rules and is as below. The algorithm terminates when there is nothing left to add, which is certain to happen because the worst case scenario is that everything is functionally dependent on everything else which would mean if there are $n$ attributes, there are $2^{n} \times 2^{n}$ possible functional dependencies. Now, the algorithm~\cite{dsc}:
 
 \begin{enumerate}
-	\item \textbf{Heap File}: An unordered file where new records are just appended to the end.
-	\item \textbf{Sorted File}: The file is ordered based on a particular field (the sort key).
-	\item \textbf{Hashed File}: The file is ordered based on the result of a hash function applied to a particular field.
-	\item \textbf{B-Tree File}: The file is organized using a B-tree structure.
+	\item The initial condition is that $F^{+}$ begins as $F$.
+	\item For each functional dependency $f$ in F+ $F^{+}$:
+	\begin{enumerate}
+		\item apply the transitivity rule to $f$ and add it to $F^{+}$
+		\item apply the augmentation rule to $f$ and add it to $F^{+}$
+	\end{enumerate}
+	\item For each pair of functional dependencies $f_{1}$ and $f_{2}$, if they can be combined using transitivity, add the newly created combination to $F^{+}$.
+	\item If anything was added in steps 2 or 3, go back to step 2; otherwise the algorithm terminates.
 \end{enumerate}
 
-This suggests strongly that if the data is not in the right order to begin with (and probably it is not) then extra work is needed to sort it. That is correct. Efficient sort algorithms exist, to be sure, but an order-by clause has a cost. We will soon examine in more detail the idea of query evaluation and execution.
+\paragraph{Closure of Attribute Sets.} Suppose we have some attribute(s) $\alpha$ and we wish to determine if it is a superkey. The strategy we will use requires us to compute the set of attributes that are \textit{functionally determined} by $\alpha$. An attribute $B$ is functionally determined by $\alpha$ if $\alpha \rightarrow B$. Then the  simple algorithm requires us to compute $F^{+}$ as above and then take all functional dependencies where $\alpha$ is the left hand side and the union of the right hand side of all dependencies, but this is difficult and expensive because $F^{+}$ may be large. Instead, a more efficient algorithm follows~\cite{dsc}.
 
-A \textit{secondary organization} allows efficient access to the data based on other criteria. An index is an example of a secondary organization which allows us to efficiently access the data based on that criterion. If we establish an index on an attribute, such as province in an address, it allows us to efficiently find tuples matching a particular province (e.g., ``SK''). In the absence of that index, to find all addresses matching that province, we might have to scan all tuples.
+\begin{enumerate}
+	\item The initial condition is that $\alpha^{+}$ begins as $\alpha$.
+	\item For each functional dependency $\beta \rightarrow \gamma$ in $F$,
+		if $\beta$ is contained in $\alpha^{+}$, then $\gamma$ is added to $\alpha^{+}$
+	\item If anything was added in step 2, repeat step 2; if nothing was added, the algorithm terminates.
+\end{enumerate}
 
-We'll come back to the subject or organizing records in files in the next lecture.
+Much like computing the closure of $F$, here we compute the closure of $\alpha$. 
 
-\subsection*{Placing Records on Disk}
+Going back to the earlier example with the five functional dependencies, we would like to evaluate something to see if it is a superkey. Given the rules, is $A$ a superkey? Let's go through the steps. 
 
-The database will store records (tuples, relations, metadata, etc) on disk in a file or multiple files, as one would expect. The file itself is partitioned into blocks that match up with the file system's underlying architecture. Blocks are typically 4~KB but size may vary. Records are of variable size because they are user defined: if a user defines a relation with six attributes, a tuple in that relation may be a record.
+The initial condition is that $A$ is in $\alpha^{+}$ (the result). Based on the rules, we can look at the rule $A \rightarrow B$ and see that we can add to the result $B$, which is now $AB$. The next rule that says $A \rightarrow C$ allows us to add $C$ to the result so $ABC$. The rules that require $CG$ on the left hand side cannot be added, at least not yet, because $CG$ does not appear in the result ($C$ does, but not $G$). We can look at the rule for $B \rightarrow H$ and add $H$ to the result meaning the result is $ABCH$. This is not the full set ($ABCGHI$) and therefore we conclude that $A$ is not a superkey.
 
-Let us imagine that a relation consists entirely of fixed length fields, so we can say that a tuple has a known size. If the sum of the fields' storage needs is, for example, 94 bytes, then we can fit 4096/94 = 43.57 records inside a block. For performance reasons as well as to keep chaos down we will usually not allow a record to be split across two blocks. Thus we would round down and say that 43 records can fit in this block (at most).
+This procedure can be repeated for any individual attribute and we will quickly find that no single attribute is a superkey for this relation. This is perhaps somewhat obvious from our list of functional dependencies. If we look carefully at them we can notice that neither $A$ nor $G$ ever appears on the right hand side of any of the functional dependencies, but all the other attributes do. That gives us a hint that a superkey might be $AG$, and that assumption can of course be tested by following the rules as above.
 
-A careful reading of the previous paragraph said that the relation consists entirely of fixed length fields. That is, sadly, not a safe assumption in real life. Although we can restrict most fields to some number (e.g., 255 character string, 30 digits of precision number, etc), the database can be used to store arbitrary data in a ``long text'' sort of format. It is not hard to imagine a scenario: if you wished to maintain a database of all e-mails sent and received, the body of the e-mail (as well as the attachments) are of arbitrary size. Those are often called ``BLOB''s -- Binary Large OBjects -- because, well, that's exactly what they are. 
+If our candidate is $AG$ as suggested, we start off by saying the result is $AG$. Then  iterating through the functional dependencies: the first rule of $A \rightarrow B$ means we can add $B$ to get $ABG$. The next rule of $A \rightarrow C$ lets us make the result $ABCG$. The dependency $CG \rightarrow H$ allows us to add $H$ and get $ABCGH$, and the dependency $CG \rightarrow I$ means the result is $ABCGHI$ which encompasses all attributes and we can terminate the algorithm here; our guess based on the hints was a good one.
 
-The fixed length records are a good starting point and we will deal with that first. Variable length-records that fit within a single block are the subject for another series of allocation algorithms. Finally, if there is so much data (e.g., email attachments and content) that we cannot possibly fit it into a block, we will likely store the content elsewhere and just keep a pointer to it in the record~\cite{dsc}. Remember that this is just about storage -- from the perspective of the user, a select query that asks for the body of the e-mail would return a tuple that has the body of the e-mail as an attribute just as if it were any other (fixed or variable length) string.
+There are three ways we can use this attribute closure algorithm~\cite{dsc}:
+\begin{itemize}
+	\item As above, to test if $\alpha$ is a superkey.
+	\item Check if a functional dependency holds (by determining if it is in $\alpha^{+}$.
+	\item As another way to compute $F^{+}$; we just compute the $\alpha^{+}$ for each $\alpha$ and then combine them. 
+\end{itemize}
 
-\paragraph{Fixed-Length Records.} 
+\subsection*{Canonical Cover}
+Suppose we have a set of functional dependencies $F$ on a relation. Whenever a user wants to update the data inside this relation, the database system must check that all functional dependencies in $F$ are still satisfied (i.e., no key constraints or other rules are broken)~\cite{dsc}. It is worth noting that in real life the rules are only enforced if you actually tell the database about them. If an update or insertion is inconsistent with the established rules, it is not permitted to happen.
 
-We will assume for the moment that an individual file contains only one kind of record. If a record is of fixed length, then we can easily compute how long it will be in storage by simply summing up the length of the fields. The example in \texttt{dsc} shows a type ``instructor'' with attributes ID (varchar of 5), name (varchar 20), dept\_name (varchar 20), and salary (numeric 8,2).\footnote{This is super overly optimistic. Believe me, I am not getting paid eight figures a year here. Unless you count the leading zeros...}. 
+Rather than checking every single functional dependency exactly as it is written, which may have some redundancy, we would like to simplify the set to a minimal number of rules that has the same closure. For example, if the rules say $A \rightarrow B$ and $B \rightarrow C$ and $A \rightarrow C$ we can immediately identify that there is redundancy and we could remove the rule $A \rightarrow C$ and still get the same closure, because that rule is implied and need not be checked separately.
 
-That's easy enough to sum up if each character is assumed to be 1 byte (so I guess this is not UTF-8) and we will assume the numeric 8,2 can be represented in 8 bytes (which is much more than needed since you'd actually really only need 5 to represent a number between 0 and 99~999~999.99, but let's assume that the type gets rounded up). That means the storage is $5 + 20 + 20 + 8 = 53$ bytes for this record. 
+You could argue that this sort of thing should not be necessary: designers should not introduce redundant rules and if they do it is their own fault. That is nice, but we don't live in a perfect world. Database designers who sit down and work out functional dependencies in advance and draw diagrams and plan ahead will probably have few redundant rules. But that's not what happens a lot of the tine, either the system is designed well and then grows to have duplicate rules over time, or, very commonly, people just create some tables without thinking about it much and ``we'll fix it later if we have to'' is the approach. But it's hard to fix later, and in the meantime, the database has done a lot of unnecessary work...
 
-That works. So the first 53 bytes are the first record, then the next 53 bytes are the second, and so on and so on and so on. 77.28 records would fit in a 4K block and we round down meaning 77 records fit in an individual block. The rest of the space is wasted, in some sense, in the same way that we may have internal fragmentation in memory allocation requests. 
+Formally speaking, an attribute of a functional dependency is \textit{extraneous} (unnecessary) under the following two scenarios~\cite{dsc}:
+\begin{itemize}
+	\item $A$ is extraneous in $\alpha$ if $A$ is in $\alpha$ and $F$ logically implies $(F - (\alpha \rightarrow \beta)) \cup ((\alpha - A) \rightarrow \beta))$.
+	\item $A$ is extraneous in $\beta$ if $A$ is in $\beta$ and the set of functional dependencies $(F - (\alpha \rightarrow \beta)) \cup (\alpha \rightarrow (\beta - A))$ logically implies $F$.
+\end{itemize}
 
-Even if we wanted to we would have trouble dividing such a record across two blocks: 0.28 (rounded to 2 decimal places; it's actually longer of course) of a record here is 15 bytes so do we put ID and then the first ten bytes of the name? Probably not. More likely is to have all of one field (ID) in block $i$ and the remaining fields in block $i+1$ which would reduce the amount of wasted space from 15 bytes to 10. 
+The first scenario is about removing a redundant attribute $A$ from the left hand side of an implication; the second is about removing it from the right hand side. An example of the first is if our rules say $AB \rightarrow C$ and $A \rightarrow C$, then we could remove $B$ from the left hand side. For the other scenario, if $AB \rightarrow CD$ and $A \rightarrow C$ are the functional dependencies, then $C$ is extraneous in the right hand side~\cite{dsc}.
 
-If we choose to allow a record to be in two blocks it is called \textit{spanned} (see (b) in the diagram below), otherwise it is unspanned (shown as (a) in the diagram) (although this shows variable length records rather than fixed)~\cite{fds}:
+To check if $A$ is extraneous on the right hand side, the routine is fairly simple; remove $A$ from the right hand side ($\beta$) from the rule that it is in (e.g., if the rule is $D \rightarrow AB$, replace it with $D \rightarrow B$) and then compute the canonical cover of $\alpha$ (in this example, $D$). If the canonical cover included $A$, then $A$ was extraneous in $\beta$.
+
+To check if $A$ is extraneous on the left hand side, the idea is pretty much the same: remove $A$ from the left hand side ($\alpha$) and check if this reduced set still functionally determines $\beta$. So if the rule is $DF \rightarrow GH$, remove $F$ and we are left with the uncertain rule $D \rightarrow GH$, which we need to test to be sure. We compute the closure of $D$ without this modified rule and see if it includes $GH$ (actually, all attributes in $\beta$). If it does, then $F$ was extraneous in the left hand side.
+
+The canonical cover for $F$ is denoted $F_{c}$ and it is a minimal representation of $F$. It requires two rules: (1) no functional dependency in $F_{c}$ has an extraneous attribute, and (2) the left side of each functional dependency is unique. The second rule means we can't have two rules that say $A \rightarrow B$ and $A \rightarrow C$ respectively; we must combine them in one single rule $A \rightarrow BC$. By making the minimal set, it makes it easier to test if the functional dependencies are satisfied.
+
+Let's do an example from~\cite{dsc}: The schema is simple $(A, B, C)$ and our functional dependencies are ($A \rightarrow BC, B \rightarrow C, A \rightarrow B, AB \rightarrow C$). Well, anyway, it is simple enough, we can use the union rule to combine the rule $A \rightarrow BC$ and $A \rightarrow B$ (pretty obvious). And then we can remove extraneous attributes to get this down to $A \rightarrow B$ and $B \rightarrow C$. This is slightly redundant and we can figure out by transitivity that $A \rightarrow BC$. These rules are pretty easy to test and we prefer to test these two versus the original four. This is a pretty terrible schema, actually, because there are way too many dependencies and only three attributes. 
+
+Let's try instead a different one from~\cite{fds}: our schema has more attributes and the functional dependencies are ($B \rightarrow A, D \rightarrow A, AB \rightarrow D$). In this case, all the left hand sides are different, s o we can't combine any that way. The right hand sides are all single attributes so we don't need to look for extraneous attributes there. But we should look at the left hand side. The only one that is not minimal there is the functional dependency $AB \rightarrow D$ and we would like to know if we can eliminate $A$ or $B$ from the left side. Looking at the rule that says $B \rightarrow A$ we can probably reason pretty well that if $B \rightarrow A$ then $B \rightarrow AB$  (which you can also reason as adding $B$ to both sides of the rule $B \rightarrow A$ becomes $BB \rightarrow AB$ and $BB$ is just $B$). So we can replace the one double-left-side rule with $B \rightarrow D$. Then we have a set that is equivalent: ($B \rightarrow A, D \rightarrow A, B \rightarrow D$). There is some redundancy here, though, and we could find out that $B \rightarrow A$ can be eliminated, leaving us with ($B \rightarrow D, D \rightarrow A$).
+
+Because canonical cover is about finding a minimal equivalent set, it is not necessarily that there is only one correct answer. If there is redundancy, we may need to delete one of two attributes (but not both). Let's go back to the example from earlier with the three attributes. Our functional dependencies are still ($A \rightarrow BC, B \rightarrow C, A \rightarrow B, AB \rightarrow C$). If we test $A \rightarrow BC$ we will find that both $B$ and $C$ are extraneous. This is normally not an issue, because we just test one of the two, and if it is redundant, we delete it and move on to testing other attributes in the modified set. But one person might choose to delete $B$ and another person might choose to delete $C$. Neither choice is wrong, but they will produce two different canonical cover sets, both of which are equally correct. The more functional dependencies there are with redundancy to be eliminated, the more possible correct answers there are. 
+
+
+\subsection*{Lossless Decomposition}
+
+Decomposition is breaking up a relation into two or more smaller ones. The motivations for doing so are something we will come back to later on, but for the moment, just assume there are good reasons. A decomposition is \textit{lossless} if no information is lost by splitting a relation $r$ into smaller relations $r_{1}$ and $r_{2}$; if information is loss it is called \textit{lossy} (and that is undesirable). The more precise definition of this is specified in relational algebra as $\Pi_{R_{1}}(r) \bowtie \Pi_{R_{2}}(r) = r$ (or in SQL, the natural join of the two tables with all attributes)~\cite{dsc}. 
+
+How can we tell if a join is lossless or lossy? You may have guessed just from the placement in the topics covered that this has something to do with the functional dependencies (meta gaming the lectures?) and that would be correct. If the decomposition is lossless then every functional dependency $f$ in $F$ holds in spite of the fact that the relation is split. But we can't really cheat and just ``forget'' to put in the functional dependencies to make it work, now can we?
+
+Thinking carefully about the way the decomposition must work, there needs to be some attribute or attributes that link together the two tables. This does mean some data is duplicated. One relation needs to have some way of referencing another, something like an address that references a person meaning the address relation contains the identifier of the person. 
+
+The formal definition for a lossless decomposition says that one of the following must hold on the two relations: $R_{1} \cap R_{2} \rightarrow R_{1}$ or  $R_{1} \cap R_{2} \rightarrow R_{2}$. That is to say, the intersection of the two relations most be sufficient to uniquely identify one of the two of them. 
+
+If we have employee with \textit{id, name, street, city, province, postalcode} and we tried to split it into $r_{1}$ as \textit{id, name}, and $r_{2}$ as \textit{name, sweet, city, province, postcode}. Is this going to work? The intersection of these two is \textit{name} and this is not a superkey for either $r_{1}$ or $r_{2}$ because names are not unique.
+
+There is a formal way for testing that dependencies have been preserved. There is a computationally expensive algorithm outlined in the textbook, as well as one that is premised on the idea that if each functional dependency $f$ can be tested on one relation only, then just test it on that relation and we're done. Unfortunately that last assumption is not necessarily true; it could happen that a functional dependency is across tables...
+
+Our solution is then a modified algorithm that does not require us to compute the closure of $F$. The algorithm is as follows, executed for each functional dependency $\alpha \rightarrow \beta$ ~\cite{dsc}:
+
+
+\begin{enumerate}
+	\item $result$ = $\alpha$
+	\item for reach relation $R_{i}$ in the decomposition
+	\begin{enumerate}
+		\item $result = result \cup (  (result \cap R_{i})^{+} \cap R_{i} )$
+	    \item if $result$ did not change at all, break out of the for loop
+	    \end{enumerate}
+\end{enumerate}
+
+If $result$ contains all attributes in $\beta$, then the dependency is preserved. And this must hold for all dependencies $\alpha \rightarrow \beta$.
+
+Which is explained in two key ideas as follows. The first idea is testing if each dependency $\alpha \rightarrow \beta$ is satisfied in $F'$, where $F'$ is the union of the \textit{restrictions} of $F$. That is, when we take the part of $F$ that can be applied to a relation $R_{i}$ we get $F_{i}$ and $F'$ is the union of all $F_{i}$s. We compute the closure of $\alpha$ under $F'$ to see if that includes $\beta$. The second idea is to use a modified version of the attribute closure algorithm to compute closure under $F'$ without actually computing $F'$ which would be expensive. For full details, see~\cite{dsc}, but keep in mind this is polynomial time rather than exponential time like computing $F^{+}$ would be.
+
+\subsection*{Algorithms for Decomposition}
+
+We have looked at very simple schemas (and probably will continue to look at very simple ones in this course). For those it is not too difficult to see how to get the schema into BCNF or 3NF or design it that way in the first place. But if we need to take a schema and decompose it, for a sufficiently complex schema, there are some algorithms that make this process consistent.
+
+\paragraph{BCNF.}To decompose to BCNF, the algorithm is as follows~\cite{dsc}. The initial state is the relations that we have, and we also need to then compute $F^{+}$. Then the steps are:
 
 \begin{center}
-\includegraphics[width=0.7\textwidth]{images/spanned-unspanned}
+\includegraphics[width=0.7 \textwidth]{images/bcnf-algorithm}\\
+BCNF Decomposition algorithm in pseudocode~\cite{dsc}
 \end{center}
 
-In any case it is undersirable to have the record split even if it can be split cleanly because it doubles the amount of work to read or write this record (because every operation is on two blocks). We have no choice if the record is bigger than a block, unfortunately, then we must use spanned organization. 
+The algorithm is both in BCNF and a lossless decomposition. This is because when we replace a schema $R_{i}$ with $(R_{i} - \beta)$ and $(\alpha, \beta)$ then the intersection of these two relations is $\alpha$.
 
-A second problem is that it is difficult to delete a record in this structure. Either we have to have a way to mark the record as deleted or we overwrite it with some record from somewhere else in the file~\cite{dsc}.
-
-If our initial state is as follows~\cite{dsc}:
+\paragraph{3NF.} If instead we wanted to put things in 3NF, it is a somewhat more complicated algorithm. It is also dependency preserving and lossless. It explicitly builds a schema for each dependency in a canonical cover, ensuring that each schema contains a candidate key. Unlike the BCNF decomposition algorithm, this builds the relations up rather than breaks them down. A formal proof of the algorithm below is in~\cite{dsc}: 
 
 \begin{center}
-\includegraphics[width=0.4\textwidth]{images/instructor-1}
+\includegraphics[width=0.7\textwidth]{images/3nf-algorithm}\\
+3NF Decomposition algorithm in pseudocode~\cite{dsc}
 \end{center}
-
-And we choose to delete record 3, we can either (1) move each record up by one in the file to fill in that gap (left side in the diagram below); or (2) move the last record to fill in that space (right side in the diagram below). Both diagrams from~\cite{dsc}:
-
-\begin{center}
-\includegraphics[width=0.4\textwidth]{images/instructor-2} 
-~~~~~~~~~~
-\includegraphics[width=0.4\textwidth]{images/instructor-3}
-\end{center}
-
-The first approach requires significantly more work than the second: we have to continually copy each record and overwrite the previous one, potentially $n-1$ times for a block containing $n$ records when the first one is deleted. If we move the last record into the open space it is less work but we still had to copy some data around. We could instead just mark that space as empty. 
-
-Marking the space as empty, however, has its own tradeoffs. If we want to insert a new record then we would have to scan through the whole block to see if there are any empty spaces. Instead of that, we might have a header structure in the file that tells us where the free sections are, if any, in a simple linked list or bitmap structure~\cite{dsc}. 
-
-Of course, things get complicated when we want to insert or delete records that are not fixed length. If we deleted record 3 in the previous example, what do we do if record 11 is bigger than record 3 was? What if it was smaller? We clearly need a different strategy for variable length records.
-
-
-
-\paragraph{Variable-Length Records.}
-
-As long as one field is of variable length then we have variable-length records in our file. There are some other situations that might cause record length to vary~\cite{fds}: repeating fields, optional fields, or even putting multiple types of record in the same file. 
-
-A repeating field is one that may have multiple attributes, such as an array of values. This seems strange at first glance since normally one might wish to have a separate relation to represent the array... On the other hand, if it is just a series of strings that might not be sensible. So a customs declaration with a list of clearance document numbers could have the array inside the declaration relation, or in a separate one.
-
-Optional fields are not recommended. If fields are variable length, i.e., not fixed length, then an empty field does not take up any space and it isn't any problem. So let us perhaps leave that subject alone. 
-
-However the variable-length records are implemented, there are two operations we need to consider: (1) how to get records out of a block and (2) how to get particular attributes from a record~\cite{dsc}. Because databases are for retrieval as well as storage we do need an efficient way to get data out again when we want it.
-
-Variable length attributes are often represented in one of two ways. The first is a terminator character of some sort, something not normally allowed in the domain. The next is the attribute is prefixed with its length. If these options sound familiar, they should, because they are the same ways programming languages might represent a variable length string. As you will know, C chose the terminator approach (null-terminated strings) and other languages like Pascal chose the length prefix approach.
-
-The sample layout structure from~\cite{dsc} suggests that fixed length attributes are put together, then each variable length record has an entry of \textit{(offset, length)}  to explain where the variable length attribute is in the file. If the attributes ID, name, and dept\_name in the previous example are variable length, and we have a fourth attribute of fixed length, salary (so it does have leading zeros!) then the length of the record can be computed. For the variable length record, if offset and attribute are 2 bytes each, then we have 4 bytes ``overhead'' per variable length attribute and we get something that looks like this~\cite{dsc}:
-
-\begin{center}
-\includegraphics[width=0.7\textwidth]{images/variable-length-record}
-\end{center}
-
-The null bitmap (stored in one byte here), tells us which if any of the attributes have a null value. That is one approach to show what values are null; if a value is null when queried then there is no need to actually look at the stored data. The null bitmap could be stored at the beginning or it may not even appear at all: if an attribute is null its length can be zero and that is enough to know there's no data there. It may be a performance improvement to look at the null bitmap and decide if the rest of the data needs to be examined.
-
-Then how do we put the variable length records into a block? For that, the strategy is the \textit{slotted page structure}: a data structure header in each block. The header includes the number of records in that block, where free space ends, and then an array with the location and size of each record. This diagram shows what this looks like~\cite{dsc}:
-
-\begin{center}
-\includegraphics[width=0.7\textwidth]{images/slotted-page}
-\end{center}
-
-Records themselves are contiguous in the block and free space exists, perhaps counter-intuitively, between the end of the array and the first record. When a new record is added, it goes at the end of free space and the array gets a little bit bigger (so the free space is reduced at both ends)~\cite{dsc}. 
-
-Deletion requires a bit more work: if an entry is deleted the data is removed and any records between that record and the free space area are moved so that all free space remains contiguous. If a record needs to grow or shrink due to an update statement, then we have to repeat the same procedures and move the records around to ensure that all free space remains contiguous~\cite{dsc}. 
-
-Reorganization following deletion does not have to take place immediately; it is possible to do periodic reorganization when it is a convenient time.
-
-\paragraph{Performance Considerations.}
-
-We can see that there are performance implications for whatever implementation strategy we choose. Performance is not our primary consideration at the moment, nor is it a major focus of this course. However, it is a subject we will want to look at and think about on a regular basis. 
-
- A select statement can take longer for certain requests than others; if a record is in one block it doesn't take as long to retrieve it as it would if it is spanning two blocks. A seemingly simple update statement may take a different amount of time based on how many records need to be moved if variable allocation is used. If record sizes are fixed then assigning a value may take a constant amount of time... but the number of blocks we need to access to perform an update may be higher because fewer records fit in a block due to all the space being held in reserve for empty values that have not been filled.
-
-
-
 
 \input{bibliography.tex}
 
