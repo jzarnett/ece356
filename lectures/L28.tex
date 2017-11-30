@@ -86,6 +86,28 @@ A classification tree for credit risks based on degree attainment and income~\ci
 It is important to note that these are predictions, guesses, really, and just because someone is predicted to have a good chance of repaying any loans made to them, does not actually mean that they will. We might say that good is a 75\% chance of on-time repayment, for example, meaning that for 25\% of people who would be predicted to be in the ``good'' category would end up paying late at least once or defaulting (missing payments). 
 
 \paragraph{Building Decision Trees.}
+Our plan is to choose a sequence of partitioning attributes and use those to partition the data that we have so that we get ``pure'' leaves that contain only instances of a particular class. But there are good and bad ways to divide up the data. Suppose an insurance company wants to make some observations about who is at risk for car crashes. Criteria under consideration might be the colour of the vehicle insured and the number of horsepower of the engine. At first glance your intuition might say that it is obvious that the colour of the car is not very important. What we would like, however, is a way to quantify it: find out if it really has no impact or if it is significant. We can do so by treating this as an optimization problem: measure the purity of a data at the children nodes resulting by partitioning by that attribute. Choose the attribute that results in the highest purity.
+
+We will now formalize this according to the definitions in the textbook~\cite{dsc}. Suppose we have a set $S$ of training instances and there are $k$ classes; the fraction of instances in a class $i$ is $p_{i}$. Then we can calculate the Gini measure as:
+
+
+$$\mbox{Gini($S$)} = 1 - \sum_{i-1}^{k}p_{i}^{2}$$
+
+If all instances are in a single class, the Gini measure is 0; its maximum value is $1-1/k$ if every class is equal in size. This can be used to calculate the information gain; how much we have learned. If $S$ is split into multiple sets, the purity of the split is calculated as:
+
+$$\mbox{Purity($S_{1}, S_{2}, ... S_{n}$)} = \sum_{i = 1}^{n}\dfrac{|S_{i}|}{|S|} \mbox{purity($S_{i}$)}$$
+
+Then information gain is calculated as purity($S$) $-$ purity($S_{1}, S_{2}, ... S_{n}$).
+
+Another measure is of entropy which is:
+
+$$\mbox{Entropy($S$)} = - \sum_{i-1}^{k}p_{i} \log_{2} p_{i}$$
+
+The entropy value is 0 if all instances are in a single class; and has a maximum value if all classes are equal in size. From that we can calculate information content as:
+
+$$ - \sum_{i-1}^{n} \dfrac{|S_{i}|}{|S|}  \log_{2} \dfrac{|S_{i}|}{|S|} $$
+
+And the best split for an attribute is then the one that gives the most benefit: information gain divided by information content.
 
 \paragraph{Bayesian Classifiers.} Our choice of correlation criteria does not necessarily account for correlations between the criteria themselves. For example, degree attainment is correlated with higher income  in general and there may even be a causation relationship there. It doesn't really matter (except to statisticians); all that we are concerned about is the correlation, the predictive power. Whether higher income causes a person to be more able to repay a loan. or a person who is more likely to repay a loan is more likely to earn more money, or some other third factor increases both is not relevant for our purposes.\footnote{Obligatory xkcd: \url{https://xkcd.com/552/} }
 
