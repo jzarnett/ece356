@@ -23,7 +23,9 @@ Arithmetic expressions involving null (e.g., addition, subtraction, etc) always 
 Use of ``unknown'' values in boolean operators is also complicated~\cite{dsc}:
 
 \begin{itemize}
-	\item  AND: Comparing true AND unknown results in unknown; false AND unknown results in false; unknown AND unknown results in unknown.	\item OR: Comparing true OR unknown results in true; false OR unknown results in unknown; unknown OR unknown results in unknown.	\item NOT unknown also results in unknown.
+	\item  AND: Comparing true AND unknown results in unknown; false AND unknown results in false; unknown AND unknown results in unknown.
+	\item OR: Comparing true OR unknown results in true; false OR unknown results in unknown; unknown OR unknown results in unknown.
+	\item NOT unknown also results in unknown.
 \end{itemize}
 
 If a where clause for a particular tuple evaluates to false, it is not added to the tuples to be returned or changed. 
@@ -31,7 +33,7 @@ If a where clause for a particular tuple evaluates to false, it is not added to 
 It is possible, though, to test whether something is null, or is not null. As you might expect, those are \texttt{IS NULL} and \texttt{IS NOT NULL}. Example: \texttt{SELECT * from VEHICLE WHERE year IS NULL;} finds all tuples in the vehicle relation where the year attribute is null. It is correct to use the \texttt{IS NULL} or \texttt{IS NOT NULL} constructions rather than something like \texttt{= null} or \texttt{<> null}.
 
 
-\paragraph{Ordering.} Thus far if multiple tuples are returned by a query, we get them in no specified order. You may see consistent behaviour across repeated queries, but n promises are made about the order in which they are delivered. We can change that, if we want, through the use of an \texttt{ORDER BY} clause. We specify the attribute to sort by, and we can choose ascending (\texttt{ASC}) or descending (\texttt{DESC}). An example: \texttt{SELECT * FROM VEHICLE ORDER BY make ASC}.
+\paragraph{Ordering.} Thus far if multiple tuples are returned by a query, we get them in no specified order. You may see consistent behaviour across repeated queries, but no promises are made about the order in which they are delivered. We can change that, if we want, through the use of an \texttt{ORDER BY} clause. We specify the attribute to sort by, and we can choose ascending (\texttt{ASC}) or descending (\texttt{DESC}). An example: \texttt{SELECT * FROM VEHICLE ORDER BY make ASC}.
 
 We may specify multiple attributes in the \texttt{ORDER BY} clause, such as \texttt{ORDER BY make DESC, model DESC}. This sorts by the ``make'' attribute (descending), and if the values of two tuples are equal in that attribute, then by ``model'' (descending). If no two tuples have the same first sort attribute then the second sort does nothing (why should it?). And you can, if desired, choose divergent directions: mixing ascending and descending. They are always handled from left to right so they cannot conflict.
 
@@ -159,7 +161,7 @@ In SQL the keywords we need are \texttt{UPDATE} and \texttt{SET}.  To update som
 
 By now there should be nothing unexpected in this statement: we specify what fields to assign, their new values, and we limit the tuples to be affected by use of the \texttt{WHERE} clause and its predicate. 
 
-It is necessary to specify at least one attribute to change, although it is possible that no tuples are changed becausee none match the where-predicate. Similarly, an update may fail if we try to violate one of the rules: if the new text is too long for the attribute, for example. There are also some rules about updating an identifier for this relation. 
+It is necessary to specify at least one attribute to change, although it is possible that no tuples are changed because none match the where-predicate. Similarly, an update may fail if we try to violate one of the rules: if the new text is too long for the attribute, for example. There are also some rules about updating an identifier for this relation. 
 
 In \cite{dsc} there is an example involving salaries where the statement runs along the following lines: \texttt{UPDATE employee SET salary = salary * 1.05 WHERE id = 1;}. This takes the current value of salary for the employee with id ``1'' and increases it by 5\% (the CEO is ever so generous to the CEO, no?). In this case the attribute salary is both read and written. It is perfectly alright to use and update a value like this, in much the same way that it is permissible to write a statement like \texttt{ x = x + 5; } in a C-like language; the assignment takes place after the right hand side expression has been evaluated.
 
