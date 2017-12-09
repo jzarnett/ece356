@@ -28,7 +28,7 @@ The database itself will likely use some tables internally (in MySQL this is the
 
 In addition to that, when a database user has successfully logged in, they have an associated \textit{login session}, which is associated with all of the interactions that user does while logged in. This sort of information can be used to track who has logged in and who made what changes so that administrators can see the history in case something has gone wrong. If any malfeasance is suspected, database administrators can audit the logs (look through them) and determine what happened ~\cite{fds}.  
 
-Privileges can be given out at the account level: these are per-account and and includes the create schema, create table, create view, alter, drop, modify, select... 
+Privileges can be given out at the account level: these are per-account and includes the create schema, create table, create view, alter, drop, modify, select... 
 
 Users are created with syntax like: \texttt{CREATE USER 'exampleuser'@'server' IDENTIFIED BY 'weakpassword';} This creates a user called ``exampleuser'' at a particular database server (``server'', often identified by an address) and their password is ``weakpassword'' (which is a terrible password, as you might know). To delete a user, \texttt{DROP USER exampleuser;}. To change a user's password, \texttt{SET PASSWORD FOR 'exampleuser'@'server' = PASSWORD ('CorrectHorseBatteryStaple');} The use of the \texttt{PASSWORD()} function is important, because it is what encrypts (well, one-way hashes, most likely) the user's password and that form is what is stored.
 
