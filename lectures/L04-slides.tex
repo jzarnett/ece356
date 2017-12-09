@@ -1,0 +1,652 @@
+\input{configuration}
+
+\title{Lecture --- Relational Query Languages \& SQL, Continued}
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Set Difference}
+
+The \alert{set difference} operation works more or less as you would expect: it takes a relation and removes from it any tuples that are in the second relation. 
+
+After taking away things we do not want, then we are left with the things we do want. 
+
+Its input is therefore two relations and it produces a new relation as its output.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Set Difference}
+
+The mathematical symbol is $-$ (the minus or subtraction operator). 
+
+The notation is then $r_{1} - r_{2}$ where $r_{1}$ and $r_{2}$ are relations.
+
+ This produces a relation $r_{3}$ that contains all tuples in $r_{1}$ that are not in $r_{2}$. 
+ 
+ It is possible to chain the subtraction operators, but like regular mathematical subtraction, it does not commute: the order matters a lot. 
+
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Set Difference}
+
+The query $\sigma_{make = ''Honda''}( vehicle ) -  \sigma_{year < ''2010''}( vehicle )$ produces the results: 
+
+{\small
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|} \hline
+	\textbf{VIN} & \textbf{year} & \textbf{make} & \textbf{model} & \textbf{license\_plate\_number} \\ \hline
+	1GYS3BKJ5FR338462 & 2016 & Honda & Civic & YYYY 585 \\ \hline	
+\end{tabular}
+\end{center}
+}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Set Difference}
+
+Just like the union operation, the sets must be compatible. The same rules from union apply: 
+
+\begin{enumerate}
+	\item The relations must have the same number of attributes.
+	\item The domain of attribute $i$ in the first relation must be the same as the domain of attribute $i$ in the second relation, for all $i$. 
+\end{enumerate}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Set Difference}
+
+In SQL the keyword we need for this is \texttt{EXCEPT}\footnote{Although Oracle uses \texttt{MINUS} instead.}. 
+
+Like the union operation, parenthesis prevent confusion and/or make your database server less sad.
+
+\texttt{(SELECT make, model FROM vehicle WHERE make = 'Volkswagen')\\
+EXCEPT\\
+(SELECT make, model, FROM vehicle WHERE year < 2016);}
+
+Produces as output: 
+
+\begin{center}
+\begin{tabular}{|l|l|} \hline
+\textbf{make} & \textbf{model} \\ \hline
+	Volkswagen & Jetta  \\ \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Alternative Route}
+
+Those with experience in databases may also think about \texttt{NOT IN}. 
+
+The \texttt{EXCEPT} keyword encompasses both the \texttt{DISTINCT} and \texttt{NOT IN} behaviour, so duplicates are eliminated. 
+
+Example:
+
+\texttt{SELECT make, model FROM vehicle WHERE make = 'Volkswagen' AND 
+VIN NOT IN\\ (SELECT VIN FROM vehicle WHERE year < 2016);}
+
+This demonstrates a subquery: the first query selects a relation with one attribute.  
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product}
+
+The \alert{cartesian product} combines information from two relations. 
+
+It is often the case that the data we need is in more than one relation. 
+
+That might be a design problem, but good design means data is in there only once and sometimes we do need to combine relations. 
+
+Suppose we wanted to send reminder notices to people whose license plates will expire next month. We combine license plate data with address data. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product}
+
+
+The mathematical symbol for cartesian product is $\times$, the multiplication symbol. 
+
+The cartesian product $r_{1} \times r_{2}$ forms a third relation $r_{3}$.
+
+ The new relation has all the attributes of both the relations that went into it (in the order specified). 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product Example}
+
+Let us pretend our license plate relation contains exactly two tuples:
+
+{\small
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+	\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} \\ \hline
+	ZZZZ 123 & 2018-09-30 & 24601 \\ \hline
+	AAAA 855 & 2019-04-01 & 12949 \\ \hline
+\end{tabular}
+\end{center}
+}
+
+And our owner address set is also two tuples: 
+
+{\small
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|}\hline
+		\textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product Example}
+
+Then the query $license\_plate \times owner\_address$ produces:
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+ZZZZ 123 & 2018-09-30 & 24601 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+This is all possibilities!
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product's Cardinal Problem}
+
+Each tuple from the first relation is paired with each tuple from the second. 
+
+So if $r_{1}$ contains $x$ tuples and $r_{2}$ contains $y$ tuples, there will be $x*y$ tuples in the resulting relation... 
+
+The vast majority of which are garbage! 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Duplicate Attribute Names}
+
+If we had two names that were the same, we would need a way to differentiate them. 
+
+Suppose that two relations, one called \texttt{book} and one called \texttt{author}, each having an attribute \texttt{id}. 
+
+Prefix the attribute with the name of the relation from which it came. 
+
+Thus, in the cartesian product the two columns would be \texttt{book.id} and \texttt{reader.id}.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cartesian Product in SQL}
+
+In SQL it is very simple to get the cartesian product:\\
+\texttt{SELECT * FROM license\_plate, owner\_address;} 
+
+Separate the relations we wish to appear in the cartesian product with a comma.
+
+We can always combine more if we needed.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Makes No Sense}
+
+We need to restrict our query with a selection predicate. 
+
+If the two relations are connected by some ID in in common, we need that. 
+
+In this case, the \texttt{id} attribute in the address matches \texttt{owner\_address\_id} in the license plate relation. 
+
+So $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Makes No Sense}
+
+Or in SQL: \texttt{SELECT * FROM license\_plate, owner\_address where owner\_address\_id = id;} 
+
+This may seem unclear so we might prefer to prefix these with their names: \texttt{SELECT * FROM license\_plate, owner\_address where license\_plate.owner\_address\_id = owner\_address.id;} 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Adding the Restriction to Cartesian Product}
+
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Rename}
+
+The \alert{rename} operation is used to both change the name of existing attributes/relations and assign names to ones that have no name. 
+
+The mathematical notation is $\rho$ (rho).
+
+ If applied to a relation, it is $\rho_{x}(E)$ where it renames the relation to $x$. 
+ 
+Or it can be applied to the name of the attributes: $\rho_{x(a_{1}, a_{2}, a_{3}, a_{4}...)}(E)$ which renames the relation to $x$ and then the attributes $a_{1}$...
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{For Dinner, or AS Dinner?}
+
+In SQL we can use the \texttt{AS} keyword. 
+
+That is not super interesting on a simple query to rename a relation:\\
+ \texttt{SELECT * FROM vehicle AS autos;} renames the relation result to ``autos''.
+ 
+ It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names (e.g., change \texttt{book.id} to \texttt{textbook.id}). 
+
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Further Use of AS}
+
+A more likely use is to rename the attributes of a relation.
+
+The motivation for the rename operation right now probably seems weak. 
+
+There are some situations where we will need to use the rename operation.
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Set Intersection}
+
+\alert{Set intersection} is exactly what it sounds like based on our understanding of mathematical sets. 
+
+The symbol for it is $\cap$ and it is equivalent to $r_{1} - (r_{1} - r_{2})$.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Set Intersection in SQL}
+
+In SQL they keyword is \texttt{INTERSECT}. 
+
+Its use is limited, however, in a way similar to union. 
+
+If we want to use intersection on two queries of the same relation, we could just as easily set it up as a selection with a compound predicate.
+
+\texttt{(SELECT name, street, city, province, postal\_code FROM owner\_address)\\ 
+INTERSECT\\ 
+(SELECT name, street, city, province, postal\_code FROM employee);}
+
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Assignment}
+
+The \alert{assignment} operation allows us to take the result of an expression and put it in a temporary variable. 
+
+The mathematical symbol for this is $\leftarrow$.
+
+This is just notational convenience for the benefit of the reader. 
+
+So instead of something $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$, we could write: 
+
+$temp \leftarrow license\_plate \times owner\_address$
+
+
+$\sigma_{owner\_address\_id = id}( temp ) $.
+
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Assignment in SQL}
+
+SQL does have an assignment operator: \texttt{:=}. 
+
+I will, however, discourage you from using it.
+
+The reason I discourage the use of assignment is the need to get away from the C-like thinking with counters and iteration.
+
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Join}
+
+The \alert{Join} operations combines cartesian product with a selection.
+
+The mathematical symbol for the \textit{natural join} is $\Join$ (bowtie). 
+
+It combines the cartesian product with a selection, forcing equality. 
+
+A natural join combined with a selection is a theta join $\Join_{\theta}$ where $\theta$ is the selection predicate.
+
+ Note that it is associative: so we can chain it as we need: 
+ 
+ $vehicle \Join license\_plate \Join owner\_address$ is equivalent to  $(vehicle \Join license\_plate) \Join owner\_address$  and $vehicle \Join (license\_plate \Join owner\_address)$.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Same Name?}
+
+Except, this probably doesn't work the way we hope on our sample data because the fields are not named the same thing. 
+
+If both fields are called \texttt{id}, the database server will try to match on those. 
+
+But this is not going to work for our data since they all have different names. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Join in SQL}
+
+In SQL the keyword we need for this is \texttt{NATURAL JOIN}. 
+
+So we would do: \texttt{SELECT * FROM vehicle NATURAL JOIN license\_plate;} 
+
+Again, though, this is not going to cooperate for us because our names don't match.
+
+What do we do then?
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Inner Join}
+
+The default type is the \texttt{INNER JOIN} and it's what you get if you just write \texttt{JOIN} instead of being specific. 
+
+It requires us to use the \texttt{ON} clause to specify how we relate one side to the other.
+
+\texttt{SELECT * FROM license\_plate JOIN owner\_address ON owner\_address\_id = id;} produces:
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Use ON}
+
+Use the \texttt{ON} clause rather than \texttt{NATURAL JOIN}. 
+
+Oftentimes you need it and when you don't you sometimes get the wrong behaviour because a natural join does the wrong thing. 
+
+If the license plate relation called the plate number ``id'' instead of ``number'', the natural join operation would run but produce no results. 
+
+Be explicit about how the join should work.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Outer Join?}
+
+If there is an inner join, there is obviously an outer join. Actually, there are three!
+
+Suppose we have a license plate that does not correspond to any address: 
+
+{\scriptsize
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+	\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} \\ \hline
+	ZZZZ 123 & 2018-09-30 & 24601 \\ \hline
+	AAAA 855 & 2019-04-01 & 12949 \\ \hline
+	BBCC 394 & 2019-02-12 & null \\ \hline
+\end{tabular}
+\end{center}
+}
+
+and an address that does not correspond to any license plate:
+
+{\scriptsize
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|}\hline
+		\textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Inner Join vs Outer Join}
+
+The inner join of license plate with owner address would look like this: 
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+	\end{tabular}
+\end{center}
+}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Left Outer Join}
+
+If we use the left outer join, which has the symbol {\tiny \textifsym{d|><|}}? 
+
+We get a tuple in the result for each entry in the left (first) table, even if it has no match in the second. 
+
+For such a tuple, all attributes from the right (second) table will simply be ``null''. 
+
+If a tuple in the right table has no match in the left table, it does not appear at all.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Left Outer Join}
+
+The SQL for this is, of course, \texttt{LEFT OUTER JOIN}. So \texttt{SELECT * FROM license\_plate LEFT OUTER JOIN owner\_address ON owner\_address\_id = id;} returns:
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		BBCC 394 & 2019-02-12 & null & null & null & null & null & null & null \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Right Outer Join}
+
+
+The right outer join, symbol, {\tiny \textifsym{|><|d}} (\texttt{RIGHT OUTER JOIN}) is the mirror image operation of the left outer join. 
+
+We get a tuple in the result for each entry in the right (second) table, even if it has no match in the first. 
+
+For such a tuple, all attributes from the left (first) table will simply be ``null''. 
+
+If a tuple in the left table has no match in the right table, it does not appear at all.
+
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Right Outer Join}
+
+
+\texttt{SELECT * FROM license\_plate RIGHT OUTER JOIN owner\_address ON owner\_address\_id = id;} returns:
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		null & null & null & 86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4 \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Full Outer Join}
+
+Finally, there is the full outer join, with the symbol {\tiny \textifsym{d|><|d}}.
+
+It does both the left and right outer join operations, including tuples from each relation that do not match the other: 
+
+{\tiny
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|l|}\hline
+		\textbf{number} & \textbf{expiry} & \textbf{owner\_address\_id} & \textbf{id} & \textbf{name} &\textbf{street} & \textbf{city} & \textbf{province} & \textbf{postal\_code} \\ \hline
+		ZZZZ 123 & 2018-09-30 & 24601 & 24601 & Jean Valjean & 19 Rue des Prisonniers & Ottawa & ON & B1B 1B1\\ \hline
+		AAAA 855 & 2019-04-01 & 12949 & 12949 & Alice Jones & 4 Generic Place & Kenora & ON & C2C 2C2\\ \hline
+		BBCC 394 & 2019-02-12 & null & null & null & null & null & null & null \\ \hline
+		null & null & null & 86753 & Sherlock Holmes & 221B Baker St & London & ON & D4D 4D4 \\ \hline
+	\end{tabular}
+\end{center}
+}
+
+
+\end{frame}
+
+
+
+
+
+\end{document}
+

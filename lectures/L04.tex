@@ -137,7 +137,7 @@ INTERSECT\\
 
 This would produce the set of addresses that are both in the owner address relation and in the employee relation.
 
-\paragraph{Assignment.} The assignment operation allows us to take the result of an expression and put it in a temporary variable. The mathematical symbol for this is $\leftarrow$. This is just notational convenience for the benefit of the reader. Instead of a complicated expression that requires several sets of parenthesis and is hard to follow, we could break up the query into parts and then use those parts. So instead of something $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$. we could write: 
+\paragraph{Assignment.} The assignment operation allows us to take the result of an expression and put it in a temporary variable. The mathematical symbol for this is $\leftarrow$. This is just notational convenience for the benefit of the reader. Instead of a complicated expression that requires several sets of parenthesis and is hard to follow, we could break up the query into parts and then use those parts. So instead of something $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$, we could write: 
 
 $temp \leftarrow license\_plate \times owner\_address\\
 \sigma_{owner\_address\_id = id}( temp ) $.
@@ -148,7 +148,7 @@ SQL does have an assignment operator: \texttt{:=}. I will, however, discourage y
 
 \paragraph{Join.} We have already seen the cartesian product operation tends to produce a lot of rows, some of which are illogical. By combining that with a restriction, i.e., a selection, we throw away the tuples that don't make sense and are left with only those where there is some meaning. One is hard pressed to think of a situation where this is not needed. Thus, a little notational shorthand is in order. 
 
-The mathematical symbol for the \textit{natural join} is $\Join$ (cute little bowtie). It combines the cartesian product with a selection, forcing equality. A natural join combined with a selection is a theta join $\Join_{\theta}$ where $\theta$ is the selection predicate. Note that it is associative: so we can chain it as we need: $vehicle \Join license\_plate \Join owner\_address$ is equivalent to  $(vehicle \Join license\_plate) \Join owner\_address$  and $vehicle \Join (license\_plate \Join owner\_address)$~\cite{dsc}. 
+The mathematical symbol for the \textit{natural join} is $\Join$ (bowtie). It combines the cartesian product with a selection, forcing equality. A natural join combined with a selection is a theta join $\Join_{\theta}$ where $\theta$ is the selection predicate. Note that it is associative: so we can chain it as we need: $vehicle \Join license\_plate \Join owner\_address$ is equivalent to  $(vehicle \Join license\_plate) \Join owner\_address$  and $vehicle \Join (license\_plate \Join owner\_address)$~\cite{dsc}. 
 
 Except, this probably doesn't work the way we hope on our sample data because the fields are not named the same thing. If both fields are called \texttt{id}, the database server will try to match on those. But this is not going to work for our data since they all have different names. 
 

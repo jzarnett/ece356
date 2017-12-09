@@ -324,7 +324,7 @@ A \alert{super key} is a set of one or more attributes that uniquely identify on
 \end{frame}
 
 \begin{frame}
-\frametitle{Keys are Key
+\frametitle{Keys are Key}
 
 By default, of course, the full set of attributes will be one such super key. 
 
@@ -393,6 +393,84 @@ If the relation has a tuple (ZZZZ999, 5N1BA0ND5BNF18322) then that itself can be
 Or if we have a list of elements belonging to some parent, they might be identified uniquely by the parent's ID and an integer sequence number.
 
 \end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Primary Key Implications}
+
+Keep in mind that a primary key means no two tuples can have the same values for that attribute (or those attributes) at the same point in time. 
+
+Suppose we have a relation where the primary key is the parent's ID and the sequence number. 
+
+Tuples like (92858, 0, Smith), (92858, 1, Kim), (92858, 2, Singh), where the first two elements form the primary key. 
+
+Suppose we then delete the first element of the sequence:\\
+\quad The tuples are now (92858, 0, Kim), (92858, 1, Singh). 
+
+This is okay!
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Foreign Keys}
+
+If a relation references the primary key of another, we can make it a requirement that its content matches an entry in the domain of another table. 
+
+When a vehicle row is created, the license plate number must be one of the entries in the license plate table (or null, if that is permitted).
+
+Thus, if we tried to put in an entry that referenced license plate ``DDDD 001'' when no such plate exists in the system, this would be an error. 
+
+This explicit constraint is called a \alert{foreign key}. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Foreign Key}
+
+More formally, a foreign key is defined as:
+\begin{enumerate}
+\item The attributes of the foreign key of relation $R_{1}$ relating $R_{1}$ to relation $R_{2}$ have the same domain(s) as the primary key of $R_{2}$.
+\item A value of a FK in a tuple $t_{1}$ of $R_{1}$ either occurs as a value of the primary key for some tuple $t_{2}$ in $R_{2}$ in the current state, or is null. 
+\end{enumerate}
+
+A foreign key is also called a referential integrity constraint.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Reject}
+
+Under best circumstances, the database server will reject any attempt to modify data such that violates referential integrity (or otherwise breaks a rule). 
+
+If that is the case, then we may have some certainty that our data is in a valid state. 
+
+If there are rules not entered into the system explicitly at the beginning it may be very painful to introduce them later if the system is in an invalid state. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{``University'' Schema}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/schemadiagram.png}
+\end{center}
+
+
+\end{frame}
+
+
 
 
 \end{document}
