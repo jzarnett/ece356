@@ -77,7 +77,7 @@ Consider an example from~\cite{dsc}: the previous relationship between student a
 E-R diagram for ternary advisor-student-department relationship~\cite{dsc}
 \end{center}
 
-The relation in the diagram above to represent \textit{dept\_advisor} will contain three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know, the functional dependencies are \textit{instructor\_id} $\rightarrow$ \textit{dept\_name} (an instructor belongs to one department). and \textit{student\_id, dept\_name} $\rightarrow$ \textit{instructor\_id} (a student has at most one advisor per department). 
+The relation in the diagram above to represent \textit{dept\_advisor} will contain three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know, the functional dependencies are \textit{instructor\_id} $\rightarrow$ \textit{dept\_name} (an instructor belongs to one department), and \textit{student\_id, dept\_name} $\rightarrow$ \textit{instructor\_id} (a student has at most one advisor per department). 
 
 This design is not in BCNF, because \textit{instructor\_id} is not a superkey. An instructor ID alone is not enough to identify the relationship, because multiple students can be advised by the same individual. So we need to perform the decomposition procedure and that will produce two relations: \textit{(student\_id, instructor\_id)} and \textit{(instructor\_id, dept\_name)}.
 
@@ -99,7 +99,7 @@ Recall: the relation in the diagram in the previous subsection to represent \tex
 How do we know the new definition of \textit{dept\_advisor} is in 3NF? We know that the current definition has a functional dependency that does not meet condition 1 or 2, otherwise it would be in BCNF. So the rule we will check is the third rule and we'll find that this is valid because \textit{instructor\_id} is contained in a candidate key: \textit{(student\_id, instructor\_id)} is a candidate key, because it is minimal and sufficient to identify any row. If the student with ID x999chan is supervised by Professor Sedra, we have enough information to figure out that the department is ECE.
 
 \subsection*{Higher Normal Forms}
-This isn't even my final form! In addition to the first, second, third, and BCNF normal forms there are more... Fourth, fifth, and beyond. The 
+This isn't even my final form! In addition to the first, second, third, and BCNF normal forms there are more... Fourth, fifth, and beyond. 
 
 The fourth normal form is built upon the third normal form, so the first requirement for something being in 4NF is that it is in BCNF. The new requirement is that a record type cannot have more than one multivalued dependency. A multivalued dependency exists between two attributes if, for each value of the first attribute $\alpha$ there is more than one value of the second attribute $\beta$~\cite{fournorm}. 
 
@@ -122,7 +122,7 @@ In this table there are two multivalued dependencies:  \textit{id} $\rightarrow$
 The formal 4NF decomposition algorithm looks something like this~\cite{dsc}:
 
 \begin{enumerate}
-	\item Compute $D^{+}$ (the implied set of constraint for the schema)
+	\item Compute $D^{+}$ (the implied set of constraints for the schema)
 	\item Check all relations to see if they are in 4NF.
 	\item If all relations are in 4NF with respect to the constraints, the algorithm terminates.
 	\item Otherwise let $\alpha \rightarrow\rightarrow \beta$ be a multivalued dependency in the relation $R_{i}$ that has two or more multivalued dependencies. 
