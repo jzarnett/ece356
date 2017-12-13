@@ -61,7 +61,7 @@ If we choose to allow a record to be in two blocks it is called \textit{spanned}
 \includegraphics[width=0.7\textwidth]{images/spanned-unspanned}
 \end{center}
 
-In any case it is undersirable to have the record split even if it can be split cleanly because it doubles the amount of work to read or write this record (because every operation is on two blocks). We have no choice if the record is bigger than a block, unfortunately, then we must use spanned organization. 
+In any case it is undesirable to have the record split even if it can be split cleanly because it doubles the amount of work to read or write this record (because every operation is on two blocks). We have no choice if the record is bigger than a block, unfortunately, then we must use spanned organization. 
 
 A second problem is that it is difficult to delete a record in this structure. Either we have to have a way to mark the record as deleted or we overwrite it with some record from somewhere else in the file~\cite{dsc}.
 
