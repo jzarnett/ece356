@@ -12,7 +12,7 @@ Our discussion of distributed databases is not in any sense a replacement for a 
 
 
 \subsection*{Transparency}
-When designing a distributed system one of the primary concerns is \textit{transparency}, but not the sort we expect of governments where we should know what is going on. It's actually the opposite: what we want is for it to be imperceptible to the users that the database is distributed. There are a few types of transparency that are possible (and generally they are desirable nut not necessarily)~\cite{fds}:
+When designing a distributed system one of the primary concerns is \textit{transparency}, but not the sort we expect of governments where we should know what is going on. It's actually the opposite: what we want is for it to be imperceptible to the users that the database is distributed. There are a few types of transparency that are possible (and generally they are desirable but not necessarily)~\cite{fds}:
 
 \begin{itemize}
 	\item \textbf{Location Transparency}: The command used to perform a task is the same no matter the node on which it executes.
@@ -33,7 +33,7 @@ In relational algebra representation, a fragment $r_{i}$ is created by a selecti
 
 \textit{Derived horizontal fragmentation} applies the partitioning of a relation rules to some secondary tables that are related by a foreign key~\cite{fds}. Imagine you have a relation that is a shipment and there is a related relation of containers. Some number of containers are associated with the shipment (in the logic of the application); it would therefore make sense to split up the container relation based on their relationship to the shipment relation... If a shipment is at location 1, its associated containers should also be at that location.
 
-\paragraph{Vertical Fragmentation.} Vertical integration is splitting up by attributes rather than tuples. 
+\paragraph{Vertical Fragmentation.} Vertical fragmentation is splitting up by attributes rather than tuples. 
 
 In relational algebra fragmentation is done using projection: $r_{i} = \Pi_{R_{i}}
 (r)$ and they are recombined using the natural join~\cite{dsc}.  For recombination to work, of course, we need a key in each part of the relation. If there are no attributes in common we have no way of recombining. Thus, at least some of the data will be repeated in the various partitions. In horizontal fragmentation the sets can be completely disjoint, but that is not the case in vertical fragmentation. 
@@ -67,7 +67,7 @@ If we choose instead to let all sites be involved in lock management, we have di
 
 \paragraph{Primary Copy.}A simple approach to distributed locking is using the primary copy as controlling: if a site wishes to lock an item, it has to acquire the lock at the primary site. Thus, each site is responsible for keeping control over the data it is the primary for. The obvious downside is that if a site goes down, the data for which it is the primary is inaccessible even though there is a replica of it (until some other site takes over primary ownership)~\cite{dsc}.
 
-\paragraph{Majority Rules.} The next level up is to use a majority protocol: if a data item $i$ is at $n$ different sites, then a lock message has to be sent to (at least) $\lceil n/2 \rceil$ locations to lock $i$. If a site finds according to its own local situation that the lock can be granted, it returns a yes answer immediately; otherwise the response is delayed until the lock can be acquired. A transaction on $i$ cannot proceed until a lock has been acquired on a majority of the lock messages~\cite{dsc}.
+\paragraph{Majority Rules.} The next level up is to use a majority protocol: if a data item $i$ is at $n$ different sites, then a lock message has to be sent to (at least) $\lceil n/2 \rceil$ locations to lock $i$. If a site finds according to its own local situation that the lock can be granted, it returns a yes answer immediately; otherwise the response is delayed until the lock can be acquired. A transaction on $i$ cannot proceed until a lock has been acquired on a majority of the locations~\cite{dsc}.
 
 This routine requires a lot of messages: to lock an item requires $\lceil n/2 \rceil$ outgoing requests and also  $\lceil n/2 \rceil$ responses; to unlock an item then another $\lceil n/2 \rceil$ messages.
 
@@ -98,7 +98,7 @@ If we do updates at one location, the primary site, and they are eventually sent
 
 \paragraph{Deadlock Detection.}
 
-When we have a distributed database, a deadlock can occur but be difficult to detect using the wait-for graph algorithm, because nobody has the complete picture, meaning everyone has an incomplete wait-for graph. Each site may have its own local wait-for graph but that is not enough information to know if a deadlock has occurred (unless the local wait-for graph itself has a cycle). Consider the local wait-for graph situation shown below:
+When we have a distributed database, a deadlock can occur but be difficult to detect using the wait-for graph algorithm, because nobody has the complete picture, as everyone has an incomplete wait-for graph. Each site may have its own local wait-for graph but that is not enough information to know if a deadlock has occurred (unless the local wait-for graph itself has a cycle). Consider the local wait-for graph situation shown below:
 
 \begin{center}
 \includegraphics[width=0.5\textwidth]{images/waitfor-local}\\
@@ -116,7 +116,7 @@ Our approach for solving this is the centralized approach: one location is desig
 
 It is noteworthy that the actual state of the system is not necessarily the same as the one seen by the deadlock coordinator; because there is a potential communication delay between the various sites so the information reaching the coordinator can be out of date~\cite{dsc}. If the information is out of date we might accidentally signal a rollback on a transaction that is not deadlocked! Whoops. This can happen, but a transaction that is rolled back and restarted is really just delayed. We can live with a miscarriage of justice as long as our approach for recovering from this (e.g., restarting the transaction) is good.
 
-Constantly checking the wait-for graph may be wasteful of resource if deadlock is rare. In fact, we might not even constantly send the wait-for graph information to the coordinator unless the coordinator asks for it. If a transaction has been waiting for a while, we might conclude that it has become stuck. That might prompt a site to send a message to the global coordinator asking it to run the deadlock detection algorithm. Or, the coordinator may choose to do so periodically, or when other conditions are fulfilled (e.g., some threshold number of locked data items has been reached). 
+Constantly checking the wait-for graph may be wasteful of resources if deadlock is rare. In fact, we might not even constantly send the wait-for graph information to the coordinator unless the coordinator asks for it. If a transaction has been waiting for a while, we might conclude that it has become stuck. That might prompt a site to send a message to the global coordinator asking it to run the deadlock detection algorithm. Or, the coordinator may choose to do so periodically, or when other conditions are fulfilled (e.g., some threshold number of locked data items has been reached). 
 
 \subsection*{Transaction Management}
 
