@@ -29,7 +29,7 @@ Although in theory it would be nice to prevent deadlock from ever occurring, in 
 
 \paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution.
 
-\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. One plausible solution is that the transaction must request all resources at the beginning of the program. So if the program is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program, all three must be requested right at the beginning and held throughout the transaction. No further resources may be requested at any time during execution~\cite{osc}.
+\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. One plausible solution is that the transaction must request all resources at the beginning of the program. So if the transaction is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program, all three must be requested right at the beginning and held throughout the transaction. No further resources may be requested at any time during execution~\cite{osc}.
 
 When talking about processes, actually we said this requires some amount of clairvoyance: a process has to know in advance all of the resources that it will need. Remember that a file is a resource, and even a simple program like a text editor can be used by the user to open an arbitrary file; how do we know in advance which will be requested? But with database transactions, actually, we can actually evaluate what data items are needed. That might not be trivial, but at least for databases it is possible.
 
@@ -86,14 +86,14 @@ It is clear that our recovery strategy in the database context is rollback. But 
 On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide, but there exist a number of other possible criteria~\cite{dsc}:
 
 \begin{enumerate}
-\item How long the process has been executing.
+\item How long the transaction has been executing.
 	\item How long is remaining in execution (see the estimates from the execution plan).
-	\item What resources the process has used.
+	\item What resources the transaction has used.
 	\item Future resource requests, if known.
-	\item How many times, if any, the process has been selected as a victim (to prevent starvation).
+	\item How many times, if any, the transaction has been selected as a victim (to prevent starvation).
 \end{enumerate}
 
-After a victim has been selected, we might reason, it's pretty easy from here: simple roll that transaction back. That would be a total rollback: undo all the steps of the transaction and start from the beginning once again. There exists, however, the ability to do a \textit{partial rollback}. 
+After a victim has been selected, we might reason, it's pretty easy from here: simply roll that transaction back. That would be a total rollback: undo all the steps of the transaction and start from the beginning once again. There exists, however, the ability to do a \textit{partial rollback}. 
 
 The goal of the partial rollback is to rollback the transaction back only as much as is necessary to break the deadlock;  this is accomplished by maintaining the sequence of lock requests and grants. By finding the lock(s) that are implicated in the deadlock, we can roll back a transaction to where it obtained the first of such locks~\cite{dsc}. This can be beneficial if the amount of work saved is large enough to outweigh the effort required to determine where the lock conflict occurs. For small transactions, a full restart is probably sensible; for longer ones it might be worth it to try to do a partial rollback instead.
 

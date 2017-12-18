@@ -1,0 +1,356 @@
+\input{configuration}
+
+\title{Lecture 25 --- Deadlock, Lock Granularity}
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Deadlock}
+
+You should recall from learning about concurrency what deadlock is about, and therefore a brief review only is in order. 
+
+Those in need of a refresher are advised to take a look through previous courses' material to get caught up. 
+
+Others may find this to be review material, but it does deviate in some significant ways from the discussion of deadlocked processes.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock}
+We have already introduced the subject of deadlock and gave an informal definition as all transactions being ``stuck'' (unable to proceed). 
+
+A more formal definition: ``the \textit{permanent} blocking of a set of transactions that either compete for system resources or communicate with each other''. 
+
+There is emphasis on permanent. 
+
+It may be possible for all transactions to be stuck temporarily, because one is waiting for some event (e.g., a read from disk).
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Conditions for Deadlock}
+Remember, there are four condition necessary for a deadlock to take place:
+
+\begin{enumerate}
+	\item \textbf{Mutual Exclusion}
+	\item \textbf{Hold-and-Wait}
+	\item \textbf{No Preemption}
+	\item \textbf{Circular-Wait}
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Don't Handle It}
+
+We could choose not to handle deadlock. 
+
+This option is certainly convenient for database system designers! 
+
+While it is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. 
+
+If two transactions get deadlocked, the user may simply see no progress and just feel bad about it. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock Prevention}
+
+The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. 
+
+If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening. 
+
+If we prevent the circular wait from occurring, we are still in a world where deadlock can occur. 
+
+We cleverly avoid it taking place based on how we allow locks to occur.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Mutual Exclusion}
+
+This pillar cannot, generally speaking, be disallowed. 
+
+The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. 
+
+Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. 
+
+It is therefore not acceptable as a solution.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Hold and Wait}
+To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. 
+
+One plausible solution is that the transaction must request all resources at the beginning of the program. 
+
+So if the transaction is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program: 
+
+All three must be requested right at the beginning and held throughout the transaction.
+
+ No further resources may be requested at any time during execution
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{No Preemption}
+f we violate this condition, it means that we do have preemption: forcible removal of resources from a transaction. 
+
+In the database context, if we have to preempt a transaction, it means the transaction in question is rolled back and then restarted. 
+
+To work out an ordering, transactions are assigned a timestamp. 
+
+If a transaction is rolled back, its timestamp remains the same
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Or, Preemption}
+There are two approaches for what happens if we need to do pre-emption:
+
+The first is called \alert{wait-die}. 
+
+If a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. 
+
+$T_{i}$ will be allowed to wait if it is older (i.e. its timestamp is a smaller number) than $T_{j}$, otherwise it ``dies'' (is rolled back). 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Or, Preemption}
+
+The second is \alert{wound-wait}. 
+
+If a transaction $T_{i}$ requests an item held by $T_{j}$, then the timestamps of these two transactions are compared. 
+
+If $T_{i}$ is the younger transaction (its timestamp is larger), then $T_{i}$ can wait. 
+
+Otherwise, $T_{j}$ is ``wounded'' by $T_{i}$ and $T_{j}$ is rolled back.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Roll Back}
+
+So, in case of a conflict, one of the two transactions is going to be rolled back. 
+
+And it is always the younger one. 
+
+In either approach there may be unnecessary rollbacks...
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Timeout}
+
+Instead we could also have locks that have timeouts. 
+
+When a lock is requested there is a defined maximum time the transaction is willing to wait. 
+
+If that time limit is reached, the transaction rolls back automatically and begins again. 
+
+The obvious difficulty lies in choosing the length of time that the transactions will wait.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Circular Wait}
+
+We have already discussed the idea of using two phase locking to put an ordering on the locks and we need not repeat that yet again. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock Detection}
+
+A quick review of the graph algorithm follows, then. 
+
+If resources have only a single instance, we may reduce the graph to a simplified version called the \alert{wait-for} graph. 
+
+This removes the resource boxes from the diagram and indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that is held by $P_{j}$. 
+
+An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Deadlock Detection}
+
+\begin{center}
+\includegraphics[width=0.75\textwidth]{images/rag-waitfor.png}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Database Deadlock Detection}
+
+Because locks are unique then there is no need to use the resource allocation graph and we can always use the simplified wait-for graph for transactions:
+
+\begin{center}
+\includegraphics[width=0.45\textwidth]{images/transaction-waitfor.png}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock Detection is Expensive}
+
+Cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph.
+
+How often should the deadlock detection algorithm be run?
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock Recovery}
+
+On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide. Or: 
+
+\begin{enumerate}
+\item How long the transaction has been executing.
+	\item How long is remaining in execution (see the estimates from the execution plan).
+	\item What resources the transaction has used.
+	\item Future resource requests, if known.
+	\item How many times, if any, the transaction has been selected as a victim (to prevent starvation).
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Push the Ball Uphill}
+
+We chose a victim, now simply roll that transaction back! 
+
+That would be a total rollback: undo all the steps of the transaction and start from the beginning once again. 
+
+There exists, however, the ability to do a \alert{partial rollback}. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Partial Rollback}
+
+The goal of the partial rollback is to rollback the transaction back only as much as is necessary to break the deadlock.  
+
+This is accomplished by maintaining the sequence of lock requests and grants.
+
+ By finding the lock(s) that are implicated in the deadlock, we can roll back a transaction to where it obtained the first of such locks.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Lock Granularity}
+
+Locks' extents constitute their \alert{granularity}: that is, how much data is being protected by such a lock.
+
+\alert{Coarse-grained} locking is easier to implement, but it can significantly reduce opportunities for parallelism. 
+
+\alert{Fine-grained locking} requires more careful design, increases locking overhead and is more prone to bugs (deadlock etc).
+
+ 
+\end{frame}
+
+\begin{frame}
+\frametitle{Granularity Hierarchy}
+In the database we could define multiple levels of granularity. 
+
+\begin{center}
+\includegraphics[width=0.7\textwidth]{images/granularity-hierarchy}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Intention Lock Modes}
+
+A more efficient route is \alert{intention lock modes}, which are put on the ancestors of a node before the node is locked. T
+
+hese intention locks can be checked while traversing the tree. The following modes are possible:
+
+\begin{itemize}
+	\item \textbf{Shared} (S)
+	\item \textbf{Exclusive} (X) 
+	\item \textbf{Intention Shared} (IS) 
+	\item \textbf{Intention Exclusive} (IX) 
+	\item \textbf{Shared Intention Exclusive} (SIX)
+\end{itemize} 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Intention Lock Rules}
+
+Then a transaction must follow the six rules below:
+
+\begin{enumerate}
+	\item All attempts to lock must observe the table (below) as to whether they are permitted to proceed (or wait).
+	\item The transaction must lock the root of the tree first (in any mode, but it must pick one).
+	\item A node $n$ can be locked in \textbf{S} or \textbf{IS} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{IS} mode.
+	\item A node $n$ can be locked in \textbf{X}, \textbf{SIX}, or \textbf{IX} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{SIX} mode.
+	\item A node $n$ may only be locked if the transaction has not previously unlocked any nodes.
+	\item A node $n$ may only be unlocked if none of the children of $n$ are locked by this transaction.
+\end{enumerate}
+
+Locks must be acquired in a top-down manner and then released in a bottom-up manner. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Lock Compatibility Matrix}
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|} \hline
+	Compatibility & \textbf{IS} & \textbf{IX} &\textbf{S} &\textbf{SIX} &\textbf{X}\\ \hline
+\textbf{IS} & \checkmark &\checkmark  & \checkmark & \checkmark & $\times$ \\ \hline
+\textbf{IX} & \checkmark & \checkmark & $\times$ & $\times$ & $\times$	\\ \hline
+\textbf{S} & \checkmark & $\times$ & \checkmark & $\times$ & $\times$ \\ \hline
+\textbf{SIX} & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+\textbf{X} & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\ \hline
+	
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
+
