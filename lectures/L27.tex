@@ -20,7 +20,7 @@ Locks are always released when the transaction either commits or aborts as is ne
 
 This scheme as presented, however, does not ensure serializability. There are two suggested scenarios for how this might happen~\cite{dsc}:
 
-Example 1: If we have two concurrent transactions $T_{1}$ and $T_{2}$ that operate on $A$ and $B$. If $T_{1}$ reads $A$ and $B$, then updates $B$ and $T_{2}$ reads $A$ and $B$ and updates $A$, we have the potential for a conflict. Neither transaction sees the updates of the other when they do their reads, when it comes to the write... well... neither one has a problem, strictly speaking, because they write different data items and whether first-updater-wins or first-committer-wins takes place, neither transaction is detected as conflicting and neither is rolled back.
+Example 1: We have two concurrent transactions $T_{1}$ and $T_{2}$ that operate on $A$ and $B$. If $T_{1}$ reads $A$ and $B$, then updates $B$ and $T_{2}$ reads $A$ and $B$ and updates $A$, we have the potential for a conflict. Neither transaction sees the updates of the other when they do their reads, when it comes to the write... well... neither one has a problem, strictly speaking, because they write different data items and whether first-updater-wins or first-committer-wins takes place, neither transaction is detected as conflicting and neither is rolled back.
 
 In spite of that, we have a problem: we have an outcome (output data) that could not happen if we had serial execution of the transactions; either $T_{1}$ then $T_{2}$ or $T_{2}$ then $T_{1}$. Now what? 
 
@@ -51,7 +51,7 @@ If you can believe it, all the discussion thus far on the subject of concurrency
 
 It is sensible to conclude that the delete operation requires an exclusive lock on that data item before it can be deleted. Also, the rules for writing apply for a deletion action if using a timestamp ordering protocol. It is probably not a stretch to imagine it is very much like a write.
 
-\paragraph{Insertion.} The insert operation conflicts were explained above when discussing deletion, so they don't need to be repeated here. Insert is also a lot like a write so again, the insert operation is treated like a write: the newly created item is treated as exclusively locked by its creating transaction until the transaction commits~\cite{dsc}.
+\paragraph{Insertion.} The insert operation conflicts were explained above when discussing deletion, so they don't need to be repeated here. Insert is also a lot like a write, so again, the insert operation is treated like a write: the newly created item is treated as exclusively locked by its creating transaction until the transaction commits~\cite{dsc}.
 
 I think it bears repeating at this level that the changes we want to make here are at the level of actual manipulation of the underlying data. It is perfectly valid, from the perspective of the user writing the SQL, to do a read and get back ``no results'' because the item was very recently deleted. The problem here is that we have identified what data elements we need to access and the ones we want are not there (or not as expected, or there are extra ones...) and we need to stop, go back, reformulate the list of things to do, and then try to do it again. 
 
@@ -61,7 +61,7 @@ There are two possibilities for how this might go: $T_{1}$ happens before $T_{2}
 
 The phantom phenomenon can also happen if a read changes the value, say, if an item was entered incorrectly as ``Jim Butchr'', a corrective update statement run at the same time as $T_{1}$ above produces the same problem.
 
-As a first solution, you might consider that an insertion or deletion should exclusively lock the relation entirely. That's one way to do it, it's certainly likely to be effective at getting rid of the phantom problem, but it is a painful solution because it forces a lot of transactions to wait or roll back when we really don't need that. The goal is to prevent insertions and updates that match the predicate in question, but only those (keeping the scope of the lock as minimal as possible)
+As a first solution, you might consider that an insertion or deletion should exclusively lock the relation entirely. That's one way to do it, it's certainly likely to be effective at getting rid of the phantom problem, but it is a painful solution because it forces a lot of transactions to wait or roll back when we really don't need that. The goal is to prevent insertions and updates that match the predicate in question, but only those (keeping the scope of the lock as minimal as possible).
 
 Remember the index? So far we have just assumed that data items being updated are tuples, but that's not strictly true, because index data elements are also data and need to be lockable. Finding items that match a search predicate requires searching an index or performing a full table scan to find the data~\cite{dsc}. 
 
@@ -99,7 +99,7 @@ Remember the example earlier about selecting seats on a flight (or at a concert 
 
 This does have a major drawback when we're dealing with user-level timeframes. The database must remember information about updates performed by a transaction long after it has ended, for as long as any other concurrent transaction is still alive. In the case of transactions like a booking that give you 10 minutes of time, this means a transaction's information needs to be retained for up to 20 minutes. 
 
-A more likely solution is that we need to split it up into multiple transactions. One transaction is completed to read the data and it is provided to a client application (e.g., web browser). Then another transaction is created when the user is ready to save changes then we create another transaction to save the data back to the database. 
+A more likely solution is that we need to split it up into multiple transactions. One transaction is completed to read the data and it is provided to a client application (e.g., web browser). Then another transaction is needed when the user is ready to save changes; we create another transaction to save the data back to the database. 
 
 The data may have changed in the meantime, and if they did the attempt to merge the changes in that transaction will result in an error. What the application needs to do is reload the data (repeat the read(s) that produced the data elements and see if they changed. Detecting changes isn't as simple as just comparing fields, because it (1) would require saving the original read version, and (2) the ABA problem.
 
@@ -157,7 +157,7 @@ The insertion operations complete and relocks the parent node in exclusive mode,
 
 If instead of a split there was a coalescence, a lookup might be left holding the pointer to a node that no longer exists. That's okay, this lookup just needs to restart from the beginning. It's not ideal, but it does happen. To reduce the amount of times this happens, we might try to leave some nodes uncoalesced even when that would be the normal procedure; this breaks the rules about B-Trees, but it might be very brief if there are many more insertions than deletions.
 
-\paragraph{Key-Value Locking.} Key-value locking allows locking individual key values allowing other operations to take place on values within the same leaf node and potentially increasing concurrency. The problem is that we could still have the phantom phenomenon, so the strategy of \textit{next key locking} is employed: not only lock the keys that are in the range/search result but also whichever one is next~\cite{dsc}. This prevent something from being inserted, altered, or deleted inside the search range. 
+\paragraph{Key-Value Locking.} Key-value locking allows locking individual key values, allowing other operations to take place on values within the same leaf node and potentially increasing concurrency. The problem is that we could still have the phantom phenomenon, so the strategy of \textit{next key locking} is employed: not only lock the keys that are in the range/search result but also whichever one is next~\cite{dsc}. This prevent something from being inserted, altered, or deleted inside the search range. 
 
 \input{bibliography.tex}
 
