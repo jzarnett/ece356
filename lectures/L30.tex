@@ -37,16 +37,16 @@ Exporting seems fairly easy from a technical perspective: just copy the data to 
 
 There is some possibility to do a topological sort where you find a sequence of create table and add constraint statements, then one for insert statements... This is very difficult and potentially impossible depending on how your data is defined. The real answer is that when importing data via this method, integrity constraints are temporarily disabled to allow the file to be processed sequentially without any slowdowns.
 
-Another way that backups tend to get taken is at the level outside of the database: the operating system. The data is ultimately stored somewhere on a volume (or volumes) in the database and the operating system can do things like shadow copies and image backups of the drives. Of course, the state that is stored to the disk at the time of the backup is what gets copied. If this is not a consistent state, some additional actions may be needed on startup to get things back to a consistent state.
+Another way that backups tend to get taken is at the level outside of the database: the operating system. The data is ultimately stored somewhere on a volume (or volumes) and the operating system can do things like shadow copies and image backups of the drives. Of course, the state that is stored to the disk at the time of the backup is what gets copied. If this is not a consistent state, some additional actions may be needed on startup to get things back to a consistent state.
 
 \section*{ARIES}
 In spite of sounding like the name of a NASA program to Mars or some such, the ARIES algorithm is a database recovery routine used by IBM. It relies on three main pillars: write-ahead logging, repeating history during redo, and logging changes when undoing something. The description of how ARIES works is all from~\cite{fds}.
 
 The algorithm and the approach we have examined for recovery works and it produces the correct results, but it comes with some drawbacks and performance decreasing elements. ARIES is hopefully going to address it. ARIES is broken up into three phases: analysis, redo, and undo.
 
-\paragraph{Analysis.} In the analysis phase, the goal is to figure out what pages in the buffer were dirty. We don't have the actual pages, of course, because the crash caused the loss of that data. However, e can determine the information based on the log data from the checkpoints: the dirty page table, transaction table, et cetera. During this phase a determination will also be made as to where to begin the redo phase.
+\paragraph{Analysis.} In the analysis phase, the goal is to figure out what pages in the buffer were dirty. We don't have the actual pages, of course, because the crash caused the loss of that data. However, we can determine the information based on the log data from the checkpoints: the dirty page table, transaction table, et cetera. During this phase a determination will also be made as to where to begin the redo phase.
 
-\paragraph{Redo.} In the redo phase, updates from the log are done in the database. The normal recovery routine expects that we only redo committed transactions, but in ARIES we will try hard to skip unnecessary work: and only redo operations that are necessary.
+\paragraph{Redo.} In the redo phase, updates from the log are done in the database. The normal recovery routine expects that we only redo committed transactions, but in ARIES we will try hard to skip unnecessary work: only redo operations that are necessary.
 
 \paragraph{Undo.} The last phase is the undo phase, and the log is scanned backwards and transactions that were active at the time of the crash are undone in reverse order. 
 
@@ -66,9 +66,9 @@ Whether the transaction was known or not before encountering an operation involv
 
 At the conclusion of the analysis phase, the transaction table and dirty page table have all the information necessary to make the changes to return the system to a consistent state.
 
-The redo phase begins: to avoid having to do anything unnecessary, no changes are done that have already been saved to disk. It is easy enough to tell which changes are done: look at the dirty page table, and find the smaller LSN, which we will call $M$. Anything before that is already done, so we can skip over records in the log that have a LSN smaller than $M$ (because they are already done or overwritten in memory). Redo starts then at the LSN equal to $M$ and scans forward to the log. 
+The redo phase begins: to avoid having to do anything unnecessary, no changes are done that have already been saved to disk. It is easy enough to tell which changes are done: look at the dirty page table, and find the smallest LSN, which we will call $M$. Anything before that is already done, so we can skip over records in the log that have a LSN smaller than $M$ (because they are already done or overwritten in memory). Redo starts then at the LSN equal to $M$ and scans forward through the log. 
 
-For each change, consider whether the page $P$ is in the dirty page table. If it is not, then the change is already on disk. If $P$ is in the dirty page table, but has a LSN larger than the current change, the change is already written to disk and does not need to be reapplied. If $P$ is in the dirty page table but does not have a larger LSN,, page $P$ is read from disk and the disk stored version is checked; if the LSN is larger than that of the operation being performed then we can skip this operation.  If none of those conditions led to skipping the operation then the redo is applied. 
+For each change, consider whether the page $P$ is in the dirty page table. If it is not, then the change is already on disk. If $P$ is in the dirty page table, but has a LSN larger than the current change, the change is already written to disk and does not need to be reapplied. If $P$ is in the dirty page table but does not have a larger LSN, page $P$ is read from disk and the disk stored version is checked; if the LSN is larger than that of the operation being performed then we can skip this operation.  If none of those conditions led to skipping the operation then the redo is applied. 
 
 That concludes the redo phase; at this point the database is in the exact state it was in at the time of the crash, but the state is not consistent. There are still uncompleted transactions with partial progress that need to be rolled back. That is the job of the undo phase.
 
@@ -88,7 +88,7 @@ The log at the point of the crash~\cite{fds}.
 Transaction Table and Dirty Page Table at the time of the crash~\cite{fds}.
 \end{center}
 
-With this information in hand we may begin to execute the algorithm. The first step is the analysis phase. The first step is to go to the most recently completed checkpoint. That so happens to be at LSN 4. So analysis moved from there forward. 
+With this information in hand we may begin to execute the algorithm. The first step is the analysis phase. The first step is to go to the most recently completed checkpoint. That so happens to be at LSN 4. So analysis moves from there forward. 
 
 LSN 5 is the end checkpoint statement so it contains the transaction and dirty page tables. In LSN 6, transaction $T_{3}$ is found and added to the the list of transactions in progress. LSN 7 doesn't tell us anything new, but LSN 8 tells us that the transaction $T_{2}$ has committed. So the analysis phase is complete and the result is shown below. It's worth noting that transactions $T_{1}$ and $T_{2}$ have status ``commit'' but still appear in there -- because the pages they have updated have not been written to disk. 
 
