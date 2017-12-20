@@ -25,7 +25,7 @@ If things are really bad the recovery method is to restore from backups. We copy
 
 Supposing things are not so bad then we can use the log to try to recover; whether particular operations are undone or re-done to restore the consistent database. Looking at the log tells us what transactions were in progress, and based on what information is available, we can choose to carry out the changes or roll them back. For a transaction that was not complete, roll it back. For one that committed but the data changes have not yet completely been copied out to disk,  the changes are carried out.
 
-If we do \textit{deferred updates} then the data on disk is not updated until after the commit point of the transaction. If that is the case, then the changes are noted down in the database log, and the log is written out to disk, and then and only then can we proceed. This strategy is, if you recall, visually the same as how things work in the Windows NTFS file system. If a transaction has failed in some way before the commit, no changes in persistent storage have taken place. It may be necessary to redo steps that are stored in the log if the failure takes place after the commit. This is sometimes called the ``no undo / redo'' algorithm~\cite{fds}.
+If we do \textit{deferred updates} then the data on disk is not updated until after the commit point of the transaction. If that is the case, then the changes are noted down in the database log, and the log is written out to disk, and then and only then can we proceed. This strategy is, if you recall, mostly the same as how things work in the Windows NTFS file system. If a transaction has failed in some way before the commit, no changes in persistent storage have taken place. It may be necessary to redo steps that are stored in the log if the failure takes place after the commit. This is sometimes called the ``no undo / redo'' algorithm~\cite{fds}.
 
 The opposite approach is \textit{immediate updates}; the data is updated before the commit but still the operations are recorded in persistent storage before they take place. If the failure occurs before we get to the commit point, then we have to roll back and undo some changes of the transaction. It turns out that under this algorithm both undo and redo operations may be necessary so it is called the ``undo / redo'' algorithm. A variation that requires us to make all database changes happen in persistent storage means that we only have to undo things, leading to the ``undo / no redo'' algorithm~\cite{fds}.
 
@@ -37,7 +37,7 @@ If we really want to be sure that a write has succeeded, we need to check; as Ro
 
 One way to be sure is the have two physical blocks for each of the database logical blocks (and even better if they are not on the same media). The process for a write is really to write the first block, check that it succeeded, write a copy to a second block. After the second write has happened, the write is finally considered completed. 
 
-If a failure takes place during the writing of either one of the blocks, they may not match. If they are the same then no error is detected and we don't have to do anything. If there is a mismatch then we can look at the checksum of each disk block (you do have those, right...?): the block with the invalid checksum is the one that is wrong and the other one will be treated as correct; the correct overwrites the incorrect. If both checksums are valid, the second block is copies over the first: if the write did not complete the full process and update both blocks, we consider it failed and roll it back~\cite{dsc}.
+If a failure takes place during the writing of either one of the blocks, they may not match. If they are the same then no error is detected and we don't have to do anything. If there is a mismatch then we can look at the checksum of each disk block (you do have those, right...?): the block with the invalid checksum is the one that is wrong and the other one will be treated as correct; the correct overwrites the incorrect. If both checksums are valid, the second block is copied over the first: if the write did not complete the full process and update both blocks, we consider it failed and roll it back~\cite{dsc}.
 
 \subsection*{Caching (Buffering) of Disk Blocks}
 
@@ -132,7 +132,7 @@ More formally:
 
 Following this phase of the process, we have identified all transactions that were incomplete (neither committed nor aborted) at the time of the crash. 
 
-Then we have the \textit{undo phase}: roll back all the transactions in the list we have just generated in the redo phase. We scan the log backwards from the end moving up.
+Then we have the \textit{undo phase}: roll back all appropriate transactions in the list we have just generated in the redo phase. We scan the log backwards from the end moving up.
 
 \begin{enumerate}
 	\item Whenever we find a record in the undo list, we perform the usual undo actions as if it was rollback of a failed transaction.
