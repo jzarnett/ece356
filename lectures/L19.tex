@@ -74,7 +74,7 @@ Of course, if a histogram is available, we would prefer to use that.
 \paragraph{Complex Predicates.}
 For conjunction as well as disjunction, we will use a new symbol, $s$, which represents the selectivity of the a particular selection: how likely it is that a particular tuple matches a condition. The probability that a tuple satisfies $\theta_{i}$ is $s_{i}/n_{r}$.
 
-For conjunctive selection, we want the probability that a certain tuple meets all of the critera. So the formula to estimate is:
+For conjunctive selection, we want the probability that a certain tuple meets all of the criteria. So the formula to estimate is:
 
 $n_{r} \times \dfrac{s_{1} \times s_{2}... \times s_{k}}{(n_{r})^{k}}$.
 
@@ -132,7 +132,7 @@ This same logic holds for estimating how many unique values will be returned in 
 
 There are a few more advanced techniques which we really will not dig into in great detail, but will examine in some degree. 
 
-\paragraph{Top-K.} A query that asks you to find the top $k$ tuples based on some attribute, such as finding the top ten customers based on annual revenue. This could potentially save some work if we know that we need no further results are required. In Pipelining might be sufficient if the conditions are simple enough that we can perhaps sort and then process the data. But for something like top customers by revenue, we would probably need to find all the tuples that match, aggregate them, and then sort by income. Heuristics might help, but might not: generally more invoices means more income, but we could also have a customer with one invoice for \$10~000~000. 
+\paragraph{Top-K.} Consider a query that asks you to find the top $k$ tuples based on some attribute, such as finding the top ten customers based on annual revenue. We could potentially save some work if we know that we need no further results are required. Pipelining might be sufficient if the conditions are simple enough that we can perhaps sort and then process the data. But for something like top customers by revenue, we would probably need to find all the tuples that match, aggregate them, and then sort by income. Heuristics might help, but might not: generally more invoices means more income, but we could also have a customer with one invoice for \$10~000~000. 
 
 \paragraph{Update Ordering.} 
 
