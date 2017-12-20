@@ -95,7 +95,7 @@ And then the complete tree for the instructor relation~\cite{dsc}:
 
 Even though name is non-unique (there's a lot of people with the name Wang/Wong, according to Wikipedia, in 2007 there were almost 93 million in China alone...!) this could easily be a secondary index and that would probably make sense.
 
-Just for our interest, if this were a regular B-Tree and not a B$^{+}$ Tree then the storage would look something like this:
+Just for our interest, if this were a regular B-Tree and not a B$^{+}$ Tree then the storage would look something like this~\cite{dsc}:
 
 \begin{center}
 	\includegraphics[width=0.9\textwidth]{images/b-tree-equivalent}
@@ -110,7 +110,7 @@ Strings can cause a bit of a small problem when it comes to B$^{+}$ Trees becaus
 Just as we have made use of a B$^{+}$ Tree organization for the index file, the actual file containing records could be stored using B$^{+}$ Trees as well.
 
 \paragraph{Covering Index.} 
-A covering index is one that stores the value of some attributes (other than things we search on) alongside the pointers to the record~\cite{dsc}. This increases the size of the index, but allows us to fulfill some queries without having to even go to the data blocks of the file at all. The advantage, of course, is that this can be much faster -- if the data we need is at hand in the index, we just take it and use it and we need not load the record from disk. The downside is that it increases the size of the index, means fewer items can fit in one index block, and requires additional overhead to keep it up to date.
+A \textit{covering index} is one that stores the value of some attributes (other than things we search on) alongside the pointers to the record~\cite{dsc}. This increases the size of the index, but allows us to fulfill some queries without having to even go to the data blocks of the file at all. The advantage, of course, is that this can be much faster -- if the data we need is at hand in the index, we just take it and use it and we need not load the record from disk. The downside is that it increases the size of the index, means fewer items can fit in one index block, and requires additional overhead to keep it up to date.
 
 To give an example, it might be sensible to have in the covering index for employees, their last name alongside the regular index search key (ID). This would mean that queries where only the name is required, or name and ID, don't need to go into the file blocks at all.
 
@@ -124,14 +124,12 @@ All discussion so far has covered the simple scenario where one index on one att
 
 This is helpful in situations where we know that we are going to search on particular combinations of a certain attribute frequently. The city-province example is just one of many where we are likely to perform queries that hit both attributes. Another example might be first and last name.
 
-It may help to think of composite keys as just sort of smashing together the two attributes (perhaps with some separator like a dash) so you end up with Waterloo-ON as they key. From there it works mostly like the regular search. 
+It may help to think of composite keys as just sort of smashing together the two attributes (perhaps with some separator like a dash) so you end up with Waterloo-ON as the key. From there it works mostly like the regular search. 
 
 Assuming there is no index on city alone, if we wanted to find all addresses with the name Waterloo, this is possible. If the select query says to select all addresses where city equals ``Waterloo'', our search term in the tree structure is then something like ``Waterloo-\%''. Seems simple enough. 
 
 
-\paragraph{Combining Multiple Indexes.} Let us imagine that employees have an index defined on the fields ID, department, and salary . If we wish to do a select that finds the IDs of all employees with the department name ``development'' and salary above \$100~000. 
-
-There are three strategies for carrying out this query~\cite{dsc}:
+\paragraph{Combining Multiple Indexes.} Let us imagine that employees have an index defined on the fields ID, department, and salary. If we wish to do a select that finds the IDs of all employees with the department name ``development'' and salary above \$100~000, there are three strategies for carrying out this query~\cite{dsc}:
 
 \begin{enumerate}
 	\item Use the index on the department to find all records for the development department. Check each record to see if the salary is above \$100~000.
