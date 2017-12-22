@@ -33,7 +33,7 @@ Attributes have types, and the SQL standard includes the following built in type
 
 
 \subsection*{Schema Definition - Create Table} 
-If we wish to define a SQL relation, the syntax for this is to create a relation (table) is called (unsurprisingly), \texttt{create table}. The syntax for this command requires a name as well as a listing of the attributes (fields) and their types (definitions). It is also customary to include at least one constraint, the primary key. As before we put a semicolon at the end of the statement to designate the end of the statement. 
+If we wish to define a SQL relation, the syntax for this is to create a relation (table) is called (unsurprisingly), \texttt{CREATE TABLE}. The syntax for this command requires a name as well as a listing of the attributes (fields) and their types (definitions). It is also customary to include at least one constraint, the primary key. As before we put a semicolon at the end of the statement to designate the end of the statement. 
 
 {\small
 \begin{verbatim}
@@ -114,7 +114,7 @@ To remove a foreign key: \texttt{ALTER TABLE users DROP FOREIGN KEY FK\_SESSION\
 
 If we wish to remove all tuples from a relation without affecting the structure at all, the command for that is to truncate the table: \texttt{TRUNCATE TABLE students;} would remove from the database all tuples of the students relation but would leave its definition unchanged. Truncating the table may fail if it would violate some constraints (breaking referential integrity).
 
-There are some scenarios where this is a desirable operation. One possible scenario is if you have some application where login session information is stored in the databAse and you want to invalidate and remove all sessions you can truncate the table.
+There are some scenarios where this is a desirable operation. One possible scenario is if you have some application where login session information is stored in the database and you want to invalidate and remove all sessions you can truncate the table.
 
 \subsection*{Drop Table}
 
@@ -269,7 +269,7 @@ Finally, to call a stored procedure, the keyword is \texttt{CALL} followed by th
 
 \subsection*{Triggers}
 
-It is possible to define an operation in the database that will take place automatically when some other modification of the database takes place. As you might imagine from the name, it follows a logic of ``if x happens, then do y''. 
+It is possible to define an operation in the database that will take place automatically when some other modification of the database takes place. As you might imagine from the name, it follows a logic of ``if $x$ happens, then do $y$''. 
 
 To define a trigger we need to define~\cite{dsc}:
 \begin{itemize}
