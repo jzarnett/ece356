@@ -39,7 +39,7 @@ In some terminology that might be slightly confusing, a row in a table represent
 
 The table itself we call a \textit{relation} (which is why this is the ``relational'' model). An \textit{attribute} is then a column in that table. So if the relation is an address, the attributes will be name, street, city, province, postal code... 
 
-Let's recap this mathematically, as in~\cite{fds}: A relation schema $R$ is denoted as $R(A_{1}, A_{2}, ..., A_{n}$. It is named $R$ and has a list of attributes $A_{1}$ through $A_{n}$. Each attribute is the name of a domain $D$. The degree of the relation is the number of attributes. This is the table definition, just explained in a mathematical way.
+Let's recap this mathematically, as in~\cite{fds}: A relation schema $R$ is denoted as $R(A_{1}, A_{2}, ..., A_{n})$. It is named $R$ and has a list of attributes $A_{1}$ through $A_{n}$. Each attribute is the name of a domain $D$. The degree of the relation is the number of attributes. This is the table definition, just explained in a mathematical way.
 
 The table content, or the relation itself, is denoted $r(R)$ and it is the set of n-tuples where $r = \{t_{1}, t_{2}, ..., t_{m}\}$. Each n-tuple is an ordered list of values where each value $v_{i}$ is an element of the domain of attribute $A_{i}$ or the null value. We might reference these as $t[A_{i}]$, $t.A_{i}$, or $t[i]$. 
 
@@ -78,7 +78,7 @@ A relationship set is a mathematical relationship set is a mathematical relation
  $\{(e_{1}, e_{2}, ..., e_{n}) | e_{1} \in E_{1}, e_{2} \in E_{2}, ..., e_{n} \in E_{n}\}$
 \end{center}
 
-where $\{(e_{1}, e_{2}, ..., e_{n})$ is a relationship~\cite{dsc}. 
+where $(e_{1}, e_{2}, ..., e_{n})$ is a relationship~\cite{dsc}. 
 
 We might have a rather unwieldy relationship: between vehicle and license there are a lot of columns. A license plate is uniquely identified by its numbers and/or letters and a vehicle is uniquely identified by its VIN. To prevent redundant (duplicate) data, we prefer that we use just their unique identifiers. So if the vehicle with the VIN 5N1BA0ND5BNF18322 currently is associated with the plate ZZZZ999, the relation will be (ZZZZ999, 5N1BA0ND5BNF18322) (or the other order is fine, it has the same meaning).
 
@@ -119,7 +119,7 @@ It should be easily possible to think up real-world examples for each of the car
 
 We need a way to identify tuples uniquely in terms of their attributes. That is to say, no two tuples in the table are permitted to be exactly the same in every column. A \textit{super key} is a set of one or more attributes that uniquely identify one tuple in the relation (table)~\cite{dsc}. By default, of course, the full set of attributes will be one such super key. Some attributes on their own will be a super key, such as VIN, because VINs are unique. Others are not: names are not unique. But a super key may be something line (VIN, make, model). We can take a super key and add to it and it will still be a super key. But what we would like to do is take away some things instead.
 
-If a super key is as small as it can be nuts no smaller, then it is a minimal super key and we call it a \textit{candidate key}. A candidate key, more formally, has no proper subset that is a super key~\cite{dsc}. So, (VIN, make, model) is a super key but not a candidate key; VIN on its own is a candidate key.
+If a super key is as small as it can be but no smaller, then it is a minimal super key and we call it a \textit{candidate key}. A candidate key, more formally, has no proper subset that is a super key~\cite{dsc}. So, (VIN, make, model) is a super key but not a candidate key; VIN on its own is a candidate key.
 
 There are then, potentially, several candidate keys. A student at the University of Waterloo can be identified uniquely by both a student number (e.g., 20000000) and a userid (j9999doe). Both of those are candidate keys for identifying an individual student. The database designer will choose a \textit{primary key} from the candidates to be the main way of uniquely identifying a tuple. 
 
