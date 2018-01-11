@@ -1,0 +1,284 @@
+\input{configuration}
+
+\title{Tutorial 1}
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{How to Best Make Use of Tutorials}
+
+Treat material presented in these slides as a supplement to Prof. Zarnett's lecture slides, given from a slightly different perspective.
+
+If you notice that this perspective could be wrong, don't hesitate to speak up!
+
+We will also walk through some exercises in tutorial to serve as practice.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Entity-Relationship Model}
+
+In short, this model lets us represent:\\
+\begin{itemize}
+  \item tables in a database with \textbf{mathematical sets}, and
+  \item queries on the database with a language called the \textbf{relational algebra}.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Nouns of the Relational Model (1/2)}
+
+A \textbf{relation} $R$ is equivalent to a table.
+
+An \textbf{attribute} $A$ is equivalent to a column of a table.
+
+We describe the combination of relation and attributes with a \textbf{relation schema} of the form $R(A_1, A_2, ... , A_n)$.
+
+$Student(student\_number, name, address)$ tells us:\\
+\begin{itemize}
+  \item there is a table called \texttt{Student}, and
+  \item it has attributes \texttt{name} and \texttt{address}.
+\end{itemize}
+
+\texttt{name} is an attribute of the relation \texttt{Student}.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Nouns of the Relational Model (2/2)}
+
+The \textbf{contents} of a relation $R$ are denoted $r(R)$.
+
+$r(R)$ is an (unordered) set of (ordered) \textbf{n-tuples}.
+
+Each \textbf{n-tuple} of $r(R)$ is equivalent to a row in the relation/table $R$.
+
+The elements of each n-tuple correspond with the attributes $A_1, A_2, ... , A_n$ of $R$.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Nouns of the Entity-Relationship Model (1/5)}
+
+An \textbf{entity} [table] is equivalent to a relation, which is equivalent to a table.\\
+\begin{itemize}
+  \item \texttt{Student} can be an entity in an E-R model.
+\end{itemize}
+
+However, we also use the term \textbf{entity} to describe an object in the real world, indistinguishable from other objects.\\
+\begin{itemize}
+  \item A student with student number 20000000 and name Matt is an entity of type \texttt{Student}.
+\end{itemize}
+
+In this way, an entity [object] is equivalent to a row of an entity [table].
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Nouns of the Entity-Relationship Model (2/5)}
+
+An \textbf{entity set} is a set of entities (in the object sense), and is equivalent to the contents of an entity table.\\
+\begin{itemize}
+  \item The set of all students studying at the University of Waterloo might comprise the entity set \texttt{Student}.
+\end{itemize}
+
+For instance, \texttt{Student} = \{(20000000, Matt), (20000001, Josh)\}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Nouns of the Entity-Relationship Model (3/5)}
+
+Suppose we have another entity called \texttt{Course}, with attributes \texttt{course\_id} and \texttt{title}.
+
+Then the following are two possible entity sets:\\
+\texttt{Student} = \{(20000000, Matt), (20000001, Josh)\}\\
+\texttt{Course} = \{(CS101, Intro to CS), (CS999, Super Hard CS)\}
+
+A \textbf{relationship} describes some connection between entities, in both the table sense and the object sense.\\
+\begin{itemize}
+  \item In our E-R model, we can say \texttt{Student} takes \texttt{Course}.
+  \item An individual student like Matt can take a course like Intro to CS.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Nouns of the Entity-Relationship Model (4/5)}
+
+A \textbf{relationship instance} describes how two entity instances are related. The following are each relationship instances:
+\begin{itemize}
+  \item Matt takes Intro to CS: $takes_1$ = ((20000000, Matt), (CS101, Intro to CS))
+  \item Josh also takes Intro to CS: $takes_2$ = ((20000001, Josh), (CS101, Intro to CS))
+  \item Intro to CS is taught by Prof. X: $taughtby_1$ = ((CS101, Intro to CS), (1, Prof. X))
+\end{itemize}
+
+
+A \textbf{relationship set} is a set of relationship instances.\\
+\begin{itemize}
+  \item In an E-R model, a relationship set represents how entities (in the table sense) are related.
+  \begin{itemize}
+    \item \texttt{Student}s take \texttt{Courses}: $Takes$ = \{$takes_1, takes_2$\}
+    \item \texttt{Courses} are taught by \texttt{Instructors}: $TaughtBy$ = \{$taughtby_1$\}
+  \end{itemize}
+\end{itemize}
+
+In an E-R model, we can use a table to represent a relationship set.\\
+Such a table will have columns to identify which entities are related.\\
+\begin{itemize}
+  \item The \texttt{StudentTakesCourse} table might have columns for \texttt{student\_id} and \texttt{course\_id}.
+  \item This represents a relationship of \textbf{degree} 2, since it relates 2 entities.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Nouns of the Entity-Relationship Model (5/5)}
+
+An \textbf{attribute} is data used to describe an entity.
+
+Attributes have a set of legal values called a \textbf{domain}, determined by the data type we ascribe to them in our relational schema.
+
+\textbf{Simple attributes} contain a single value, e.g. \texttt{INT}, \texttt{VARCHAR(20)}, \texttt{ENUM}.
+
+\textbf{Composite attributes} encapsulate other simple or composite attributes. Think someething similar to C \texttt{struct}s.
+\begin{itemize}
+  \item A composite attribute like an \texttt{Address} can be composed of the following attributes:
+  \begin{itemize}
+    \item lot number,
+    \item street,
+    \item nullable apartment/unit number,
+    \item city,
+    \item province/state,
+    \item country, and
+    \item postal code.
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{A Note About \texttt{NULL}}
+
+Use <column> \texttt{IS NULL} or <column> \texttt{IS NOT NULL} to perform null checks.
+
+It typically does not make sense to have any other operators on \texttt{NULL} values.
+
+Treat \texttt{NULL} as "not having a value", as opposed to an "empty value" like 0 or "".
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling}
+
+Translate the following E-R diagram into a set of database tables by writing relational schemas:
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/ternary-relationship.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling}
+
+Translate the following E-R diagram into a set of database tables by writing relational schemas:
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/three-binary-relationships.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling}
+
+Draw an E-R diagram to represent the following database specification for a simple Quest-like system:\\
+\begin{itemize}
+  \item Students are identified by student numbers, and have names.
+  \item Courses have course codes and titles.
+  \item Courses are offered in a given term (W, S, F) in a given year.
+  \item Courses are offered in one or more sections.
+  \item Students enroll in sections of a course.
+  \item Students get grades for the sections they are enrolled in at the end of a term.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling}
+
+Sketch out the tables that would implement your E-R diagram for the following specification:\\
+\begin{itemize}
+  \item Students are identified by student numbers, and have names.
+  \item Courses have course codes and titles.
+  \item Courses are offered in a given term (W, S, F) in a given year.
+  \item Courses are offered in one or more sections.
+  \item Students enroll in sections of a course.
+  \item Students get grades for the sections they are enrolled in at the end of a term.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries}
+
+Let's say we're given the following schema for a university database:
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/db-schema.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries}
+
+Find the names of all of the students that have not yet been given a grade in a class they have enrolled in.
+
+Try writing the query in SQL, then in relational algebra.
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/db-schema.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries}
+
+Find all of the course codes along with the names of a student with the top grades in each course.
+
+Try writing the query in SQL, then in relational algebra.
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/db-schema.png}
+\end{center}
+
+\end{frame}
+\end{document}
