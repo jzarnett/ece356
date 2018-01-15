@@ -51,7 +51,7 @@ We describe the combination of relation and attributes with a \textbf{relation s
 $Student(student\_number, name, address)$ tells us:\\
 \begin{itemize}
   \item there is a table called \texttt{Student}, and
-  \item it has attributes \texttt{name} and \texttt{address}.
+  \item it has attributes \texttt{student\_number}, \texttt{name}, and \texttt{address}.
 \end{itemize}
 
 \texttt{name} is an attribute of the relation \texttt{Student}.
@@ -188,9 +188,9 @@ Treat \texttt{NULL} as "not having a value", as opposed to an "empty value" like
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - E-R Modeling}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.1}
 
-Translate the following E-R diagram into a set of database tables by writing relational schemas:
+Translate the following E-R diagram into a set of database tables by writing (UML-esque) relational schemas:
 
 \begin{center}
   \includegraphics[width=0.7\textwidth]{images/ternary-relationship.png}
@@ -200,9 +200,9 @@ Translate the following E-R diagram into a set of database tables by writing rel
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - E-R Modeling}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.2}
 
-Translate the following E-R diagram into a set of database tables by writing relational schemas:
+Translate the following E-R diagram into a set of database tables by writing (UML-esque) relational schemas:
 
 \begin{center}
   \includegraphics[width=0.7\textwidth]{images/three-binary-relationships.png}
@@ -212,7 +212,7 @@ Translate the following E-R diagram into a set of database tables by writing rel
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - E-R Modeling}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.3}
 
 Draw an E-R diagram to represent the following database specification for a simple Quest-like system:\\
 \begin{itemize}
@@ -228,7 +228,7 @@ Draw an E-R diagram to represent the following database specification for a simp
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - E-R Modeling}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.4}
 
 Sketch out the tables that would implement your E-R diagram for the following specification:\\
 \begin{itemize}
@@ -256,7 +256,7 @@ Let's say we're given the following schema for a university database:
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - Relational Queries}
+\frametitle{Let's get some exercise! - Relational Queries - 1.5}
 
 Find the names of all of the students that have not yet been given a grade in a class they have enrolled in.
 
@@ -270,7 +270,7 @@ Try writing the query in SQL, then in relational algebra.
 
 
 \begin{frame}
-\frametitle{Let's get some exercise! - Relational Queries}
+\frametitle{Let's get some exercise! - Relational Queries - 1.6}
 
 Find all of the course codes along with the names of a student with the top grades in each course.
 
@@ -279,6 +279,28 @@ Try writing the query in SQL, then in relational algebra.
 \begin{center}
   \includegraphics[width=0.9\textwidth]{images/db-schema.png}
 \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries - 1.7}
+
+Find the names of all students and for each one, a count of the number of enrollments they have ever had.
+
+Try writing the query in SQL.
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/db-schema.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Fin}
+
+Questions or other topics I should talk about?
 
 \end{frame}
 \end{document}
