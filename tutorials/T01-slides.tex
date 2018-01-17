@@ -200,6 +200,17 @@ Translate the following E-R diagram into a set of database tables by writing (UM
 
 
 \begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.1}
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/1-1.png}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Let's get some exercise! - E-R Modeling - 1.2}
 
 Translate the following E-R diagram into a set of database tables by writing (UML-esque) relational schemas:
@@ -207,6 +218,17 @@ Translate the following E-R diagram into a set of database tables by writing (UM
 \begin{center}
   \includegraphics[width=0.7\textwidth]{images/three-binary-relationships.png}
 \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.2}
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/1-2.png}
+\end{center}
+
 
 \end{frame}
 
@@ -228,6 +250,17 @@ Draw an E-R diagram to represent the following database specification for a simp
 
 
 \begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.3}
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/1-3.png}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Let's get some exercise! - E-R Modeling - 1.4}
 
 Sketch out the tables that would implement your E-R diagram for the following specification:\\
@@ -239,6 +272,17 @@ Sketch out the tables that would implement your E-R diagram for the following sp
   \item Students enroll in sections of a course.
   \item Students get grades for the sections they are enrolled in at the end of a term.
 \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - E-R Modeling - 1.4}
+
+\begin{center}
+  \includegraphics[width=0.7\textwidth]{images/1-4.png}
+\end{center}
+
 
 \end{frame}
 
@@ -270,15 +314,61 @@ Try writing the query in SQL, then in relational algebra.
 
 
 \begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries - 1.5}
+
+In the following solution, we assume that each enrollment necessarily has exactly one corresponding mark, and that a NULL grade represents a student not having a grade.
+
+\texttt{ \\
+SELECT DISTINCT sname FROM student \\
+JOIN mark \\
+ON student.snum = mark.snum \\
+WHERE grade IS NULL
+}
+
+$\Pi_{sname}(\sigma_{isNull(grade)}(student \bowtie_{student.snum=mark.snum} mark))$
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Let's get some exercise! - Relational Queries - 1.6}
 
 Find all of the course codes along with the names of a student with the top grades in each course.
 
-Try writing the query in SQL, then in relational algebra.
+Try writing the query in SQL.
 
 \begin{center}
   \includegraphics[width=0.9\textwidth]{images/db-schema.png}
 \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries - 1.6}
+
+
+\texttt{ \\
+  WITH BigJoin AS ( \\
+    SELECT cnum, grade, snum, sname \\
+    FROM course \\
+    JOIN mark \\
+    ON course.cnum = mark.cnum \\
+    JOIN student \\
+    ON student.snum = mark.snum \\
+    GROUP BY cnum
+  ), \\
+  TopGradePerCourse AS ( \\
+    SELECT cnum, MAX(grade) AS topGrade \\
+    FROM BigJoin \\
+    GROUP BY cnum \\
+  ) \\
+  SELECT cnum, sname \\
+  FROM BigJoin
+  JOIN TopGradePerCourse \\
+  ON BigJoin.cnum = TopGradePerCourse.cnum \\
+  WHERE grade = topGrade
+}
 
 \end{frame}
 
@@ -293,6 +383,28 @@ Try writing the query in SQL.
 \begin{center}
   \includegraphics[width=0.9\textwidth]{images/db-schema.png}
 \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Let's get some exercise! - Relational Queries - 1.7}
+
+
+\texttt{ \\
+  WITH NonZeroCounts AS ( \\
+    SELECT snum, COUNT(1) as count \\
+    FROM student \\
+    JOIN enrollment \\
+    ON student.snum = enrollment.snum \\
+    GROUP BY snum \\
+  ) \\
+  SELECT sname, COALESCE[/ISNULL](count, 0) \\
+  FROM student \\
+  LEFT JOIN NonZeroCounts \\
+  ON student.snum = NonZeroCounts.snum \\
+}
+
 
 \end{frame}
 
