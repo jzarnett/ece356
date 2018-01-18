@@ -3,7 +3,7 @@
 NOTES := $(shell ls *.tex | grep -v \- | grep L)
 SLIDES := $(shell ls *-slides.tex)
 
-SLIDES_PO := $(SLIDES:%.tex=%-slides.pdf)
+SLIDES_PO := $(SLIDES:%.tex=%.pdf)
 
 NOTES_T := $(NOTES:%.tex=%.pdf)
 
@@ -12,9 +12,9 @@ ENVS := slides
 all: $(SLIDES_PO) $(NOTES_T) clean
 
 %-slides.pdf: env := slides
-%-slides.pdf: %.tex
-	@echo compiling SLIDES $*.tex
-	@pdflatex -interaction=batchmode "\def\$(env){t}\input" $*.tex > /dev/null;
+%-slides.pdf: %-slides.tex
+	@echo compiling SLIDES $*-slides.tex
+	@pdflatex $*-slides.tex > /dev/null;
 
 clean:
 	rm -f *.aux *.log *.bbl *.blg *.brf *.cb *.ind *.idx *.ilg *.pdfsync   \
