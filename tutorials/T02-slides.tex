@@ -1,0 +1,130 @@
+\input{configuration}
+
+\title{Tutorial 2 --- Data Definition, Security, Modelling Languages}
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-1}
+
+Oops! Our \texttt{user} table contains passwords in plaintext! Our table looks like:
+
+\texttt{
+  CREATE TABLE user ( \\
+    id int, \\
+    name varchar(100) NOT NULL, \\
+    password varchar(2000) NOT NULL, \\
+    PRIMARY KEY (id) \\
+  ); \\
+  INSERT INTO user VALUES (1, 'Alice', 'abcABC123!@\#');
+}
+
+How can we modify the \texttt{user} table to replace \texttt{password} with a non-nullable \texttt{hashedPassword} column, containing the result of \texttt{PASSWORD(password)} of each row?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-2}
+
+Suppose we have the following instance of the \texttt{user} table. Do the contents suggest any potential security vulnerabilities?
+
+What could we do to improve it?
+
+\begin{center}
+  \begin{tabular}{||c l r||}
+  \hline
+  id & name & hashedPassword \\ [0.5ex]
+  \hline\hline
+  1 & Alice & *BEEFBEEFBEEFBEEF \\
+  \hline
+  2 & Bob & *43F23EBECA12AD31CBA2C1BC2 \\
+  \hline
+  3 & Charlie & *BEEFBEEFBEEFBEEF \\
+  \hline
+  4 & Donna & *43DBA275606D7A633AC28 \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-3}
+
+Which of the following functions are deterministic?
+
+\texttt{ABS} \\
+\texttt{COUNT} \\
+\texttt{DATEDIFF} \\
+\texttt{GETDATE} \\
+\texttt{ISNULL} \\
+\texttt{RAND} \\
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-4}
+
+What could the database schema for the following E-R diagram look like?
+
+\begin{center}
+  \includegraphics[width=0.8\textwidth]{images/weak-entity-set}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-5}
+
+What do the following parts of this diagram mean?
+
+\begin{itemize}
+  \item the solid underline on \textit{course\_id}
+  \item the single arrow pointing to \textit{course}
+  \item the double diamond around \textit{sec\_course}
+  \item the double lines between \textit{sec\_course} and \textit{section}
+  \item the dashed underlines on the attributes of \textit{section}
+\end{itemize}
+
+\begin{center}
+  \includegraphics[width=0.8\textwidth]{images/weak-entity-set}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-6}
+
+What could the database schema for the following E-R diagram look like?
+
+\begin{center}
+  \includegraphics[width=0.5\textwidth]{images/specialization-generalization}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Fin}
+
+What other topics do you want to talk about?
+
+\end{frame}
+\end{document}
