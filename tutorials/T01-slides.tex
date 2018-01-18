@@ -356,7 +356,6 @@ Try writing the query in SQL.
     ON course.cnum = mark.cnum \\
     JOIN student \\
     ON student.snum = mark.snum \\
-    GROUP BY cnum
   ), \\
   TopGradePerCourse AS ( \\
     SELECT cnum, MAX(grade) AS topGrade \\
