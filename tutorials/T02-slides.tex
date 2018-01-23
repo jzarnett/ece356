@@ -29,7 +29,7 @@ Exercise 1-6 extraneous GROUP BY clause.
 
 
 \begin{frame}
-\frametitle{Exercise 2-1}
+\frametitle{Exercise 2-1, Solution}
 
 Oops! Our \texttt{user} table contains passwords in plaintext! Our table looks like:
 
@@ -44,6 +44,19 @@ Oops! Our \texttt{user} table contains passwords in plaintext! Our table looks l
 }
 
 How can we modify the \texttt{user} table to replace \texttt{password} with a non-nullable \texttt{hashedPassword} column, containing the result of \texttt{PASSWORD(password)} of each row?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-1}
+
+\texttt{ \\
+  ALTER TABLE user ADD COLUMN hashedPassword varchar(100);\\
+  UPDATE TABLE user SET hashedPassword=PASSWORD(password);\\
+  ALTER TABLE user MODIFY hashedPassword varchar(100) NOT NULL;\\
+  ALTER TABLE user DROP COLUMN password;
+}
 
 \end{frame}
 
@@ -75,6 +88,24 @@ What could we do to improve it?
 
 
 \begin{frame}
+\frametitle{Exercise 2-2, Solution}
+
+Alice and Charlie have the same password hash; it is very likely that they are using the same password. If somebody finds out one of their passwords and gains access to this database, they could also find out that they could use the same password to access the other's account.
+
+Here are three of the things we could do to make this more secure:
+
+\begin{enumerate}
+  \item We could \textbf{use a salt}, a randomly-generated string made for each user which is combined with their plaintext password to produce a salted password hash.
+(saltedPassword = PASSWORD(plaintextPassword + salt), for instance)
+
+  \item We could also \textbf{restrict access to the User table} to specific people or groups, reducing the likelihood that a compromised account is able to access this information.
+
+  \item We could also \textbf{install an auditing trigger} that monitors queries made against the hashedPassword field, and write into an audit log to identify misbehaving or compromised users.
+\end{enumerate}
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 2-3}
 
 Which of the following functions are deterministic?
@@ -90,19 +121,20 @@ Which of the following functions are deterministic?
 
 
 \begin{frame}
-\frametitle{Exercise 2-4}
+\frametitle{Exercise 2-3, Solution}
 
-What could the database schema for the following E-R diagram look like?
-
-\begin{center}
-  \includegraphics[width=0.8\textwidth]{images/weak-entity-set}
-\end{center}
+\texttt{ABS} is deterministic. \\
+\texttt{COUNT} is deterministic for the same input and database state. \\
+\texttt{DATEDIFF} is deterministic. \\
+\texttt{GETDATE} is non-deterministic. \\
+\texttt{ISNULL} is deterministic. \\
+\texttt{RAND} is deterministic IF you provide a constant seed and count identical output sequences given the same input to fit the definition of deterministic.\\
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Exercise 2-5}
+\frametitle{Exercise 2-4}
 
 What do the following parts of this diagram mean?
 
@@ -122,6 +154,44 @@ What do the following parts of this diagram mean?
 
 
 \begin{frame}
+\frametitle{Exercise 2-4, Solution}
+
+\begin{itemize}
+  \item the solid underline on \textit{course\_id}: This is the primary key of Course.
+  \item the single arrow pointing to \textit{course}: Each Section is related to exactly one Course.
+  \item the double diamond around \textit{sec\_course}: This indicates that SecCourse is a weak relationship, a relationship involving a weak entity.
+  \item the double lines between \textit{sec\_course} and \textit{section}: This indicates total participation of the Section in the SecCourse relationship --- every Section is involved in some SecCourse. Also, no arrow indicates that many Sections can be involved in the relationship.
+  \item the dashed underlines on the attributes of \textit{section}: These attributes form the discriminator of the Section and are used to tell different Sections belonging to a Course apart from each other.
+\end{itemize}
+
+\begin{center}
+  \includegraphics[width=0.8\textwidth]{images/weak-entity-set}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-5}
+
+What could the database schema for the following E-R diagram look like?
+
+\begin{center}
+  \includegraphics[width=0.8\textwidth]{images/weak-entity-set}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 2-5, Solution}
+
+We could give each entity (Course, Section) the attributes listed explicitly in the diagram, but also give Section foreign keys to all of Course's primary keys (in this case, there is just \texttt{course\_id}).
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 2-6}
 
 What could the database schema for the following E-R diagram look like?
@@ -134,9 +204,20 @@ What could the database schema for the following E-R diagram look like?
 
 
 \begin{frame}
-\frametitle{Fin}
+\frametitle{Exercise 2-6, Solution}
 
-What other topics do you want to talk about?
+I know of three approaches to achieve inheritance in a relational database; don't worry about remembering these terms unless Prof. Zarnett specifically mentions them. Approaches 1 and 2 were mentioned in lecture.
 
+Source: \href{https://stackoverflow.com/questions/3579079/how-can-you-represent-inheritance-in-a-database}{https://stackoverflow.com/questions/3579079/how-can-you-represent-inheritance-in-a-database}
+
+\begin{enumerate}
+  \item Class table inheritance. Make a table for each entity, containing only the new attributes it brings to the hierarchy, and a foreign key to the parent it inherits from (or perhaps the root entity).
+
+  \item Concrete table inheritance. Each entity has a table with all of the attributes that the entity should have.
+
+  \item Single table inheritance. Combine all attributes that any entity in the inheritance hierarchy could have into one table, and add an attribute that distinguishes the type.
+\end{enumerate}
 \end{frame}
+
+
 \end{document}
