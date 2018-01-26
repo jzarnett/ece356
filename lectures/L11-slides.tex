@@ -81,11 +81,11 @@ Some convenient shortcuts:
 \begin{frame}
 \frametitle{Functional Dependency Theory Example}
 
-The relation $r$ has the attributes $(A, B, C, G, H, I)$. 
+The relation $r$ has the attributes $(A, B, C, G, H, I)$.
 
-The functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CH \rightarrow I$, (5) $B \rightarrow H$.
+The functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CG \rightarrow I$, (5) $B \rightarrow H$.
 
-Based on the rules that we have, what logically implied functional dependencies can we observe? 
+Based on the rules that we have, what logically implied functional dependencies can we observe?
 
 \end{frame}
 
@@ -94,11 +94,13 @@ Based on the rules that we have, what logically implied functional dependencies 
 \begin{frame}
 \frametitle{Functional Dependency Theory Example}
 
-There are three:
+There are five:
 \begin{itemize}
-	\item $A \rightarrow H$ which is found by transitivity ($A \rightarrow B$ and $B \rightarrow A$).
+	\item $A \rightarrow H$ which is found by transitivity ($A \rightarrow B$ and $B \rightarrow H$).
+	\item $A \rightarrow BC$ which is found by the union rule ($A \rightarrow B$ and $A \rightarrow C$).
+	\item $A \rightarrow BCH$ which is found by the union rule ($A \rightarrow BC$ and $A \rightarrow H$).
 	\item $CG \rightarrow HI$ which is found by the union rule ($CG \rightarrow H$ and $CG \rightarrow I$).
-	\item $AG \rightarrow I$ which is found by pseudotransitivity ($A \rightarrow C$ and $CG \rightarrow I$). 
+	\item $AG \rightarrow I$ which is found by pseudotransitivity ($A \rightarrow C$ and $CG \rightarrow I$).
 \end{itemize}
 
 
