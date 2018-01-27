@@ -1,0 +1,131 @@
+\input{configuration}
+
+\title{Tutorial 3 --- Normalization, Functional Dependencies}
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-1}
+
+What are the non-trivial functional dependencies in the following table?
+
+Also, what are the superkeys in the table? What about candidate keys?
+
+\begin{center}
+  \begin{tabular}{||c l r||}
+    \hline
+    id & name & address \\ [0.5ex]
+    \hline\hline
+    1 & Alice & 123 Park Place \\
+    \hline
+    2 & Alice & 85 Seagram Drive \\
+    \hline
+    3 & Bob & 161 University Avenue W \\
+    \hline
+    4 & Bob & 85 Seagram Drive \\
+    \hline
+  \end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-2}
+
+What is the highest normal form that the following table fits?
+
+\begin{center}
+  \begin{tabular}{||c c r r||}
+    \hline
+    PersonID & Name & FavouriteColourID & ColourName \\ [0.5ex]
+    \hline\hline
+    1 & Alice & 1 & Green \\
+    \hline
+    2 & Bob & 1 & Green \\
+    \hline
+    3 & Eve & 2 & Blue \\
+    \hline
+  \end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-3}
+
+What is the highest normal form that the following relation \texttt{R(A,B,C,D)} fits?
+
+A $\rightarrow$ B \\
+A $\rightarrow$ C \\
+C $\rightarrow$ D
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-4}
+
+What is the highest normal form that the following relation \texttt{R(A,B,C,D,E)} fits?
+
+A $\rightarrow$ BCDE \\
+E $\rightarrow$ ABCD \\
+C $\rightarrow$ D
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-5}
+
+What is the highest normal form that the following relation \texttt{R(A,B,C,D,E,F)} fits?
+
+AB $\rightarrow$ CDEF \\
+EF $\rightarrow$ ABCD \\
+C $\rightarrow$ E
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-6}
+
+What is a canonical cover for the following set of FDs?
+
+\begin{enumerate}
+  \item A $\rightarrow$ BC
+  \item CD $\rightarrow$ E
+  \item B $\rightarrow$ D
+  \item E $\rightarrow$ A
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-7}
+
+What is a canonical cover for the following set of FDs?
+
+\begin{enumerate}
+  \item A $\rightarrow$ BC
+  \item A $\rightarrow$ B
+  \item B $\rightarrow$ C
+  \item AB $\rightarrow$ C
+\end{enumerate}
+
+\end{frame}
+\end{document}
