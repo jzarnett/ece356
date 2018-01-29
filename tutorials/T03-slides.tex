@@ -67,11 +67,13 @@ What is the highest normal form that the following table fits?
 \begin{frame}
 \frametitle{Exercise 3-3}
 
-What is the highest normal form that the following relation \texttt{R(A,B,C,D)} fits?
+What is the highest normal form that the following relation \texttt{R=ABCD} fits?
 
+F = \{ \\
 A $\rightarrow$ B \\
 A $\rightarrow$ C \\
-C $\rightarrow$ D
+C $\rightarrow$ D \\
+\} \\
 
 \end{frame}
 
@@ -79,11 +81,13 @@ C $\rightarrow$ D
 \begin{frame}
 \frametitle{Exercise 3-4}
 
-What is the highest normal form that the following relation \texttt{R(A,B,C,D,E)} fits?
+What is the highest normal form that the following relation \texttt{R=ABCDE} fits?
 
+F = \{ \\
 A $\rightarrow$ BCDE \\
 E $\rightarrow$ ABCD \\
-C $\rightarrow$ D
+C $\rightarrow$ D \\
+\}
 
 \end{frame}
 
@@ -91,11 +95,13 @@ C $\rightarrow$ D
 \begin{frame}
 \frametitle{Exercise 3-5}
 
-What is the highest normal form that the following relation \texttt{R(A,B,C,D,E,F)} fits?
+What is the highest normal form that the following relation \texttt{R=ABCDEG} fits?
 
-AB $\rightarrow$ CDEF \\
-EF $\rightarrow$ ABCD \\
-C $\rightarrow$ E
+F = \{ \\
+AB $\rightarrow$ CDEG \\
+EG $\rightarrow$ ABCD \\
+C $\rightarrow$ E \\
+\}
 
 \end{frame}
 
@@ -105,12 +111,12 @@ C $\rightarrow$ E
 
 What is a canonical cover for the following set of FDs?
 
-\begin{enumerate}
-  \item A $\rightarrow$ BC
-  \item CD $\rightarrow$ E
-  \item B $\rightarrow$ D
-  \item E $\rightarrow$ A
-\end{enumerate}
+F = \{ \\
+  A $\rightarrow$ BC\\
+  CD $\rightarrow$ E\\
+  B $\rightarrow$ D\\
+  E $\rightarrow$ A\\
+\}
 
 \end{frame}
 
@@ -120,12 +126,40 @@ What is a canonical cover for the following set of FDs?
 
 What is a canonical cover for the following set of FDs?
 
-\begin{enumerate}
-  \item A $\rightarrow$ BC
-  \item A $\rightarrow$ B
-  \item B $\rightarrow$ C
-  \item AB $\rightarrow$ C
-\end{enumerate}
+F = \{ \\
+  A $\rightarrow$ BC\\
+  A $\rightarrow$ B\\
+  B $\rightarrow$ C\\
+  AB $\rightarrow$ C\\
+\}
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-8}
+
+Decompose the following relation \texttt{R=ABCDE} into BCNF.
+
+F = \{ \\
+  A $\rightarrow$ BC\\
+  C $\rightarrow$ DE\\
+\}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 3-9}
+
+Decompose the following relation \texttt{R=ABCD} into BCNF.
+
+F = \{ \\
+  AB $\rightarrow$ C\\
+  B $\rightarrow$ D\\
+  C $\rightarrow$ A\\
+\}
+
+\end{frame}
+
 \end{document}
