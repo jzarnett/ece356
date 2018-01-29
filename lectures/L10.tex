@@ -79,6 +79,8 @@ E-R diagram for ternary advisor-student-department relationship~\cite{dsc}
 
 The relation in the diagram above to represent \textit{dept\_advisor} will contain three attributes, all of which are primary keys in the other relations: \textit{(student\_id, instructor\_id, dept\_name)}. Based on what we know, the functional dependencies are \textit{instructor\_id} $\rightarrow$ \textit{dept\_name} (an instructor belongs to one department), and \textit{student\_id, dept\_name} $\rightarrow$ \textit{instructor\_id} (a student has at most one advisor per department). 
 
+The usual definitions of instructor, student, and department relations are simple enough to imagine. But the interesting part is the relationship \textit{dept\_advisor}. Its definition would be: \textit{(instructor\_id, student\_id, dept\_name)}. What if we check this against the BCNF rules?
+
 This design is not in BCNF, because \textit{instructor\_id} is not a superkey. An instructor ID alone is not enough to identify the relationship, because multiple students can be advised by the same individual. So we need to perform the decomposition procedure and that will produce two relations: \textit{(student\_id, instructor\_id)} and \textit{(instructor\_id, dept\_name)}.
 
 Those are in BCNF, but it is difficult to verify the constraint that requires us to verify that each triple of \textit{(student\_id, instructor\_id, dept\_name}) is unique. That is because performing this check requires a join on the two relations in the previous paragraph. That is computationally expensive, as we will soon see. 
@@ -113,7 +115,7 @@ Consider the following table representing students. It lists their department an
     20000003 & ECE & Circuits \\ \hline
     20000004 & SYDE & HCI \\ \hline
     20000005 & ECE & Networks \\ \hline
-    20000005 & CS & Security \\ \hline
+    20000006 & CS & Security \\ \hline
 \end{tabular}
 \end{center}
 
