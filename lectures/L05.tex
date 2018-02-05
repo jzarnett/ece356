@@ -144,9 +144,9 @@ In relational algebra, if the relation is $r$ and the new tuples are $t$, then t
 
 The delete operation can only be used to remove a set of tuples from a single relation; it does not alter attributes in the tuples~\cite{dsc}. If the goal is to ``clear fields'' the update statement is appropriate. A delete statement cannot be used on multiple relations at once.
 
-The keyword in SQL is \texttt{DELETE}\footnote{\url{https://www.youtube.com/watch?v=4ecWDo-HpbE}} and the statement \texttt{DELETE FROM license\_plate where number = 'BBCC 394';} will remove from the license plate relation any and all tuples that match the predicate. If no predicate is specified, then ALL tuples in the relation are removed (yikes!).
+The keyword in SQL is \texttt{DELETE}\footnote{\url{https://www.youtube.com/watch?v=4ecWDo-HpbE}} and the statement \texttt{DELETE FROM license\_plate WHERE number = 'BBCC 394';} will remove from the license plate relation any and all tuples that match the predicate. If no predicate is specified, then ALL tuples in the relation are removed (yikes!).
 
-Like an insertion we may use the result of a subquery as the predicate in a where clause, so we could delete all license plates where the registered address province is not Ontario with something like \texttt{DELETE FROM license\_plate WHERE owner\_address\_id in (SELECT id FROM OWNER\_ADDRESS WHERE province <> 'ON');}
+Like an insertion we may use the result of a subquery as the predicate in a where clause, so we could delete all license plates where the registered address province is not Ontario with something like \texttt{DELETE FROM license\_plate WHERE owner\_address\_id IN (SELECT id FROM owner\_address WHERE province <> 'ON');}
 
 The textbook~\cite{dsc} has an example about deletion where the salary is less than the average. This highlights that the deletion operation first figures out the average, then decides what tuples to delete, before carrying out the operation. If this were not the case, after each deletion the average might change and we might delete all tuples (or the result would otherwise be strange). If it carried out the deletion in such a manner it would also break the rule we have about this being a transaction: the tuples to be deleted should be removed in one swift stroke with no partially completed state visible.
 

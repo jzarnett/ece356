@@ -467,7 +467,7 @@ A delete statement cannot be used on multiple relations at once.
 
 The keyword in SQL is \texttt{DELETE}\footnote{\url{https://www.youtube.com/watch?v=4ecWDo-HpbE}}. 
 
-The statement \texttt{DELETE FROM license\_plate where number = 'BBCC 394';} will remove from the license plate relation any and all tuples that match the predicate. 
+The statement \texttt{DELETE FROM license\_plate WHERE number = 'BBCC 394';} will remove from the license plate relation any and all tuples that match the predicate. 
 
 If no predicate is specified, then ALL tuples in the relation are removed (yikes!).
 
@@ -483,7 +483,7 @@ Like an insertion we may use the result of a subquery as the predicate in a wher
 
 We could delete all license plates where the registered address province is not Ontario with something like: 
 
-\texttt{DELETE FROM license\_plate WHERE owner\_address\_id in (SELECT id FROM OWNER\_ADDRESS WHERE province <> 'ON');}
+\texttt{DELETE FROM license\_plate WHERE owner\_address\_id IN (SELECT id FROM owner address WHERE province <> 'ON');}
 
 \end{frame}
 
