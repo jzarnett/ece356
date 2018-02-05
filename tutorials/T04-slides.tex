@@ -1,0 +1,91 @@
+\input{configuration}
+
+\title{Tutorial 4 --- Storage, B+ Trees}
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-1}
+
+Does the data in a heap file necessarily lie in a contiguous region in secondary memory (disk)?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-2}
+
+Why would we use a B+ tree file instead of a sorted file to hold our database records?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-3}
+
+When might we want to use a hash file instead of a B+ tree file to hold our database records?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-4}
+
+When would we prefer MRU over LRU as a database cache replacement algorithm?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-5}
+
+Why shouldn't we make lots of indices over our database tables?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-6}
+
+Insert the following keys into the B+ tree below with degree $d$=2:
+
+\texttt{Adams}\\
+\texttt{Lamport}
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/b-tree-complete.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 4-7}
+
+Delete the following keys from the B+ tree below with degree $d$=2:
+
+\texttt{Srinivasan}\\
+\texttt{Singh}\\
+\texttt{Wu}\\
+\texttt{Gold}
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{images/b-tree-insert_adams.png}
+\end{center}
+
+\end{frame}
+
+
+\end{document}
