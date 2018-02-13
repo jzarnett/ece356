@@ -37,7 +37,7 @@ It is possible, though, to test whether something is null, or is not null. As yo
 
 We may specify multiple attributes in the \texttt{ORDER BY} clause, such as \texttt{ORDER BY make DESC, model DESC}. This sorts by the ``make'' attribute (descending), and if the values of two tuples are equal in that attribute, then by ``model'' (descending). If no two tuples have the same first sort attribute then the second sort does nothing (why should it?). And you can, if desired, choose divergent directions: mixing ascending and descending. They are always handled from left to right so they cannot conflict.
 
-The field used to order the tuples does not have to be returned in in the result set you have selected. The order will still be imposed but it may not be obvious from looking at the result relation what the ordering actually is.
+The field used to order the tuples does not have to be returned in the result set you have selected. The order will still be imposed but it may not be obvious from looking at the result relation what the ordering actually is.
 
 \paragraph{Aggregate Functions.} Aggregate functions perform a reduction on the data. Reduction is something you've done a lot of, most likely, without knowing it: if you are given an array of integers and asked to sum it up, that's a reduction. You condense an array of values into a single one. That's a subject that gets some more attention in ECE~459: Programming for Performance. But the database can do some of these things for us!
 
