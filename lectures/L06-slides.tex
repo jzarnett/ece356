@@ -93,7 +93,7 @@ CREATE TABLE student
   lastname varchar(64),
   birthday date,
   department_id int default 0,
-  PRIMARY KEY( id )
+  PRIMARY KEY( id ),
   FOREIGN KEY( department_id ) REFERENCES department( id )
  );
 \end{verbatim}
