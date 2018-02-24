@@ -1,0 +1,85 @@
+\input{configuration}
+
+\title{Tutorial 5 --- Query Optimization, Planning, Evaluation }
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-1}
+
+\begin{enumerate}
+  \item What are the two metrics we will use to estimate query operation costs?
+  \item What does each metric represent?
+  \item How do we use the metrics to arrive at an estimate?
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-2}
+
+Suppose we run a query that performs a single-attribute GREATER THAN comparison in its WHERE clause.
+
+e.g. \\
+SELECT * FROM people \\
+WHERE age > 20
+
+How might the following evaluation strategies impact the cost of the operation?
+
+\begin{enumerate}
+  \item Use a primary index if there is one.
+  \item Use a secondary index if there is one.
+  \item Use a linear scan.
+\end{enumerate}
+
+What if we were performing a LESS THAN comparison?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-3}
+
+Derive the worst-case and best-case cost estimate for a block nested-loop join.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-4}
+
+Derive the formulas for \textit{selectivity} of the following types of selections:
+
+Recall that selectivity is the estimated probability that a tuple matches a selection criterion.
+
+\begin{enumerate}
+  \item conjunction (WHERE $\theta_1$ AND $\theta_2$ AND ... AND $\theta_m$)
+  \item negation (WHERE NOT $\theta$)
+  \item disjunction (WHERE $\theta_1$ OR $\theta_2$ OR ... OR $\theta_m$)
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-5}
+
+What are some good rules of thumb that a query optimizer could use to reduce the cost of query plan selection, or the cost of the query itself?
+
+\end{frame}
+
+
+\end{document}
