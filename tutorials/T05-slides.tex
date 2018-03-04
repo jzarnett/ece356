@@ -29,6 +29,21 @@
 
 
 \begin{frame}
+\frametitle{Exercise 5-1 Solution}
+
+\begin{enumerate}
+  \item In this course, we care primarily about cost contributed by block transfers and by disk seeks.
+  \item A block transfer occurs whenever we need to retrieve a block from disk to read in memory, or when we need to write a block back to disk. \\
+    A disk seek occurs when we need to access a disk block non-sequentially.
+  \item Let block transfers take time $t_{transfer}$ and disk seeks take time $t_{seek}$. \\
+    Let there be $b$ block transfers and $s$ disk seeks. \\
+    Then we estimate the cost of a query operation with the formula $b(t_{transfer}) + s(t_{seek})$.
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 5-2}
 
 Suppose we run a query that performs a single-attribute GREATER THAN comparison in its WHERE clause.
@@ -37,7 +52,7 @@ e.g. \\
 SELECT * FROM people \\
 WHERE age > 20
 
-How might the following evaluation strategies impact the cost of the operation?
+How might the following evaluation strategies impact the (worst-case) cost of the operation?
 
 \begin{enumerate}
   \item Use a primary index if there is one.
@@ -51,35 +66,85 @@ What if we were performing a LESS THAN comparison?
 
 
 \begin{frame}
-\frametitle{Exercise 5-3}
+\frametitle{Exercise 5-2 Solution}
 
-Derive the worst-case and best-case cost estimate for a block nested-loop join.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Exercise 5-4}
-
-Derive the formulas for \textit{selectivity} of the following types of selections:
-
-Recall that selectivity is the estimated probability that a tuple matches a selection criterion.
+Assuming our indices are B+ trees, let $h_{index}$ be the height of the index. \\
+Let $B$ be the number of blocks in the relation. \\
+Let $b$ be the number of blocks containing records that satisfy the condition. \\
+Let $n$ be the number of records that satisfy the condition. ($n \ge b$)
 
 \begin{enumerate}
-  \item conjunction (WHERE $\theta_1$ AND $\theta_2$ AND ... AND $\theta_m$)
-  \item negation (WHERE NOT $\theta$)
-  \item disjunction (WHERE $\theta_1$ OR $\theta_2$ OR ... OR $\theta_m$)
+  \item Primary index: $h_{index}(t_{seek} + t_{transfer}) + b(t_{transfer})$ \\
+    $h_{index}$ seeks and transfers to locate the starting point with the index. \\
+    Since this is a primary index, the last seek in the index brings us straight to the data, and no additional seek is required. \\
+    $b$ transfers to read the sequentially-organized data, following leaf node pointers.
+  \item Secondary index: $(h_{index} + n)(t_{seek} + t_{transfer})$ \\
+    $h_{index}$ seeks and transfers to locate the starting point with the index. \\
+    Since this is a secondary index, we need a seek and a transfer for each block. In the worst case, each subsequent record is located on a different block. \\
+    $n$ seeks and transfers for those blocks.
+  \item Linear scan: $t_{seek} + B(t_{transfer})$ \\
+    1 seek, $B$ transfers to read the whole relation. No index $\rightarrow$ no ordering assumption.
 \end{enumerate}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Exercise 5-5}
+\frametitle{Exercise 5-2 Solution, continued}
 
-What are some good rules of thumb that a query optimizer could use to reduce the cost of query plan selection, or the cost of the query itself?
+If we were performing a LESS THAN as opposed to a GREATER THAN comparison, using the primary index will give no benefit, since we only need to seek to the beginning of the relation and perform a linear scan (assuming ascending order of index).
+
+Note that using a secondary index could result in a greater cost than a linear scan, especially if $n >> b$.
 
 \end{frame}
 
 
+\begin{frame}
+\frametitle{Exercise 5-3}
+
+Suppose there are $b_r$ blocks in $R$ and $b_s$ blocks in $S$. \\
+Derive the worst-case and best-case cost estimate for a block nested-loop join, $R \bowtie_{\theta} S$.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-3 Solution}
+
+In the worst case, we can assume that we have enough memory to hold exactly 1 block of $R$ and exactly 1 block of $S$ in main memory.
+
+For each block in $R$, of which there are $b_r$, we have to:
+
+\begin{enumerate}
+  \item \textbf{seek} to the block in $R$,
+  \item \textbf{transfer} that block to main memory, then
+  \item \textbf{seek} to the beginning of $S$.
+  \item then for each block in $S$, we need to:
+  \begin{enumerate}
+    \item \textbf{transfer} that block to main memory, then
+    \item do some CPU work to accumulate the $R, S$ record pairs that match the predicate.
+  \end{enumerate}
+\end{enumerate}
+
+So the join cost would be $2b_r(t_{seek}) + b_r(1 + b_s)(t_{transfer})$.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 5-3 Solution, continued}
+
+In the best case, we can assume that we have enough memory to hold all of $R$ and all of $S$ in main memory, so we just need to:
+
+\begin{enumerate}
+  \item \textbf{seek} to the beginning of $R$,
+  \item \textbf{transfer} the $b_r$ blocks of $R$ to main memory,
+  \item \textbf{seek} to the beginning of $S$,
+  \item \textbf{transfer} the $b_s$ blocks of $S$ to main memory, then
+  \item do some CPU work to accumulate the result.
+\end{enumerate}
+
+So the join cost would be $2(t_{seek}) + (b_r + b_s)(t_{transfer})$.
+
+\end{frame}
 \end{document}
