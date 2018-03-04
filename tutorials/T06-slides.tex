@@ -1,0 +1,90 @@
+\input{configuration}
+
+\def\ojoin{\setbox0=\hbox{$\bowtie$}%
+  \rule[-.02ex]{.25em}{.4pt}\llap{\rule[\ht0]{.25em}{.4pt}}}
+\def\leftouterjoin{\mathbin{\ojoin\mkern-5.8mu\bowtie}}
+
+\title{Tutorial 6 --- Query Optimization, Planning, Evaluation }
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-1}
+
+Give instances of relations R and S that show that the following pairs of relational algebra expressions are not equivalent:
+
+\begin{enumerate}
+  \item $\Pi_A(R - S)$ and $\Pi_A(R) - \Pi_A(S)$
+  \item $\sigma_{\theta}(R \leftouterjoin S)$ and $R \leftouterjoin \sigma_{\theta}(S)$, where $\theta$ uses only attributes of $S$
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-2}
+
+Consider relations $R(A, B, C), S(C, D, E), T(E, F)$, where A, C, and E are their respective primary keys. \\
+
+Suppose $n_R = 1000, n_S = 1500, n_T = 500$.
+
+
+\begin{enumerate}
+  \item What is the tightest upper bound we can place on $n_{ R \bowtie S \bowtie T }$?
+  \item How could we compute the join efficiently?
+\end{enumerate}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-3}
+
+Using the relational algebra equivalence rules, show how to derive the RHS expression from the LHS expression.
+
+\begin{enumerate}
+  \item $\sigma_{\theta_1 \land \theta_2 \land \theta_3}(R)$ = $\sigma_{\theta_1}(\sigma_{\theta_2}(\sigma_{\theta_3}(R)))$
+  \item $\sigma_{\theta_1 \land \theta_2}(R \bowtie_{\theta_3} S)$ = $\sigma_{\theta_1}(R \bowtie_{\theta_3} \sigma_{\theta_2}(S))$, where $\theta_2$ uses only attributes of $S$
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-4}
+
+Let $R$ be our relation with $n_r$ records. \\
+Suppose $s_i$ records in $R$ match a predicate $\theta_i$: that is, $\sigma_{\theta_i}(R) = s_i$. \\
+The \textit{selectivity} of $\theta_i$, $sel_{\theta_i}(R)$ is defined to be $\frac{s_i}{R}$. This represents the probability that a record in $R$ satisifies $\theta_i$.
+
+Derive the selectivity formulas for the following complex selections:
+
+\begin{enumerate}
+  \item conjunction: $\sigma_{\theta_1 \land \theta_2 \land ... \land \theta_m}(R)$
+  \item negation: $\sigma_{\lnot\theta}(R)$
+  \item disjunction: $\sigma_{\theta_1 \lor \theta_2 \lor ... \lor \theta_m}(R)$
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-5}
+
+What are some strategies that a query optimizer could use to reduce the cost of query plan selection, or the cost of the query itself?
+
+\end{frame}
+\end{document}
