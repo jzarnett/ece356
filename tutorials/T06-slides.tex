@@ -34,6 +34,49 @@ Give instances of relations R and S that show that the following pairs of relati
 
 
 \begin{frame}
+\frametitle{Exercise 6-1 Solution (1/2)}
+
+We are showing that $\pi_A(R - S)$ and $\pi_A(R) - \pi_A(S)$ are not equivalent. \\
+Let our schemas be $R(A,B)$ and $S(A,B)$. \\
+Let $R = \{(1, 2)\}$, $S = \{(1, 3)\}$.
+
+\begin{align*}
+  LHS &= \pi_A (R-S) \\
+  &= \pi_A (\{(1, 2)\} - \{(1, 3)\}) \\
+  &= \pi_A (\{(1, 2)\}) \\
+  &= \{(1)\} \\
+  RHS &= \pi_A (R) - \pi_A (S) \\
+  &= \pi_A (\{(1, 2)\}) - \pi_A (\{(1, 3)\}) \\
+  &= \{(1)\} - \{(1)\} \\
+  &= \emptyset \\
+  LHS & \neq RHS
+\end{align*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-1 Solution (2/2)}
+
+We are showing that $\sigma_{\theta}(R \leftouterjoin S)$ and $R \leftouterjoin \sigma_{\theta}(S)$ are not equivalent when $\theta$ uses only attributes of $S$. \\
+Let our schemas be $R(A,B)$ and $S(A,C)$. \\
+Let $R = \{(1, 2)\}$, $S = \{(42, 1337)\}$. \\
+Let $\theta$ be a predicate like $C = 1$, or anything that satisifies no elements in C.
+
+\begin{align*}
+  LHS &= \sigma_{\theta}(R \leftouterjoin S) \\
+  &= \sigma_{C=1}(\{(1, 2)\} \leftouterjoin \{(42, 1337)\}) \\
+  &= \sigma_{C=1}(\emptyset) \\
+  &= \emptyset \\
+  RHS &= R \leftouterjoin \sigma_{\theta}(S) \\
+  &= \{(1, 2)\} \leftouterjoin \sigma_{C=1}(\{(42, 1337)\}) \\
+  &= \{(1, 2)\} \leftouterjoin \emptyset \\
+  &= \{(1, 2, null)\} \\
+  LHS & \neq RHS
+\end{align*}
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 6-2}
 
 Consider relations $R(A, B, C), S(C, D, E), T(E, F)$, where A, C, and E are their respective primary keys. \\
@@ -45,7 +88,28 @@ Suppose $n_R = 1000, n_S = 1500, n_T = 500$.
   \item What is the tightest upper bound we can place on $n_{ R \bowtie S \bowtie T }$?
   \item How could we compute the join efficiently?
 \end{enumerate}
+\end{frame}
 
+
+\begin{frame}
+\frametitle{Exercise 6-2 Solution}
+
+$n_R = 1000, n_S = 1500, n_T = 500$. \\
+Note that the size of the fully-joined relation ($n_{ R \bowtie S \bowtie T }$) will be the same no matter the order we execute the joins in, since natural joins are associative and commutative. \\
+Suppose we consider the execution order $((R \bowtie S) \bowtie T)$.
+
+\begin{align*}
+  n_{ R \bowtie S } &\le n_R && \text{since C is a key of S} \\
+  n_{ (R \bowtie S) \bowtie T } &\le n_{ R \bowtie S } && \text{since E is a key of T} \\
+  n_{ R \bowtie S \bowtie T } &= n_{ (R \bowtie S) \bowtie T } && \text{by associativity} \\
+  &\le n_{ R \bowtie S } \\
+  &\le n_R \\
+  &= 1000
+\end{align*}
+
+So $n_{ R \bowtie S \bowtie T } \le 1000$.
+
+To efficiently compute the join, it helps to have indices on the primary keys of $S$ and $T$, and to use those indices to prevent linear scans of those relations during the join.
 
 \end{frame}
 
@@ -60,6 +124,30 @@ Using the relational algebra equivalence rules, show how to derive the RHS expre
   \item $\sigma_{\theta_1 \land \theta_2}(R \bowtie_{\theta_3} S)$ = $\sigma_{\theta_1}(R \bowtie_{\theta_3} \sigma_{\theta_2}(S))$, where $\theta_2$ uses only attributes of $S$
 \end{enumerate}
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-3 Solution (1/2)}
+
+\begin{align*}
+  LHS &= \sigma_{\theta_1 \land \theta_2 \land \theta_3}(R) \\
+  &= \sigma_{\theta_1 \land \theta_2}( \sigma_{\theta_3}(R) ) && \text{by $\sigma$-cascade (rule 1)} \\
+  &= \sigma_{\theta_1}(\sigma_{\theta_2}(\sigma_{\theta_3}(R))) && \text{by $\sigma$-cascade (rule 1)} \\
+  &= RHS
+\end{align*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-3 Solution (2/2)}
+
+\begin{align*}
+  LHS &= \sigma_{\theta_1 \land \theta_2}(R \bowtie_{\theta_3} S) \\
+  &= \sigma_{\theta_1}(\sigma_{\theta_2}(R \bowtie_{\theta_3} S) && \text{by $\sigma$-cascase (rule 1)} \\
+  &= \sigma_{\theta_1}(R \bowtie_{\theta_3} \sigma_{\theta_2}(S)) && \text{since $\theta_2$ only uses attributes of $S$,} \\
+  &= RHS && \text{we can distribute $\sigma_{\theta_2}$ over $\bowtie_{\theta_3}$}
+\end{align*}
 \end{frame}
 
 
@@ -82,9 +170,41 @@ Derive the selectivity formulas for the following complex selections:
 
 
 \begin{frame}
+\frametitle{Exercise 6-4 Solution}
+
+We make the simplifying assumption that predicates are independent of one another, allowing us to use standard probability rules for dealing with independent events.
+
+\begin{enumerate}
+  \item $sel_{\theta_1 \land \theta_2 \land ... \land \theta_m}(R) = \prod_{i=1}^{m} sel_{\theta_i}(R)$
+  \item $sel_{\lnot\theta}(R) = 1 - sel_{\theta_i}(R)$
+  \item $sel_{\theta_1 \lor \theta_2 \lor ... \lor \theta_m}(R) = 1 - sel_{\lnot \theta_1 \lor \theta_2 \lor ... \lor \theta_m}(R)$ \\
+    $ = 1 - \prod_{i=1}^{m} sel_{\lnot \theta_i}(R)$ \\
+    $ = 1 - \prod_{i=1}^{m} 1 - sel_{\theta_i}(R)$
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 6-5}
 
 What are some strategies that a query optimizer could use to reduce the cost of query plan selection, or the cost of the query itself?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 6-5 Solution}
+
+\begin{itemize}
+  \item limit the size of intermediate results early on in the plan (select and project ASAP)
+  \item cache subplans
+  \item materialize commonly used views which result from expensive queries
+  \item remove unnecessary joins
+  \item reinterpret subqueries as joins
+  \item pipeline where possible
+  \item and more...
+\end{itemize}
 
 \end{frame}
 \end{document}
