@@ -10,13 +10,13 @@ Having discussed in some detail the idea of transaction isolation, we now need t
 
 \subsection*{No Concurrency Control}
 
-It is possible from the point of view of the database to simply choose not to implement concurrency control of any sort. This is easy for the database designers and effectively means putting the problem of concurrency management in the hands of the users of the database (application developers). 
+It is possible from the point of view of the database to simply choose not to implement concurrency control of any sort. This is easy for the database designers and effectively means putting the problem of concurrency management in the hands of the users of the database (application developers).
 
-This is not as insane as it sounds, since the application itself could have its own sort of concurrency control mechanisms and it would be fine to just let the application manage that. The solution is, however, inadequate for commercial databases since they can allow multiple applications to run at once and do not trust that application developers do things the ``right'' way at all times. 
+This is not as insane as it sounds, since the application itself could have its own sort of concurrency control mechanisms and it would be fine to just let the application manage that. The solution is, however, inadequate for commercial databases since they can allow multiple applications to run at once and do not trust that application developers do things the ``right'' way at all times.
 
 \subsection*{Lock-Based Protocols}
 
-As you will recall from learning about concurrency and synchronization, our typical ``go-to'' strategy for dealing with concurrency problems is locking of some sort. You are surely familiar with locks and locking so we will not need to repeat any of the material on that subject from earlier. 
+As you will recall from learning about concurrency and synchronization, our typical ``go-to'' strategy for dealing with concurrency problems is locking of some sort. You are surely familiar with locks and locking so we will not need to repeat any of the material on that subject from earlier.
 
 For performance reasons we will assume that we use reader/writer type locks, meaning that there are accordingly two modes in which a data element may be locked: shared mode, and exclusive mode. In keeping with~\cite{dsc} the shared mode lock is denoted by $S$ and exclusive by $X$. If transaction $T_{i}$ has a shared lock on some data element $e$ then it may read but not write it; if the transaction has an exclusive lock then it may both read and write. Exclusive is exactly what it sounds like in that no other transaction may have any sort of lock if one transaction has an exclusive lock.
 
@@ -56,7 +56,7 @@ T2.3 Unlock C
 T2.4 Shared Lock S
 T2.5 Read S
 T2.6 Unlock S
-T2.7 TEMP = A + B
+T2.7 TEMP = C + S
 T2.8 Print TEMP
 
 
@@ -91,7 +91,7 @@ T2.1 Shared lock C
 T2.2 Read C
 T2.3 Shared Lock S
 T2.4 Read S
-T2.5 TEMP = A + B
+T2.5 TEMP = C + S
 T2.6 Print TEMP
 T2.7 Unlock C
 T2.8 Unlock S
@@ -104,11 +104,11 @@ There are no free lunches, though: the risk of longer-held locks is that there c
 
 There are often rules in the system for how transactions behave with respect to locks called the \textit{locking protocol}. The locking protocol sets up some rules about when items may be locked and unlocked which reduces the number of possible schedules such that the only allowed schedules are conflict-serializable schedules~\cite{dsc}. A schedule is considered legal if it follows all the rules of the locking protocol.
 
-Alongside the risk of deadlock, there is also the possibility of starvation. As you will recall, a transaction (thread) starves when, even though it is ready to run, it never gets a turn because the other transactions (threads) are using the resource(s) that it needs. The more locks a particular transaction requires, the more likely it is to have to wait and the higher the risk of starvation. 
+Alongside the risk of deadlock, there is also the possibility of starvation. As you will recall, a transaction (thread) starves when, even though it is ready to run, it never gets a turn because the other transactions (threads) are using the resource(s) that it needs. The more locks a particular transaction requires, the more likely it is to have to wait and the higher the risk of starvation.
 
-One possible solution to preventing starvation as suggested by~\cite{dsc} is to introduce a new rule about when a lock request is granted. The new rule is that the locks should be granted in order of request, meaning that a transaction $T_{i}$ will never have to wait for a transaction $T_{j}$ that requested that lock later. This is, obviously, in addition to the usual rule that the lock can only be granted when the requested lock mode is compatible with the existing locks, if any. 
+One possible solution to preventing starvation as suggested by~\cite{dsc} is to introduce a new rule about when a lock request is granted. The new rule is that the locks should be granted in order of request, meaning that a transaction $T_{i}$ will never have to wait for a transaction $T_{j}$ that requested that lock later. This is, obviously, in addition to the usual rule that the lock can only be granted when the requested lock mode is compatible with the existing locks, if any.
 
-This new rule differs, in some way, from the kind of logic we have discussed in concurrency. In concurrency we have said that there is no guarantee as to what order waiting threads will be unblocked when the resource they are waiting for becomes available. 
+This new rule differs, in some way, from the kind of logic we have discussed in concurrency. In concurrency we have said that there is no guarantee as to what order waiting threads will be unblocked when the resource they are waiting for becomes available.
 
 You will also recall the idea of two phase locking: we try to acquire locks and if we are unsuccessful, release any that we have acquired and try again from the beginning. The database two phase locking protocol is a little bit different. In this there are two distinct phases: growing and shrinking. In the growing phase a transaction may acquire locks; in the shrinking phase a transaction may release locks but may not obtain any new ones. The initial state is the growing phase and as soon as the first lock is released then it is not permitted to obtain any new ones~\cite{dsc}.
 
@@ -145,7 +145,7 @@ The linked list approach means that each data element is associated with a linke
 
 The rules for constructing and manipulating such a lock table are pretty simple and comprehensible from the diagram. Each (lockable) data item is associated with a linked list. Entries in that linked list contain the transaction identifier and an flag to indicate granted or waiting.
 
-If a request arrives for a data item for which there is no lock, then an entry is created and the request be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait. 
+If a request arrives for a data item for which there is no lock, then an entry is created and the request be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait.
 
 When there is an unlock request, the entry for that transaction and data item are removed and, if possible, further requests are granted. If a transaction aborts, any locks (granted or not) are removed from the lock table.
 
