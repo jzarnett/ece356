@@ -168,19 +168,23 @@ Distinguish between the following:
 \begin{frame}
 \frametitle{Exercise 7-4 Solution}
 
-Distinguish between the following:
-
 \begin{enumerate}
   \item serial: aside from the first transaction in the schedule, each transaction only starts after the previous has committed.
   \item serializble: the schedule is \textit{equivalent} to a serial schedule using the same transactions, for some definition of \textit{equivalent}.
   \item conflict-serializable: the schedule is \textit{conflict-equivalent} to a serial schedule using the same transactions.
 \end{enumerate}
 
+If you can swap two consecutive \textit{non-conflicting} operations (belonging to different transactions) in a schedule, then the schedules before and after the swap are considered to be \textit{conflict-equivalent}. \\
+Two operations are \textit{conflicting} iff at least one of them is a write, and they both operate on the same data.
+
 \end{frame}
 
 
 \begin{frame}
 \frametitle{Exercise 7-5}
+
+Is the following schedule conflict-serializable? \\
+If not, how can we make it conflict-serializable?
 
 \begin{center}
 \begin{tabular}{ c c c c c c c }
@@ -194,7 +198,35 @@ Distinguish between the following:
 \end{tabular}
 \end{center}
 
-This schedule is not conflict-serializable.
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 7-5 Solution}
+
+\begin{center}
+\begin{tabular}{ c c c c c c c }
+  \hline
+  T1 & r(x) & & w(y) & & & \\
+  \hline
+  T2 & & r(y) & & & r(x) & \\
+  \hline
+  T3 & & & & w(x) & & r(x) \\
+  \hline
+\end{tabular}
+\end{center}
+
+This schedule is not conflict-serializable. To show that there is no sequence of transformations that can take the given schedule to a serial schedule, we use the concept of a precedence graph.
+
+In this graph, we create a \textit{node for each transaction}, then proceed to add edges.
+
+A directed edge from transaction X to transaction Y in the precedence graph means that \textit{X precedes Y}. That means that whatever serial schedule we come up with needs to execute everything in X befor everything in Y.
+
+We add an edge from X to Y where an operation in X occurs before and conflicts with an operation in Y.
+
+A cycle in the precedence graph means that no serial ordering of the transactions will be conflict-equivalent with the given schedule. Try creating the graph as an exercise.
+
+To make the schedule conflict-serializable, remove nodes (i.e. abort transactions) until there are no cycles.
 
 \end{frame}
 \end{document}
