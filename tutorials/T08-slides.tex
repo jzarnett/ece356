@@ -1,0 +1,94 @@
+\input{configuration}
+
+\def\ojoin{\setbox0=\hbox{$\bowtie$}%
+  \rule[-.02ex]{.25em}{.4pt}\llap{\rule[\ht0]{.25em}{.4pt}}}
+\def\leftouterjoin{\mathbin{\ojoin\mkern-5.8mu\bowtie}}
+
+\title{Tutorial 8 --- Transactions and Recovery }
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-1}
+
+Is the following transaction schedule \textit{recoverable}?
+
+Can we make a conflict-equivalent schedule that is \textit{cascadeless}?
+
+\begin{center}
+\begin{tabular}{ c c c c c c c c c c }
+  \hline
+  T1 & r(x) & & r(y) & & & & & & c \\
+  \hline
+  T2 & & w(y) & & & r(x) & & & c & \\
+  \hline
+  T3 & & & & w(x) & & r(x) & c & & \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-2}
+
+What is the weakest isolation guarantee available in SQL?
+
+When would an developer want to use a weaker isolation level in their application?
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Exercise 8-3}
+
+Some DMBSes use snapshot isolation to implement \textit{serializable}-level isolation. It works most of the time, but has failure cases.
+
+How can snapshot isolation fail to create a serializable schedule, and what should happen when it creates a non-serializable schedule?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-4}
+
+Show that 2PL can create schedules that result in deadlock.
+
+What can we do to \textbf{prevent} deadlock?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-5}
+
+Show that 2PL can create recoverable schedules with cascading rollbacks.
+
+What variant of 2PL creates cascadeless schedules?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-6}
+
+Supposing that instead handling deadlock with an avoidance/prevention strategy, we try to detect and recover. How do we recover from a deadlock?
+
+\end{frame}
+
+
+\end{document}
