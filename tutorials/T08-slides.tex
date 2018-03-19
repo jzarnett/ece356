@@ -30,14 +30,55 @@ Can we make a conflict-equivalent schedule that is \textit{cascadeless}?
 \begin{center}
 \begin{tabular}{ c c c c c c c c c c }
   \hline
-  T1 & r(x) & & r(y) & & & & & & c \\
+  T1 & $r_x$ & & $r_y$ & & & & & & c \\
   \hline
-  T2 & & w(y) & & & r(x) & & & c & \\
+  T2 & & $w_y$ & & & $r_x$ & & & c & \\
   \hline
-  T3 & & & & w(x) & & r(x) & c & & \\
+  T3 & & & & $w_x$ & & $r_x$ & c & & \\
   \hline
 \end{tabular}
 \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-1 Solution (1/2)}
+
+In the context of recoverability, a transaction T \textbf{depends on} a transaction S if T reads a value that S has written to previously.
+
+For a schedule to be recoverable, for any pair of transactions S and T, if T depends on S, then S must commit \textit{before} T does.
+
+In the given schedule, that means:
+
+\begin{itemize}
+  \item T3 must commit before T2 does, and
+  \item T2 must commit before T1 does.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-1 Solution (2/2)}
+
+For a schedule to be recoverable, for any pair of transactions S and T, if T depends on S, then S must commit \textit{before} T reads a dependent value.
+
+The following schedule is conflict-equivalent to the original, and is also cascadeless.
+
+\begin{center}
+\begin{tabular}{ c c c c c c c c c c }
+  \hline
+  T1 & $r_x$ & & & & & & & $r_y$ & c \\
+  \hline
+  T2 & & $w_y$ & & & & $r_x$ & c & & \\
+  \hline
+  T3 & & & $w_x$ & $r_x$ & c & & & & \\
+  \hline
+\end{tabular}
+\end{center}
+
+Note: In the case of an abort, only one transaction will need to roll back and the others can run; this does not preserve equivalence to the original schedule, but can still be consistent.
 
 \end{frame}
 
@@ -52,6 +93,17 @@ When would an developer want to use a weaker isolation level in their applicatio
 \end{frame}
 
 
+\begin{frame}
+\frametitle{Exercise 8-2 Solution}
+
+The weakest isolation level provided by SQL is \textbf{read-uncommitted}.
+
+This level guarantees \textit{no dirty writes}: no writes on top of uncommitted writes by other transactions.
+
+Weaker isolation affords a greater degree of concurrency, for a potential boost in throughput. Use if the possibly-resulting inconsistencies are irrelevant to the application, or they are otherwise worth dealing with.
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Exercise 8-3}
@@ -59,6 +111,18 @@ When would an developer want to use a weaker isolation level in their applicatio
 Some DMBSes use snapshot isolation to implement \textit{serializable}-level isolation. It works most of the time, but has failure cases.
 
 How can snapshot isolation fail to create a serializable schedule, and what should happen when it creates a non-serializable schedule?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-3 Solution}
+
+In \textbf{snapshot isolation}, transactions operate on a snapshot of the DB that looks as it did when the transaction started.
+
+A consistency check (for dirty writes, essentially) is performed right before an attempted commit.
+
+Snapshot isolation can result in non-serializable schedules because no additional work is done to ensure serializability as the schedule is generated. The consistency check at the end will abort non-serializable schedules.
 
 \end{frame}
 
@@ -74,6 +138,48 @@ What can we do to \textbf{prevent} deadlock?
 
 
 \begin{frame}
+\frametitle{Exercise 8-4 Solution (1/2)}
+
+Recall that deadlock requires four conditions to be simultaneously true:
+
+\begin{enumerate}
+  \item mutual exclusion,
+  \item hold-and-wait,
+  \item no pre-emption, and
+  \item circular wait.
+\end{enumerate}
+
+A 2PL schedule that results in deadlock, supposing T1 wants to read resources $a$ and $b$, and T2 wants to write to those same resources:
+
+\begin{center}
+\begin{tabular}{ c c c c c }
+  \hline
+  T1 & $s_a$ &      &      & $s_b$ \\
+  \hline
+  T2 &      & $x_b$ & $x_a$ &      \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-4 Solution (2/2)}
+
+Note that in 2PL, transactions can run into deadlock only during their growing phase.
+
+We can prevent deadlock by having a smarter lock manager. There are several ways to prevent deadlock. The following are some things that the lock manager can do:
+
+\begin{itemize}
+  \item Use a deadlock detection algorithm (e.g. Banker's, graph algorithms) to determine whether granting a lock might lead to deadlock, and make the caller wait or abort if so. This can be expensive.
+  \item Enforce a partial ordering (could be encoded with a tree) for lock acquisition to remove the possibility of circular wait.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 8-5}
 
 Show that 2PL can create recoverable schedules with cascading rollbacks.
@@ -84,9 +190,37 @@ What variant of 2PL creates cascadeless schedules?
 
 
 \begin{frame}
+\frametitle{Exercise 8-5 Solution}
+
+\begin{center}
+\begin{tabular}{ c c c c c c c c c c c c c }
+  \hline
+  T1 & $x_a$ & $w_a$ & $u_a$ &      &      &      &      &      &      &      &      & abort \\
+  \hline
+  T2 &      &      &      & $s_a$ & $r_a$ & $x_a$ & $w_a$ & $u_a$ &      &      &      &      \\
+  \hline
+  T3 &      &      &      &      &      &      &      &      & $s_a$ & $r_a$ & $u_a$ &      \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 8-6}
 
 Supposing that instead handling deadlock with an avoidance/prevention strategy, we try to detect and recover. How do we recover from a deadlock?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 8-6 Solution}
+
+Recovering from a deadlock involves rolling back transactions until the circular wait is removed.
+
+We choose a transaction to roll back using some heuristic that takes starvation into account, then roll back some or all of the transaction.
 
 \end{frame}
 
