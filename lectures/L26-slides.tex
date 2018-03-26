@@ -310,7 +310,7 @@ The drawback is that every read requires us to update the read timestamp, which 
 
 When do we know that we can get rid of an old version? 
 
-An old version is no longer needed when its write timestamp is younger than that of the oldest transaction in the system. 
+An old version is no longer needed when its write timestamp is smaller than that of the oldest transaction in the system. 
 
 But one must be careful then to only delete old versions; at least the current version must be maintained. 
 

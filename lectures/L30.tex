@@ -97,7 +97,7 @@ LSN 5 is the end checkpoint statement so it contains the transaction and dirty p
 Transaction Table and Dirty Page Table after analysis~\cite{fds}.
 \end{center}
 
-Then it is time for the redo phase: the smaller LSN in the dirty page tables is 1 (page $C$) so that's where we start the redo process. LSNs 1, 2, 6, and 7 want to update pages that have higher LSNs than the updates, so no need to repeat that update.
+Then it is time for the redo phase: the smaller LSN in the dirty page tables is 1 (page $C$) so that's where we start the redo process. LSNs 1, 2, 6, and 7 want to update pages. For those pages that have higher LSNs than the updates, no need to repeat that update.
 
 The undo phase here is very simple: the only thing to undo is the operations of $T_{3}$. We go backwards and the only log entry we need to undo is LSN 6. At that point we are all done.
 

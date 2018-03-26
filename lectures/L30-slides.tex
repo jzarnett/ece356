@@ -442,7 +442,9 @@ Transaction table and dirty page table:
 
 Then it is time for the redo phase: the smaller LSN in the dirty page tables is 1 (page $C$) so that's where we start the redo process. 
 
-LSNs 1, 2, 6, and 7 want to update pages that have higher LSNs than the updates, so no need to repeat that update.
+LSNs 1, 2, 6, and 7 want to update pages. 
+
+For pages that have higher LSNs than the updates, no need to repeat that update.
 
 
 \end{frame}
