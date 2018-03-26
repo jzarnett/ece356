@@ -48,10 +48,57 @@ How would the answer change if we used the Thomas Write Rule?
 \end{frame}
 
 
+
+\begin{frame}
+\frametitle{Exercise 9-1 Solution}
+
+
+\begin{center}
+\begin{tabular}{ | c c c || c c c c | }
+  \hline
+  $T_1$ & $T_2$ & $T_3$ & $TS_r(a)$ & $TS_w(a)$ & $TS_r(b)$ & $TS_w(b)$ \\
+  \hline
+  $r_a$ &       &       & 1         &           &           &           \\
+        & $r_b$ &       &           &           & 2         &           \\
+        &       & $r_a$ & 3         &           &           &           \\
+  $w_a$ &       &       &           & 1<3, abort $T_1$ &    &           \\
+        & $r_a$ &       & 3         &           &           &           \\
+        &       & $w_b$ &           &           &           & 3         \\
+  $r_b$ &       &       &           &           &           &           \\
+        & $w_b$ &       &           &           &           & 2<3, abort $T_2$ \\
+        &       & $w_a$ &           & 3         &           &           \\
+  \hline
+\end{tabular}
+\end{center}
+
+If we used the Thomas Write Rule, $T_2$ would not need to abort just because it wanted to write a value that would have already been overwritten by $T_3$, and the write would have been ignored instead.
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Exercise 9-2}
 
 Under what conditions does the phantom read phenomenon occur?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 9-2 Solution}
+
+Phantom reads happen when reads and writes conflict on unisolated, non-tuple data.
+
+e.g. \\
+Query 1: SELECT a COUNT of the number of Math professors at Waterloo. \\
+Query 2: INSERT a Waterloo Math professor.
+
+Transaction 1: Run Query 1 twice. \\
+Transaction 2: Run Query 2 once.
+
+This poses a problem for serialized isolation. The result of the SELECT will differ based on whether it runs before or after the INSERT. If the SELECTs happen on either side of the INSERT, then Transaction 1 will see inconsistent information. In serialized isolation, each transaction should be able to assume that it is the only transaction running at a time.
+
+This is allowed to happen since we can't lock rows that do not exist (yet). We fix this with a protocol that locks index leaf nodes, under the assumption that every query uses an index.
 
 \end{frame}
 
@@ -86,6 +133,37 @@ Assuming we use an immediate update protocol with checkpointing, what log entrie
 
 
 \begin{frame}
+\frametitle{Exercise 9-3 Solution}
+
+\begin{center}
+\begin{tabular}{ | l | c c c c | c | }
+  \hline
+  action & transaction & item & val & val' & flags \\
+  \hline
+  start & $T_1$ &   &   &   &           \\
+  write & $T_1$ & a & 1 & 2 &           \\
+  write & $T_1$ & a & 2 & 3 &           \\
+  checkpoint & [$T_1$] &   &   &   &           \\
+  want to abort & $T_1$ &   &   &   &           \\
+  write & $T_1$ & a & - & 2 & redo-only \\
+  start & $T_2$ &   &   &   &           \\
+  write & $T_2$ & b & 5 & 6 &           \\
+  write & $T_2$ & b & 6 & 7 &           \\
+  (system failure) &       &   &   &   &           \\
+  \hline
+  write & $T_2$ & b & - & 6 & redo-only \\
+  write & $T_2$ & b & - & 5 & redo-only \\
+  abort & $T_2$ &   &   &   &           \\
+  write & $T_1$ & a & - & 1 & redo-only \\
+  abort & $T_1$ &   &   &   &           \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 9-4}
 
 Where do the following recovery protocols belong in the table below?
@@ -112,8 +190,45 @@ Where do the following recovery protocols belong in the table below?
 
 
 \begin{frame}
+\frametitle{Exercise 9-4 Solution}
+
+\begin{center}
+\begin{tabular}{ | l | c | c | }
+  \hline
+          & redo & no-redo \\
+  \hline
+  undo    & immediate update & strict immediate update \\
+  \hline
+  no-undo & deferred update & (this is called giving up) \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 9-5}
   What data is logged in order for the ARIES protocol to restore from a checkpoint?
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 9-5 Solution}
+  In an ARIES checkpoint, the transaction table (TT) and dirty page table (DPT) at the time of checkpoint are written to the log.
+
+  The TT needs to know the IDs of the active transactions, the last LSN associated with each transaction, and the status of each transaction.
+
+  The DPT needs to know the IDs of the dirty pages (those that require updates), and the most recent (greatest) LSN associated with each page.
+
+  Recall that LSNs are written only for:
+  \begin{enumerate}
+    \item write an update
+    \item commit transaction
+    \item abort transaction
+    \item undo an update
+    \item end transaction
+  \end{enumerate}
 \end{frame}
 
 
@@ -134,6 +249,12 @@ Where do the following recovery protocols belong in the table below?
 \begin{frame}
 \frametitle{Exercise 9-7}
   Why is it important for the ARIES protocol to look for the most recent \textit{end-checkpoint} log record as opposed to the most recent \textit{start-checkpoint} log record during its analysis phase (finding TT and DPT at last checkpoint)?
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 9-7 Solution}
+  The \textit{end-checkpoint} log entry tells us that the TT and DPT have been fully written and that the checkpoint completed successfully. The log entry also contains the LSN of the corresponding \textit{start-checkpoint} log entry, which marks where to start reading the TT and DPT.
 \end{frame}
 
 
