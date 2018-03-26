@@ -73,7 +73,7 @@ Assuming we use an immediate update protocol with checkpointing, what log entrie
   write & $T_1$ & a & 2 & 3 &           \\
   checkpoint & [$T_1$] &   &   &   &           \\
   want to abort & $T_1$ &   &   &   &           \\
-  write & $T_1$ & a & 3 & 2 & redo-only \\
+  write & $T_1$ & a & - & 2 & redo-only \\
   start & $T_2$ &   &   &   &           \\
   write & $T_2$ & b & 5 & 6 &           \\
   write & $T_2$ & b & 6 & 7 &           \\
