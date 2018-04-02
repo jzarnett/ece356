@@ -1,0 +1,107 @@
+\input{configuration}
+
+\def\ojoin{\setbox0=\hbox{$\bowtie$}%
+  \rule[-.02ex]{.25em}{.4pt}\llap{\rule[\ht0]{.25em}{.4pt}}}
+\def\leftouterjoin{\mathbin{\ojoin\mkern-5.8mu\bowtie}}
+
+\title{Tutorial 10 --- Parallelism and Distributed Databases }
+
+\author{Richard Wong \\ \small \texttt{rk2wong@edu.uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-1}
+
+What kinds of queries are the following partitioning schemes well-suited for?
+
+\begin{enumerate}
+  \item round-robin
+  \item hash partitioning
+  \item range partitioning
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-2}
+
+How would a distributed DB using the following partitioning schemes handle \textbf{addition and removal} of nodes?
+
+\begin{enumerate}
+  \item round-robin
+  \item hash partitioning
+  \item range partitioning
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-3}
+
+What factors would account for \textbf{skew} in the following partitioning schemes?
+
+\begin{enumerate}
+  \item hash partitioning
+  \item range partitioning
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-4}
+
+What factors would account for \textbf{load imbalance} in the following partitioning schemes?
+
+\begin{enumerate}
+  \item hash partitioning
+  \item range partitioning
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-5}
+
+How can we alleviate the problem of load imbalance in range partitioning?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-6}
+
+Suppose we have the following relation: \\
+\begin{center}
+  \texttt{employee(name, address, salary, plantNumber)}
+\end{center}
+
+The relation is \textbf{fragmented horizontally}, \\
+and each fragment has a \textbf{local replica}, \\
+and a \textbf{replica in New York}.
+
+Provide a reasonable processing strategy for each of the following queries \textbf{made from the plant in Montreal}:
+
+\begin{enumerate}
+  \item Find all employees at the Toronto plant.
+  \item Find the average salary of all employees.
+  \item Find the highest-paid employee in Toronto, Vancouver, and Edmonton.
+\end{enumerate}
+
+\end{frame}
+
+\end{document}
