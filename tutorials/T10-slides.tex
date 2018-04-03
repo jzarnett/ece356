@@ -19,6 +19,14 @@
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Contacting Me}
+
+If you have a question that you are okay with sharing publicly prior to the final exam, visit \texttt{https://github.com/rwongone/ece356/issues} and open a new issue.
+
+You can still email me at \texttt{rk2wong@edu.uwaterloo.ca}, but for the benefit of your peers I may ask for your permission to share your question and my answer via the Issues page.
+
+\end{frame}
 
 \begin{frame}
 \frametitle{Exercise 10-1}
@@ -29,6 +37,18 @@ What kinds of queries are the following partitioning schemes well-suited for?
   \item round-robin
   \item range partitioning
   \item hash partitioning
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-1 Solution}
+
+\begin{enumerate}
+  \item round-robin: good for high-selectivity queries; tuples of a single relation are spread out evenly throughout the $n$ disks, so load is also balanced. not as good for point queries and range queries, since we can't know ahead of time which disk the tuples reside on.
+  \item range partitioning: good for point and range queries on the partitioning attribute, since we can quickly find out the disk or range of disks that the tuples reside on.
+  \item hash partitioning: good for point queries on the partitioning attribute. Also good for high-selectivity queries since tuples are evenly distributed.
 \end{enumerate}
 
 \end{frame}
@@ -48,10 +68,57 @@ How would a distributed DB using the following partitioning schemes handle \text
 \end{frame}
 
 
+
+\begin{frame}
+\frametitle{Exercise 10-2 Solution (1/2)}
+
+\begin{enumerate}
+  \item round-robin: need to recompute which partition each tuple will go to. Recall the partition is decided by some counter mod $n$, but by adding a new node, $n$ changes.
+  \item range partitioning: the new node is responsible for a new range, and takes data from the nodes responsible for the ranges on its left and right.
+  \item hash partitioning: if we implement this naively, (i.e. partition is $h(x)$ mod $n$), then do the same as in round robin; not great.
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-2 Solution (2/2)}
+
+Note: we can use a "distributed hash table" to make node addition with hash partitioning more like it is with range partitioning. One implementation is called Chord.
+
+tldr: "Hash the tuples, but also hash the nodes. Each node is responsible for the range of hashes to its right."
+
+\begin{center}
+  \includegraphics[width=0.75\textwidth]{images/dht-chord-new_node.png}\\
+\end{center}
+
+Credit for image: https://www.cs.rutgers.edu/~pxk/417/notes/23-lookup.html
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Exercise 10-3}
 
-What is the difference between \textbf{skew} and \textbf{load imbalance}?
+Distinguish between the following:
+
+\begin{enumerate}
+  \item attribute-value skew
+  \item partition skew
+  \item execution skew
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-3 Solution}
+
+\begin{enumerate}
+  \item attribute-value skew: many tuples with the same attribute or packed in a tight range of attributes reside on a single partition.
+  \item partition skew: partitions carry uneven quantities of tuples, independently of attribute-value skew. This seems to be an effect of random chance, or a poor partitioning scheme.
+  \item execution skew: during the execution of a query, a few disks may contain most of the tuples to access, while other have very few or none. This creates an I/O bottleneck, and is also known as \textit{load imbalance}.
+\end{enumerate}
 
 \end{frame}
 
@@ -59,7 +126,7 @@ What is the difference between \textbf{skew} and \textbf{load imbalance}?
 \begin{frame}
 \frametitle{Exercise 10-4}
 
-What factors would account for \textbf{load imbalance} in the following partitioning schemes?
+What factors would account for \textbf{execution skew} in the following partitioning schemes?
 
 \begin{enumerate}
   \item range partitioning
@@ -70,9 +137,33 @@ What factors would account for \textbf{load imbalance} in the following partitio
 
 
 \begin{frame}
+\frametitle{Exercise 10-4 Solution}
+
+Attribute-value skew tends to lead to execution skew, in both range- and hash- partitioning.
+
+A naive implementation of range partitioning will allocate most of the load to a small number of disks (just the ones that cover the query range).
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Exercise 10-5}
 
 How can we alleviate the problem of load imbalance in range partitioning?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-5 Solution}
+
+One strategy is to use \textbf{virtual processors}.
+
+Pretend that there are many more virtual processors as there are real processors.
+
+Instead of mapping real processors to attribute ranges, we map the many virtual processors to attribute ranges, then balance the virtual processors among the real processors.
+
+This causes our ranges to be split more finely, and also distributed evenly among the disks, causing range queries to hit a greater number of disks, which allows for greater parallelism.
 
 \end{frame}
 
@@ -95,6 +186,38 @@ Provide a reasonable processing strategy for each of the following queries \text
   \item Find all employees at the Toronto plant.
   \item Find the average salary of all employees.
   \item Find the highest-paid employee in Toronto, Vancouver, and Edmonton.
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 10-6 Solution}
+
+\begin{center}
+  \texttt{employee(name, address, salary, plantNumber)}
+\end{center}
+
+\begin{enumerate}
+  \item Find all employees at the Toronto plant:
+    \begin{enumerate}
+      \item send the query to Toronto
+      \item process in Toronto
+      \item receive the result from Toronto
+    \end{enumerate}
+  \item Find the average salary of all employees:
+    \begin{enumerate}
+      \item send the query to New York
+      \item compute the average in New York, since it has a replica of all fragments
+      \item receive the result from New York
+    \end{enumerate}
+  \item Find the highest-paid employee in Toronto, Vancouver, and Edmonton:
+    \begin{enumerate}
+      \item send query to Toronto, Vancouver, and Edmonton
+      \item compute max at those sites to take advantage of parallelism
+      \item receive results Toronto, Vancouver, and Edmonton
+      \item aggregate in Montreal
+    \end{enumerate}
 \end{enumerate}
 
 \end{frame}
