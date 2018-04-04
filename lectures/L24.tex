@@ -114,7 +114,7 @@ You will also recall the idea of two phase locking: we try to acquire locks and 
 
 Any two phase locking protocol gives us, automatically, conflict serializability. For any transaction, there exists the point where the last lock as been obtained, and this is called the \textit{lock point}~\cite{dsc}. We can order transactions based on their lock points and it gives a serial ordering of the transactions. But that's all it gives us: not any sort of freedom from deadlocks or starvation.
 
-There exist two more restrictive locking protocols in~\cite{dsc}. The fist is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed. This guarantees that no intermediate states are ever made visible. The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit. With rigorous two phase locking, transactions are easily serialized by commit order.
+There exist two more restrictive locking protocols in~\cite{dsc}. The first is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed. This guarantees that no intermediate states are ever made visible. The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit. With rigorous two phase locking, transactions are easily serialized by commit order.
 
 We can try to squeeze out some more parallelism by allowing locking to have two more operations: a transition from shared to exclusive and from exclusive to shared. We still need exclusive lock to modify a value, but we can allow some values to be shared during the execution of the transaction. Still, moving from a shared to exclusive lock is called an upgrade, and that can only be done during the lock acquisition phase. Moving from exclusive down to shared is called a downgrade and it can only be done in the shrinking phase. An upgrade is like trying to acquire a lock, so it can result in blocking of a transaction.
 
@@ -137,7 +137,7 @@ Following this systematic approach will ensure that locks are shared when they c
 
 We will cover two approaches: lock tables (a linked-list approach) and a graph algorithm.
 
-The linked list approach means that each data element is associated with a linked list. In that linked list is the current transaction owning that lock as well as any other transactions that are waiting for that particular item. The image below shows a lock table example from~\cite{dsc} in which there are locks for five different data items numbered 4, 7, 123, 144, and 912:
+The linked list approach means that each data element is associated with a linked list. In that linked list is the current transaction owning that lock as well as any other transactions that are waiting for that particular item. The image below shows a lock table example from~\cite{dsc} in which there are locks for five different data items numbered 14, 17, 123, 144, and 1912:
 
 \begin{center}
 	\includegraphics[width=0.4\textwidth]{images/lock-table}
@@ -145,13 +145,13 @@ The linked list approach means that each data element is associated with a linke
 
 The rules for constructing and manipulating such a lock table are pretty simple and comprehensible from the diagram. Each (lockable) data item is associated with a linked list. Entries in that linked list contain the transaction identifier and an flag to indicate granted or waiting.
 
-If a request arrives for a data item for which there is no lock, then an entry is created and the request be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait.
+If a request arrives for a data item for which there is no lock, then an entry is created and the request can be immediately granted. If a lock already exists for that data item, a new entry is created. As for whether it is granted right away or not, compatibility must be checked. If it is compatible it may be granted; otherwise it must wait.
 
 When there is an unlock request, the entry for that transaction and data item are removed and, if possible, further requests are granted. If a transaction aborts, any locks (granted or not) are removed from the lock table.
 
 This algorithm avoid the possibility of starvation, because the linked list imposes order on the request such that later requests always are enqueued after earlier ones~\cite{dsc}.
 
-The graph based protocol in~\cite{dsc} is has to do with establishing a lock based protocol that uses a tree. To make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
+The graph based protocol in~\cite{dsc} has to do with establishing a lock based protocol that uses a tree. To make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. The purpose is so that it is possible to enforce the rule that they are acquired in order.
 
 You might recall this sort of protocol from the general discussion of deadlock in a concurrency context. In the examples, a simple deadlock is created when one thread locks \texttt{a} and then \texttt{b} and the other thread locks \texttt{b} and then \texttt{a}. The solution was to establish an ordering on the lockable elements (in that case, the alphabetical ordering seemed logical enough, but reverse alphabetical would work too). That works okay for names, but not everything has a name, and anything relatively simple like memory location of file location would work to impose an ordering.
 
@@ -179,7 +179,7 @@ Use of the tree structured protocol does not, however, ensure recoverability or 
 
 Consider an example in the tree lock diagram above; if data elements $A$ and $J$ are needed, then items $B$, $D$, and $H$ also need to be locked to make this work. Moreover, it is very likely that we are going to lock the root of the tree, meaning that (most) transactions are effectively serialized. This is probably not a good thing.
 
-The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not e very good solution given the tradeoffs. It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
+The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not a very good solution given the tradeoffs. It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
 
 \input{bibliography.tex}
 
