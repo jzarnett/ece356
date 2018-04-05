@@ -63,7 +63,7 @@ Partitioned Parallel Join~\cite{dsc}.
 \begin{enumerate}
 \item Partition one of the relations ($r$) and hand out the partitions to the processors.
 \item Send copies of the whole other relation ($s$) to every processor.
-\item Each processor computers its join (through whatever method) and the data is recombined. 
+\item Each processor computes its join (through whatever method) and the data is recombined. 
 \end{enumerate}
 
 It would be preferable to choose the smaller relation to be the one that is copied as it would obviously mean less data needs to be copied to execute this algorithm.
