@@ -75,17 +75,6 @@ The diagram below shows the asymmetric fragment-and-replicate join; the general 
 Fragment and Replicate~\cite{dsc}.
 \end{center}
 
-\paragraph{Partitioned Parallel Hash Join.} 
-Recall from much earlier the hash join: we can parallelize it. If we have $n$ processors labelled $P_{0}, P_{1}, ... P_{n}$ and we have two relations $r$ and $s$ such that they are spread out across multiple disks. Remember that we want to choose the smaller relation as the ``build'' relation, so choose $s$ as the smaller one. The algorithm is then~\cite{dsc}:
-
-\begin{enumerate}
-	\item Choose a hash function $h1()$ that takes the join attribute value of each tuple in $r$ and maps the tuples to one of the $n$ processors. The subset of tuples of $r$ that are mapped to $P_{i}$ are called $r_{i}$; the tuples of $s$ are similarly divided across the processors and the divisions are called $s_{i}$. Each processor $P_{i}$ reads the tuples of $s$ on its disk and sends them to the appropriate processor based on $h1()$.
-	\item As a processor receives the tuples from $s_{i}$, it further partitions them by a second hash function $h2()$ which is used to compute the hash join locally. This step can be done independent of other processors.
-	\item Once the tuples of $s$ have been distributed, then $r$ is distributed to the processors based on $h1()$; when it gets there it is repartitioned by $h2()$.
-	\item Each processor then executes the build and probe phases of the hash-join algorithm on the local partitions $r_{i}$ and $s_{i}$ to produce part of the final result.
-	\item As the last step, the results need to be recombined to produce the final result.
-\end{enumerate}
-
 A quick rundown on how parallelism affects operations other than selection and join~\cite{dsc}:
 \begin{itemize}
 \item \textbf{Duplicate Elimination}: Duplicates are typically removed by sorting, which itself is something we could do in parallel. Also, if we partition a relation on an attribute, each processor can easily remove duplicates of that attribute.
