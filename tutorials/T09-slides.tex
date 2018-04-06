@@ -247,6 +247,55 @@ Where do the following recovery protocols belong in the table below?
 
 
 \begin{frame}
+\frametitle{Exercise 9-6 Solution (1/2)}
+
+Recall:
+
+The transaction table contains all transactions that were active at the time of the checkpoint, the LSN of the most recent log entry for each transaction, and the status of each transaction (in progress, committing, aborting).
+
+The dirty page table holds the pages that have been modified and have not yet been written (persisted) to disk, and the first LSN that caused an update in each page.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exercise 9-6 Solution (2/2)}
+
+Transaction table:
+\begin{center}
+\begin{tabular}{ | l | c | c | }
+  \hline
+  transactionId & lastLSN & status \\
+  \hline
+  $T_1$ & 3 & commit \\
+  \hline
+  $T_2$ & 7 & in progress \\
+  \hline
+  $T_3$ & 6 & in progress \\
+  \hline
+\end{tabular}
+\end{center}
+
+Dirty page table:
+\begin{center}
+\begin{tabular}{ | l | c | }
+  \hline
+  transactionId & lastLSN \\
+  \hline
+  C & 1 \\
+  \hline
+  B & 2 \\
+  \hline
+  A & 6 \\
+  \hline
+\end{tabular}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
 \frametitle{Exercise 9-7}
   Why is it important for the ARIES protocol to look for the most recent \textit{end-checkpoint} log record as opposed to the most recent \textit{start-checkpoint} log record during its analysis phase (finding TT and DPT at last checkpoint)?
 \end{frame}
