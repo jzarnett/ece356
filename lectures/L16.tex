@@ -33,7 +33,7 @@ Suppose there is a subquery, like \texttt{SELECT name, street, city, province, p
 
 The relational algebra is not quite enough to actually carry out the operation. What we need instead is a \textit{query execution plan}\footnote{\url{https://www.youtube.com/watch?v=fQk_832EAx4}, or \url{https://www.youtube.com/watch?v=l3FcbZXn4jM}}. To build that up, each step of the plan needs annotations that specify how to evaluate the operation, including information such as what algorithm or what index to use. An algebraic operation with the associated annotations about how to get it done is called an \textit{evaluation primitive}. The sequence of these primitives forms the plan, that is, how exactly to execute the query~\cite{dsc}. 
 
-If there are multiple possible way to carry out the plan, which there very often are, then the system will need to make some assessment about which plan is the best. It is not expected that users will write optimal queries; instead the database server should choose the best approach via \textit{query optimization}. Optimization is perhaps the wrong name for this because we are not choosing the optimal approach; instead we will make some estimates about the query plans and try to choose the one that is most likely to be best. The subject of query optimization is something we will touch on now, but also come back to when we have more understanding.
+If there are multiple possible ways to carry out the plan, which there very often are, then the system will need to make some assessment about which plan is the best. It is not expected that users will write optimal queries; instead the database server should choose the best approach via \textit{query optimization}. Optimization is perhaps the wrong name for this because we are not choosing the optimal approach; instead we will make some estimates about the query plans and try to choose the one that is most likely to be best. The subject of query optimization is something we will touch on now, but also come back to when we have more understanding.
 
 \subsection*{Measures of Query Cost}
 
@@ -101,7 +101,7 @@ Until this point we just handled an equality condition, where we looked for an e
 \paragraph{Select Strategy 5: Primary Index, Comparison}
 Suppose our desired search value is $x$. If the attribute being compared is $A$, then our possibilities are (1) $A > x$ or $A \geq x$, (2) $A < x$ or $A \leq x$.
 
-For the first case, we use the tree to go to the first tuple where $A = x$ or $A > v$ respectively. Then we do a file scan from start to the end of the file. In that case, our cost estimates are like those of strategy 3.
+For the first case, we use the tree to go to the first tuple where $A > x$ or $A \geq x$ respectively. Then we do a file scan from that tuple to the end of the file. In that case, our cost estimates are like those of strategy 3.
 
 For the second case, we start at the beginning of the file and go until the first tuple with $A = x$ or $A > x$ respectively. This is more or less a linear scan that may end early. When doing this comparison, the index contributed absolutely nothing (although we could look at it, one imagines, to refine the estimate of where the reading will end).
 
