@@ -90,7 +90,7 @@ A description of the algorithm in pseudocode is in~\cite{dsc} but it it sensible
 
 The aforementioned temporary block does need to be big enough to contain all the tuples of $r_{1}$ for each value of the join attributes. That is usually not a problem since we hope not too many tuples match that particular condition. If they do, we would expect either that (1) the database server has a lot of data and therefore needs a lot of RAM and can have the space to do this; or (2) the index is on an inappropriate field (e.g., boolean value) and we should not be trying to use this algorithm. The fallback plan is then the block nested-loop strategy.
 
-Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we  seek once for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
+Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we seek once for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
 
 There is also an assumption that the relations in question are sorted on the attributes of the join. While that may be true if one of them is a primary key attribute, it is probably not the case for the other relation. As you would imagine, a join of employees and departments relies on relations employee and department and it is unlikely that employees will be sorted based on department ID or vice versa. Each will have their own primary key. 
 
