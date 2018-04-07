@@ -30,7 +30,7 @@ A visual representation of a two step sort merge from~\cite{dsc}:
 
 Sorting has a cost, of course and the cost analysis also follows from~\cite{dsc}. If the number of blocks in the relation $r$ is $b_{r}$, the first step of the algorithm requires us to read in each block of the relation and write it out again for a cost of $2b_{r}$. The number of runs decreases by $M-1$ in each merge pass, so the number of merge passes is $\lceil log_{M-1}(b_{r}/M)\rceil$. Each pass reads reads every block of the relation and writes it once, except the last pass doesn't need to write the last output to disk as it is just going to send it on elsewhere. So the total number of block transfers is $b_{r}(2\lceil log_{M-1}(b_{r}/M)\rceil + 1)$. 
 
-The total number of disk seeks is more complicated: If each run has $b_{b}$ blocks, then each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. And we need to then write the output which costs  $2\lceil b_{r}/b_{b}\rceil$ for ever merge pass, except the last, since it gets sent on. So the total number of seeks is $2\lceil b_{r}M\rceil + \lceil b_{r}/b_{b}\rceil(2 \lceil log_{M-1}(b_{r}/M)\rceil - 1)$.
+The total number of disk seeks is more complicated: If each run has $b_{b}$ blocks, then each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. And we need to then write the output which costs  $2\lceil b_{r}/b_{b}\rceil$ for every merge pass, except the last, since it gets sent on. So the total number of seeks is $2\lceil b_{r}M\rceil + \lceil b_{r}/b_{b}\rceil(2 \lceil log_{M-1}(b_{r}/M)\rceil - 1)$.
 
 What a fun equation that was! Referencing the two sep merge above, we get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks if the value of $b_{b}$ is set at 1.
 
@@ -90,7 +90,7 @@ A description of the algorithm in pseudocode is in~\cite{dsc} but it it sensible
 
 The aforementioned temporary block does need to be big enough to contain all the tuples of $r_{1}$ for each value of the join attributes. That is usually not a problem since we hope not too many tuples match that particular condition. If they do, we would expect either that (1) the database server has a lot of data and therefore needs a lot of RAM and can have the space to do this; or (2) the index is on an inappropriate field (e.g., boolean value) and we should not be trying to use this algorithm. The fallback plan is then the block nested-loop strategy.
 
-Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we one seek for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
+Once again, the best case scenario is the two seeks plus reading in each block of each relation. In the worst case, we  seek once for each block of the relation as well as a transfer for each block of each relation: $(b_{1} + b_{2})(t_{s} + t_{T})$.
 
 There is also an assumption that the relations in question are sorted on the attributes of the join. While that may be true if one of them is a primary key attribute, it is probably not the case for the other relation. As you would imagine, a join of employees and departments relies on relations employee and department and it is unlikely that employees will be sorted based on department ID or vice versa. Each will have their own primary key. 
 
