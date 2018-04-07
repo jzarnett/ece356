@@ -68,7 +68,7 @@ Deletion is a little bit similar to insertion (but a little bit complicated)~\ci
 	\item If the current node is the root and there is only one remaining child, then the child is the new root and delete the current node.
 	\item Otherwise, if the current node is less than half full then:
 		\begin{enumerate}
-			\item If the entries in the current node and that of an immediately adjacent node, then coalesce with that adjacent node and update the pointers of the parent.
+			\item If an immediately adjacent node is exactly half full, then coalesce the current node with that adjacent node and update the pointers of the parent.
 			\item Otherwise, redistribution is necessary: move an item from the adjacent node so that the current node is at least half full and update the pointers of the parent.
 		\end{enumerate}
 \end{enumerate}
