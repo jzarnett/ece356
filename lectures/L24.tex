@@ -122,7 +122,7 @@ As you might imagine, when presented with a list of instructions, a human can co
 
 \begin{enumerate}
 	\item Scan the transaction from the beginning moving one statement at a time.
-	\item If the next instruction is a read of of an item $i$ and there is no lock on $i$ already, insert an instruction to lock $i$ in shared mode before the read.
+	\item If the next instruction is a read of an item $i$ and there is no lock on $i$ already, insert an instruction to lock $i$ in shared mode before the read.
 	\item Otherwise, if the next instruction is a write of an item $i$ and the item $i$ is not already locked exclusively:
 		\begin{enumerate}
 			\item If the item is locked in shared mode, insert an instruction to upgrade the lock on $i$ to exclusive mode before the write.
