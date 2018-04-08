@@ -70,7 +70,7 @@ The validation protocol means that transactions have three phases (although read
 \begin{enumerate}
 	\item \textbf{Read Phase.} The transaction is executed, reading the value of items and storing them in temporary variables local to that transaction. Writes are also done on temporary local variables without any changes to stored data.
 	\item \textbf{Validation Phase.} A validation test is applied (described below). If the transaction passes the test, it may proceed to step 3; if it fails, then the transaction is aborted.
-	\item \textbf{Write Phase.} The temporary local variables are written written out. Obviously, read-only transactions have nothing to do in this phase and may skip it altogether.
+	\item \textbf{Write Phase.} The temporary local variables are written out. Obviously, read-only transactions have nothing to do in this phase and may skip it altogether.
 	
 \end{enumerate}
 
@@ -83,7 +83,7 @@ The validation test for the current transaction $T_{i}$, for each transaction $T
 
 To make this work out as expected we need, now, three timestamps for each transaction: one for the start of the transaction, one for the start of the validation phase, and then a final timestamp for when the transaction is finished.
 
-Validation prevents cascading rollbacks because the writes don't really take place until the validation phase has taken place. This is called \textit{optimistic concurrency control} because transactions execute optimistically, assuming that they are going to finish (and we'll sort it out if something goes wrong)~\cite{dsc}. The locking and timestamp approaches re a bit more pessimistic because they force a rollback if there is a potential for a conflict. The potential for a conflict is not a guarantee that one will occur.
+Validation prevents cascading rollbacks because the writes don't really take place until the validation phase has taken place. This is called \textit{optimistic concurrency control} because transactions execute optimistically, assuming that they are going to finish (and we'll sort it out if something goes wrong)~\cite{dsc}. The locking and timestamp approaches are a bit more pessimistic because they force a rollback if there is a potential for a conflict. The potential for a conflict is not a guarantee that one will occur.
 
 That potentially leads to an interesting discussion on the subject of whether an optimistic or pessimistic type approach is better. The general recommendation is that optimistic approaches are lower overhead and better for situations where we expect there is not much contention. We get more concurrency out of optimistic schemes, which would theoretically mean better performance.
 
