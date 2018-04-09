@@ -436,7 +436,7 @@ This must, however, be permitted by the table definition: i.e., the field must a
 
 We may also insert multiple elements into a relation based on the result of a select statement. 
 
-\texttt{INSERT INTO owner\_address ( SELECT * FROM employee\_address )}; is a 
+\texttt{INSERT INTO owner\_address ( SELECT * FROM employee\_address )}; is a minimal statement that takes the result of the selection and uses it as a set of tuples to insert.
 
 This statement leaves off the attribute specification (not recommended) and has no predicate (where clauses) so it is a rather dangerous statement to write.
 
