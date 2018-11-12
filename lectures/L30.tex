@@ -6,7 +6,7 @@
 
 \section*{Fuzzy Checkpointing}
 
-Thus far when we have talked about creating a checkpoint assumes that we stop all execution, briefly, to take the snapshot. This sort of thing is not unheard of in programs, such as the ``stop the world'' garbage collector behaviour in Java. It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take an usually long time. Therefore we would like to modify the checkpoint system to avoid having to halt all execution.
+Thus far when we have talked about creating a checkpoint assumes that we stop all execution, briefly, to take the snapshot. This sort of thing is not unheard of in programs, such as the ``stop the world'' garbage collector behaviour in Java. It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take a very long time. Therefore we would like to modify the checkpoint system to avoid having to halt all execution.
 
 The term for a checkpoint that isn't such a clean division between here and there is called a \textit{Fuzzy Checkpoint}. A fuzzy checkpoint allows updates to start once the checkpoint has been created but before the modified buffer blocks are written to disk~\cite{fds}. There's still a pause in execution while the checkpoint is created, but that should be the fast part.
 

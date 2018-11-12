@@ -195,9 +195,9 @@ Sum and average work only on numbers, but non-numeric types can be used for maxi
 
 \texttt{SELECT COUNT( salary ) FROM employee;} tells you the number of entries in the table where there is a salary. 
 
-More commonly you would see \texttt{SELECT COUNT(*)} to count the number of entries in the relation. Y
+More commonly you would see \texttt{SELECT COUNT(*)} to count the number of entries in the relation.
 
-ou could also put the primary key in the parenthesis instead of the asterisk if the asterisk gives you worries about performance nightmares.
+You could also put the primary key in the parenthesis instead of the asterisk if the asterisk gives you worries about performance nightmares.
 
 
 \end{frame}
@@ -436,7 +436,7 @@ This must, however, be permitted by the table definition: i.e., the field must a
 
 We may also insert multiple elements into a relation based on the result of a select statement. 
 
-\texttt{INSERT INTO owner\_address ( SELECT * FROM employee\_address )}; is a 
+\texttt{INSERT INTO owner\_address ( SELECT * FROM employee\_address )};
 
 This statement leaves off the attribute specification (not recommended) and has no predicate (where clauses) so it is a rather dangerous statement to write.
 

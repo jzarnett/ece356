@@ -206,9 +206,9 @@ The cost is just two seeks plus a transfer for each of the blocks of $r_{1}$ (wh
 
 In the worst case we get only one block of each relation at a time. 
 
-The inner loop then is one seek plus $b_{2}$ transfers to read it into memory. T
+The inner loop then is one seek plus $b_{2}$ transfers to read it into memory.
 
-he outer loop requires one seek and one transfer for each block of $r_{1}$, plus one run of the inner loop for each tuple in $b_{1}$. 
+The outer loop requires one seek and one transfer for each block of $r_{1}$, plus one run of the inner loop for each tuple in $b_{1}$. 
 
 So the total amount of seeks is $b_{1} + n_{1}$ and the number of blocks to be transferred is $b_{1} + n_{1} \times b_{2}$.
 

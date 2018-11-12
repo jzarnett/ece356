@@ -163,7 +163,7 @@ It is worth noting that neither two phase locking nor the simple timestamp order
 
 \begin{frame}
 \frametitle{Strict Timestamp Ordering}
-If we would like to recoverability we can have strict timestamp ordering. 
+If we would like to have recoverability we can have strict timestamp ordering.
 
 $T_{i}$ that issues a read or write of $X$ where $T\!S(T_{i}) > T\!S_{w}(X)$, then the read or write is delayed until the transaction that last wrote $X$ has committed or aborted. 
 
@@ -238,7 +238,7 @@ Validation prevents cascading rollbacks because the writes don't really take pla
 
 This is called \alert{optimistic concurrency control}: transactions assume they will finish. 
 
-The locking and timestamp approaches re a bit more pessimistic. They force a rollback if there is a risk of conflict.
+The locking and timestamp approaches are a bit more pessimistic. They force a rollback if there is a risk of conflict.
 
 \end{frame}
 
@@ -343,7 +343,7 @@ Thus, read-only transactions are differentiated from the update transactions.
 \frametitle{Update Transactions}
 Update transactions use two phase locking, with the restriction that they hold locks up until the end of the transaction. 
 
-There his only one timestamp for the transaction, which is used to both serialize the transactions and to assign the version of the data written.
+There is only one timestamp for the transaction, which is used to both serialize the transactions and to assign the version of the data written.
 
 The timestamp under this scheme is an incrementing counter rather than the actual time of the transaction. 
 
