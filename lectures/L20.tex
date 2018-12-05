@@ -101,7 +101,7 @@ Join order optimization is a big piece of the puzzle but it's not the only thing
 	\item A way of storing expressions that reduces duplication and therefore keeps down the amount of space needed to store the various queries.
 	\item A way of detecting duplicate derivations of the same expression.
 	\item A way of storing optimal subexpression evaluation plans so that we don't have to recompute them.
-	\item An algorithm that will terminate early the evaluation of a particular plan if it is already worse than the cheapest plan so far found. 
+	\item An algorithm that will terminate the evaluation of a particular plan early if it is already worse than the cheapest plan found so far.
 \end{enumerate}
 
 The details are obviously a bit complex. Most of this is beyond what we will discuss in this course, but some of those things we have already seen. For example, the algorithm earlier has got a way of storing evaluations of sub expressions so that we can re-use them. It could be modified to terminate earlier if, for example, the individual costs of \texttt{r1} or \texttt{r2} were already larger than the known stored plan.

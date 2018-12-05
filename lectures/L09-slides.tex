@@ -88,11 +88,11 @@ In the weak entity table, the primary key is formed by the key referencing the s
 \begin{frame}
 \frametitle{Weak Entities}
 
-Example: theweak entity is a list of something and the strong entity a container.
+Example: the weak entity is a list of something and the strong entity a container.
 
 Suppose you have a shipment: a single shipment is made up of items and those items are, let's say, weak entities in the example. 
 
-Then the primary key is unique identifier of the shipment plus the discriminator. 
+Then the primary key is the unique identifier of the shipment plus the discriminator. 
 
 The discriminator is an integer identifying the position in the list. 
 
@@ -403,7 +403,7 @@ There is not a bright line between the two and it may depend more on the real-li
 
 There is a wrong choice, though. 
 
-That is using the primary key of an entity as an attribute of another, instead of a relationship. 
+That is using the primary key of an entity as an attribute of another, instead of a relationship.
 
 In the E-R diagram it should be represented as a relationship.
 

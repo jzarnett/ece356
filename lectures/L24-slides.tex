@@ -51,7 +51,7 @@ You are surely familiar with locks and locking so we will not need to repeat any
 
 For performance reasons we will assume that we use reader/writer type locks. 
 
-Tthere are accordingly two modes in which a data element may be locked: shared mode, and exclusive mode. 
+There are accordingly two modes in which a data element may be locked: shared mode, and exclusive mode. 
 
 The shared mode lock is denoted by $S$ and exclusive by $X$. 
 
@@ -295,13 +295,13 @@ But that's all it gives us: not any sort of freedom from deadlocks or starvation
 \begin{frame}
 \frametitle{More Restrictive}
 
-There exist two more restrictive locking protocols. 
+There exist two more restrictive locking protocols.
 
-The fist is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed. 
+The first is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed.
 
-This guarantees that no intermediate states are ever made visible. 
+This guarantees that no intermediate states are ever made visible.
 
-The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit. 
+The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit.
 
 With rigorous two phase locking, transactions are easily serialized by commit order.
 
@@ -478,7 +478,7 @@ The other negative here is that the database server might need to lock items oth
 \begin{frame}
 \frametitle{Fix It If We Must...}
 
-The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not e very good solution given the tradeoffs. 
+The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not a very good solution given the tradeoffs.
 
 It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
 

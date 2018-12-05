@@ -387,7 +387,7 @@ We already decided it is too expensive to try out all equivalent queries, but pe
 	\item A way of storing expressions that reduces duplication and therefore keeps down the amount of space needed to store the various queries.
 	\item A way of detecting duplicate derivations of the same expression.
 	\item A way of storing optimal subexpression evaluation plans so that we don't have to recompute them.
-	\item An algorithm that will terminate early the evaluation of a particular plan if it is already worse than the cheapest plan so far found. 
+	\item An algorithm that will terminate the evaluation of a particular plan early if it is already worse than the cheapest plan found so far.
 \end{enumerate}
 
 

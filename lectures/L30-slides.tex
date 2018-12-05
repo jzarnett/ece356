@@ -23,7 +23,7 @@ Thus far when we have talked about creating a checkpoint assumes that we stop al
 
 This sort of thing is not unheard of in programs, such as the ``stop the world'' garbage collector behaviour in Java. 
 
-It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take an usually long time. 
+It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take a very long time. 
 
 Therefore we would like to modify the checkpoint system to avoid having to halt all execution.
 
@@ -395,7 +395,7 @@ Once that is done then the database is restored to a consistent state and normal
 \begin{frame}
 \frametitle{ARIES Example}
 
-et us assume we have three transactions $T_{1}, T_{2}, T_{3}$. 
+Let us assume we have three transactions $T_{1}, T_{2}, T_{3}$.
 
 $T_{1}$ updates page $C$, $T_{2}$ updates $B$ and $C$, and $T_{3}$ updates $A$. 
 
