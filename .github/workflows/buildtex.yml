@@ -1,0 +1,31 @@
+name: Build-LaTeX
+on: [push]
+jobs:
+  build-latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          set-safe-directory: '/github/workspace'
+      - id: files
+        uses: jzarnett/get-changed-files@v1.3.1
+      - run: |
+          cp lectures/compiled/* lectures
+          for changed_file in ${{ steps.files.outputs.added_modified }}; do
+            touch ${changed_file}
+          done
+      - name: Compile
+        uses: jzarnett/make-latex-action@v0.4.3
+        with:
+          working_directory: lectures
+          pushback: true
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload PDF
+        uses: actions/upload-artifact@v3
+        with:
+          name: pdfs
+          path: |
+            lectures/compiled/*
