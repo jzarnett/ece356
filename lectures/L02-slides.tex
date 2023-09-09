@@ -24,6 +24,18 @@ There is a certain level of abstraction provided by the database.
 
 Users, even application programmers, may not need to be aware of the way in which the data is stored or handled.
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/explainthat.jpg}
+\end{center}
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Data Models}
+
+
  With that in mind, there will be a \alert{data model} -- the abstraction that describes the structure of the database. 
  
  The data model is not only how the database is structured in terms of its schema, but also defines some basic operations to access and modify data.
@@ -83,6 +95,17 @@ For example, a vehicle may have only one owner.
 To speak more formally about entity relationships we will use some mathematical notation (mostly set notation). 
 
 The relational model traces its way back to a paper published in 1970 that described the database in mathematical relationships and first-order logic. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/math-lady.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Oh no, math!}
 
 The math may seem intimidating when we first examine it, but ultimately provides an unambiguous and concise way of describing how it all works.
 
@@ -235,9 +258,16 @@ Example:  (ZZZZ999, 5N1BA0ND5BNF18322)
 \begin{frame}
 \frametitle{Relationships as Tables}
 
-In the relational model the relationship representing ownership will itself be a relation (a table). 
+The relationship representing ownership will itself be a relation (a table). 
 
-It will contain two columns: one for the license plate number and one for the VIN. 
+It has two columns: one for the license plate number and one for the VIN. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Relationships as Tables}
 
 A relationship may possess attributes of its own, that is, ones that do not directly reference the attributes of other relations (tables). 
 
@@ -253,6 +283,13 @@ The relationship may have a third attribute that contains a date and time when t
 The most common of relationship is binary: it involves two entity sets 
 
 A particular table may be involved in arbitrarily many relationships. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Sometimes Two, There Are}
 
 We are not restricted to binary relationships; a relationship between multiple entities can be created. 
 
@@ -288,6 +325,10 @@ Some constraints, unfortunately, cannot be described in the data model.
 
 There is no good way to specify the format must follow the Canadian postal code format (e.g., A1B2C3). 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/therules.jpg}
+\end{center}
+
 These constraints, if they are to be enforced, must be enforced outside of the database. Such things are sometimes called business rules.
 
 
@@ -299,7 +340,11 @@ These constraints, if they are to be enforced, must be enforced outside of the d
 \begin{frame}
 \frametitle{Cardinality Constraints}
 
-Cardinality constraints express relationships in a structured way. Our choices are:
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/cardinal.jpg}
+\end{center}
+
+Cardinality constraints express relationships in a structured way. Our choices: 
 
 \begin{itemize}
 \item One to one (1:1).
@@ -328,7 +373,7 @@ A \alert{super key} is a set of one or more attributes that uniquely identify on
 
 By default, of course, the full set of attributes will be one such super key. 
 
-Some attributes on their own will be a super key, such as VIN, because VINs are unique.
+Some attributes on their own will be a super key, such as VIN; VINs are unique.
 
 Others are not: names are not unique. 
 
@@ -345,7 +390,8 @@ If a super key is as small as it can be but no smaller, then it is a minimal sup
 
 A candidate key, more formally, has no proper subset that is a super key. 
 
-So, (VIN, make, model) is a super key but not a candidate key; VIN on its own is a candidate key.
+(VIN, make, model) is a super key but not a candidate key;\\
+\quad VIN on its own is a candidate key.
 
 \end{frame}
 
@@ -372,15 +418,23 @@ The database designer will choose a \alert{primary key} from the candidates to b
 
 Soon enough we will spend some time to discuss good database design. 
 
-Typically, however, the primary key will be one field, to reduce duplication and confusion. 
+Typically, the primary key will be one field, to reduce duplication and confusion. 
 
 We've seen a little bit of that already in that we assigned addresses an ``ID'' field. 
 
-Our primary key should be something that is always present and always unique.
+A primary key should be something that is always present and always unique.
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Join Relation}
 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/join.jpg}
+\end{center}
+
+
+\end{frame}
 
 
 \begin{frame}
@@ -451,7 +505,7 @@ A foreign key is also called a referential integrity constraint.
 
 Under best circumstances, the database server will reject any attempt to modify data such that violates referential integrity (or otherwise breaks a rule). 
 
-If that is the case, then we may have some certainty that our data is in a valid state. 
+If that is so, we may have some certainty that our data is in a valid state. 
 
 If there are rules not entered into the system explicitly at the beginning it may be very painful to introduce them later if the system is in an invalid state. 
 
