@@ -22,9 +22,21 @@
 
 A \alert{query language} is a language to get information from the database. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/askaquestion.jpg}
+\end{center}
+\hfill \textit{``Excuse me, I'd just like to ask a question...''}
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Relational Query Languages}
+
 Procedural: you tell the database exactly how to get the data you want.
 
-Non-procedural: you tell the database what you want and it figures out how to deliver.
+Non-procedural: tell the database what you want; it figures out how to deliver.
 
 \end{frame}
 
@@ -33,9 +45,9 @@ Non-procedural: you tell the database what you want and it figures out how to de
 \begin{frame}
 \frametitle{Relational Query Languages}
 
-The operations we want to discuss can be applied to a single relation, or a pair of relations.
+Operations can be applied to a single relation, or a pair of relations.
 
-The result of is always a single relation. 
+The result of this is always a single relation. 
 
 This means that the output of one operation can be used as the input to another operation, allowing us to chain operations as needed. 
 
@@ -58,11 +70,22 @@ You will also need to keep in mind that because they all have input and output o
 \begin{frame}
 \frametitle{\texttt{if (sql != C)} }
 
-In a C-like language you might write a for loop that sets all elements in an array to be \texttt{-1}. 
+In a C-like language, you write a \texttt{for} loop to sets all elements in an array to \texttt{-1}. 
 
-In SQL you would write a query that says set the value to be \texttt{-1} for all entries in the relation. 
+In SQL, you write a query that sets the value to \texttt{-1} for all entries in the relation. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{\texttt{if (sql != C)} }
 
 This means that if your normal mode of thinking is C-like (procedural) then there is a mental transition that needs to be made. 
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/q-agt.png}
+\end{center}
 
 \end{frame}
 
@@ -81,6 +104,14 @@ The fundamental operations in relational algebra are:
 	\item Cartesian Product
 	\item Rename
 \end{itemize}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Relational Algebra}
+
 
 And there are three shortcuts we will use that can be created using the fundamental operations: 
 
@@ -111,7 +142,16 @@ Other query languages do exist.
 \begin{frame}
 \frametitle{This is UNIX! I know UNIX!}
 
-Reality check: the majority of students taking this course already have exposure to some form of database system, most likely a SQL relational database of some sort. 
+Reality check: the majority of students taking this course already have exposure to some form of database system. 
+
+Most likely a SQL relational database of some sort. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{This is UNIX! I know UNIX!}
 
 That means that a course where we spend a lot of time on SQL is redundant.\\
 \quad But we can't skip it either... It can still have value.
@@ -167,13 +207,17 @@ Still, the mathematical notation may be new.
 \begin{frame}
 \frametitle{Selection}
 
-The first operation we will discuss is \alert{selection}.
+The first operation we will discuss is \alert{selection}: find the tuples in the relation.
 
-Find the tuples in the relation.
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/wantthemalive.jpg}
+\end{center}
 
-As you might imagine, we need to specify what we want to find, and where we want to look for it. 
 
-Also, we can specify that we want to find only the things that match certain criteria. 
+
+We need to specify what we want to find, and where we want to look for it. 
+
+We can specify that we want to find only the things that match certain criteria. 
 
 
 \end{frame}
@@ -282,7 +326,15 @@ Either way we get back an empty relation.
 
 In SQL, the \texttt{SELECT} clause is used to, well, select tuples from the database. 
 
-The SQL command that corresponds to $\sigma( vehicle )$ is \texttt{SELECT * FROM VEHICLE;} 
+The SQL command corresponding to $\sigma( vehicle )$ is \texttt{SELECT * FROM VEHICLE;} 
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Selection in SQL}
 
 It is traditional in SQL that we write keywords in all capitals.
 
@@ -298,7 +350,7 @@ The asterisk (\texttt{*}) is needed to specify what we are going to select.
 \begin{frame}
 \frametitle{Selection in SQL}
 
-The select statement as is contains no predicates so it would return all tuples in the relation. 
+The select statement contains no predicates so it would return all tuples in the relation. 
 
 \texttt{SELECT * FROM VEHICLE WHERE make = 'Volkswagen';}
 
@@ -365,7 +417,18 @@ There are situations in real life where we want to use an attribute rather than 
 
 The second operation is \alert{projection}. 
 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/projection.jpg}
+\end{center}
+
 This takes a subset of a relation: take a relation and extract from it only the things that we asked for. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Projection}
 
 Projection cuts down the relation to the specific attributes. 
 
@@ -430,7 +493,7 @@ All tuples in the relation will appear in the output of the projection operation
 
 There are fewer tuples in this relation than there were in the original relation. 
 
-In the mathematical world a relation is a set and therefore duplicates are not permitted. 
+Remember: a relation is a set and therefore duplicates are not permitted. 
 
 The order of the tuples is not specified either. 
 
@@ -447,7 +510,7 @@ In SQL projection is done through our application of the \texttt{SELECT} clause.
 
 In the previous examples we used \texttt{*} which specified all attributes. 
 
-In production the use of \texttt{SELECT *} is discouraged.
+In production code, the use of \texttt{SELECT *} is discouraged.
 
 \end{frame}
 
