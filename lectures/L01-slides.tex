@@ -35,6 +35,16 @@ If you know how to use \texttt{git} and \LaTeX, then you can go to the URL and s
 \end{frame}
 
 
+\begin{frame}
+\frametitle{Databases}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/database-img.png}
+\end{center}
+
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Databases}
@@ -53,12 +63,12 @@ The more traditional examples relate to everyday life for a common person: banki
 
 \begin{frame}
 \frametitle{Database ``Alternatives''}
-A database is by no means the only way to store data; \\
-\quad data may be stored in any format one wishes. 
+A database is by no means the only way to store data -- any format works.
 
-Simple text files are often used to record data. 
 
-A surprising amount of the world operates on the basis of Microsoft Excel. 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/excel.jpg}
+\end{center}
 
 This is not because of the mathematical functions or intelligence of Excel but rather the gridlines. Seriously.
 
@@ -73,10 +83,20 @@ For small amounts of data it may not matter very much that the data is not struc
 
 For larger amounts of data, this quickly becomes impractical. 
 
-Some sort of structure is needed and the first approach to dealing with this was to use files.
+Some sort of structure is needed. 
 
 \end{frame}
 
+\begin{frame}
+\frametitle{First Approach}
+
+First approach: use files.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/ducttape.jpg}
+\end{center}
+
+\end{frame}
 
 
 \begin{frame}
@@ -101,6 +121,13 @@ A database management system (DBMS) is a solution to these problems.
 
 Of course, a database, if poorly designed, will not fix all of those problems. 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{The DBMS}
+
 There are three levels of abstraction we are interested in when discussing a database, from least abstraction to most:
 
 \begin{enumerate}
@@ -118,11 +145,26 @@ There are three levels of abstraction we are interested in when discussing a dat
 
 A database is typically accessed via a database server. 
 
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/client-server.png}
+\end{center}
+
 Thus we see the client-server model in use: an application program then accesses the database through some request interface and receives answers. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Tip Your Server}
 
 We can also issue statements that change the data directly.
 
 An incorrect statement can do a lot of damage and lead, perhaps, to unrecoverable data loss. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/wrong-db.jpg}
+\end{center}
 
 \end{frame}
 
@@ -226,6 +268,13 @@ The most common type of modification would be to manipulate data in it.\\
 
 This kind of change does not modify the schema, but it does modify the data.
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Making Changes}
+
 If we attempt to modify the data in a way that is not consistent with the schema (e.g., try to put ``ABC'' in an integer field), that modification will be rejected.
 
 An update can overwrite or permanently delete important data!
@@ -240,6 +289,14 @@ An update can overwrite or permanently delete important data!
 Careful schema design, as we will see, will prevent that sort of error, such as introducing a requirement that VINs be unique. 
 
 If that rule exists, the update is rejected. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Schema Design}
 
 Design cannot prevent all such errors, unfortunately. 
 
@@ -258,7 +315,9 @@ An erroneous update command could set all names to exactly that even if the sche
 
 Textbook authors sometimes tell you that schema changes will be rare, but much depends on your application. 
 
-If it is a stable application then schema changes are rare. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/lies.jpg}
+\end{center}
 
 If it is a startup company or an app with ever-expanding functionality then the the schema will change regularly. 
 
