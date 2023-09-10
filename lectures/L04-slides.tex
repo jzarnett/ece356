@@ -22,7 +22,11 @@
 
 The \alert{set difference} operation works more or less as you would expect: it takes a relation and removes from it any tuples that are in the second relation. 
 
-After taking away things we do not want, then we are left with the things we do want. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/takeheraway.jpg}
+\end{center}
+
+After taking away things we do not want, we are left with the things we do want. 
 
 Its input is therefore two relations and it produces a new relation as its output.
 
@@ -202,6 +206,10 @@ ZZZZ 123 & 2018-09-30 & 24601 & 12949 & Alice Jones & 4 Generic Place & Kenora &
 
 This is all possibilities!
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/visibleconfusion.jpg}
+\end{center}
+
 \end{frame}
 
 
@@ -222,7 +230,7 @@ The vast majority of which are garbage!
 \begin{frame}
 \frametitle{Duplicate Attribute Names}
 
-If we had two names that were the same, we would need a way to differentiate them. 
+If we had two names that were the same, we need a way to differentiate them. 
 
 Suppose that two relations, one called \texttt{book} and one called \texttt{author}, each having an attribute \texttt{id}. 
 
@@ -300,6 +308,17 @@ The \alert{rename} operation is used to both change the name of existing attribu
 
 The mathematical notation is $\rho$ (rho).
 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/asvader.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Rename}
+
  If applied to a relation, it is $\rho_{x}(E)$ where it renames the relation to $x$. 
  
 Or it can be applied to the name of the attributes: $\rho_{x(a_{1}, a_{2}, a_{3}, a_{4}...)}(E)$ which renames the relation to $x$ and then the attributes $a_{1}$...
@@ -316,7 +335,9 @@ In SQL we can use the \texttt{AS} keyword.
 That is not super interesting on a simple query to rename a relation:\\
  \texttt{SELECT * FROM vehicle AS autos;} renames the relation result to ``autos''.
  
- It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names (e.g., change \texttt{book.id} to \texttt{textbook.id}). 
+ It makes some more sense if we are going to use it in a subquery it will change the prefix for any duplicate attribute names.
+ 
+ Example: change \texttt{book.id} to \texttt{textbook.id}.
 
 
 
@@ -376,6 +397,18 @@ The mathematical symbol for this is $\leftarrow$.
 
 This is just notational convenience for the benefit of the reader. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/writedown.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Assignment}
+
 So instead of something $\sigma_{owner\_address\_id = id}( license\_plate \times owner\_address )$, we could write: 
 
 $temp \leftarrow license\_plate \times owner\_address$
@@ -410,6 +443,18 @@ The reason I discourage the use of assignment is the need to get away from the C
 The \alert{Join} operations combines cartesian product with a selection.
 
 The mathematical symbol for the \textit{natural join} is $\Join$ (bowtie). 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/bowties.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Join}
 
 It combines the cartesian product with a selection, forcing equality. 
 
@@ -495,7 +540,7 @@ Be explicit about how the join should work.
 \begin{frame}
 \frametitle{Outer Join?}
 
-If there is an inner join, there is obviously an outer join. Actually, there are three!
+If there is an inner join, there is obviously an outer join. Actually, three!
 
 Suppose we have a license plate that does not correspond to any address: 
 
@@ -555,7 +600,7 @@ We get a tuple in the result for each entry in the left (first) table, even if i
 
 For such a tuple, all attributes from the right (second) table will simply be ``null''. 
 
-If a tuple in the right table has no match in the left table, it does not appear at all.
+If a tuple in the right table has no match in the left table, it doesn't appear at all.
 
 
 \end{frame}
@@ -593,7 +638,7 @@ We get a tuple in the result for each entry in the right (second) table, even if
 
 For such a tuple, all attributes from the left (first) table will simply be ``null''. 
 
-If a tuple in the left table has no match in the right table, it does not appear at all.
+If a tuple in the left table has no match in the right table, it doesn't appear at all.
 
 
 \end{frame}
