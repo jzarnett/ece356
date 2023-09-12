@@ -23,6 +23,17 @@ We have thus far not yet learned about how to formally create relations.
 
 The SQL data definition language (DDL) looks a lot like the query language that we have used thus far.
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/make-table.jpg}
+\end{center}
+
+ \end{frame}
+ 
+ 
+\begin{frame}
+\frametitle{Data Definition}
+
+
 Specifically, our data definition language allows us to define:
 \begin{itemize}
 	\item The schema of each relation.
@@ -39,7 +50,7 @@ Specifically, our data definition language allows us to define:
 \begin{frame}
 \frametitle{SQL Standard Types}
 
-Attributes have types, and the SQL standard includes the following built in types:
+Attributes have types; the SQL standard includes the following built-in types:
 
 \begin{itemize}
 \item \textbf{char}$(n)$
@@ -122,13 +133,22 @@ The last sort of constraint that is shown in the example is the foreign key cons
 
 It is not shown in the diagram but we can override the default behaviour for what happens if the foreign key constraint is violated. 
 
-Rather than rejecting the update we could choose if we want 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/breaking-the-law.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Foreign Key Behaviour}
+
+Rather than rejecting the update we could choose if we want:
 
 (1) to cascade the changes, or 
 
 (2) setting null if the value is invalid, or 
 
-(3) setting some default value
+(3) setting some default value.
 
 \end{frame}
 
@@ -150,7 +170,11 @@ If the date calculation is consistently off by 42 days, instead of a statement t
 \begin{frame}
 \frametitle{Unique Constraint}
 
-Not shown in the example above is the unique constraint. 
+Not shown in the example above is the \textit{unique} constraint. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/only-one.jpg}
+\end{center}
 
 This requires simply that no two tuples of the relation may be equal in a particular attribute. 
 
@@ -188,7 +212,7 @@ Names can be useful though, because a well-named constraint can tell you what ha
 \begin{frame}
 \frametitle{Now, Or Later?}
 
-Another way that adding a foreign key might fail is if the target relation does not exist. 
+Another way that adding a foreign key fails? The target relation doesn't exist. 
 
 This means we would have to create relations in some order that means the foreign keys are all satisfied at the time of the creation. 
 
@@ -204,6 +228,10 @@ Fortunately, we can add them in later.
 
 In addition to adding in some integrity constraints we can change the table definition, or remove constraints. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/alter-deal.jpg}
+\end{center}
+
 The command for this is \texttt{ALTER TABLE} and we will need to specify the table to be modified as well as the change that we would like to make. 
 
 \end{frame}
@@ -215,9 +243,15 @@ If we want to add a new column to the table, then the alter table syntax require
 
 \texttt{ALTER TABLE students ADD COLUMN email VARCHAR(128);} 
 
-Subsequent to that we can make additional changes, such as adding an index, or putting in a reference constraint (which we will see how to do soon). 
+\end{frame}
 
-At the time of creation, we can set a default value or set an attribute to be not null, however. 
+\begin{frame}
+\frametitle{Adding a Column}
+
+
+Subsequent to that we can make additional changes, such as adding an index, or putting in a reference constraint.
+
+At the time of creation, we can set a default value and set not-null.
 
 Note that is is possible to add multiple elements in a single statement. 
 
@@ -230,7 +264,18 @@ The mirror operation to that is to drop a column:
 
 \texttt{ALTER TABLE students DROP COLUMN email;} 
 
-This deletes the attribute from the database and all the data that is in there, permanently. 
+This deletes the attribute from the database and all the data that is in there, \alert{permanently}. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/let-him-go.jpg}
+\end{center}
+\hfill \textit{``I let him go.''}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Dropping a Column}
+
 
 Dropping the column can fail if the column is used in a foreign key or other constraint. 
 
@@ -269,11 +314,24 @@ To add an index to a table, we (may) need a name for the index, and specify the 
 
 \texttt{CREATE INDEX idx\_lastname ON users (lastname);}. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Adding an Index}
+
+
 But we don't have to, we could use a slightly different syntax: 
 
 \texttt{ALTER TABLE users ADD INDEX (lastname);} which creates an index without needing to give it a name. 
 
 It will be given a default name, but you at least don't need to make one up. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Adding an Index}
+
 
 Management of an index is not specified in the SQL standard so there's a fair amount of difference between the various vendors.
 
@@ -285,7 +343,7 @@ Management of an index is not specified in the SQL standard so there's a fair am
 
 To remove an index, \texttt{ALTER TABLE users DROP INDEX lastname;}. 
 
-If we didn't explicitly give the index a name it is likely the name of the column itself. 
+If we didn't give the index a name it is likely the name of the column itself. 
 
 If we really have no idea what the name of an index is, we can use \texttt{SHOW INDEX FROM users;} to ask the server to give us the information we need.
 
@@ -339,7 +397,13 @@ If we wish to remove all tuples from a relation without affecting the structure 
 
 \texttt{TRUNCATE TABLE students;} would remove from the database all tuples of the students relation but would leave its definition unchanged. 
 
-Truncating the table may fail if it would violate some constraints (breaking referential integrity).
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Truncate Table}
+
+Truncating the table may fail if it would violate some constraints.
 
 Example: clearing all sessions.
 
@@ -347,11 +411,11 @@ Example: clearing all sessions.
 
 \begin{frame}
 \frametitle{Drop Table}
-If we wish to remove a relation from the schema, the syntax for this is \texttt{DROP TABLE students}. 
+To remove a relation from the schema: \texttt{DROP TABLE students}. 
 
-This deletes the table and all of its content and then the content is permanently lost. 
+This deletes the table and all of its content; the content is permanently lost. 
 
-And again, the drop operation may fail if the table to be deleted is referenced in some external constraints.
+The drop operation may fail if the table to be deleted is referenced in some external constraints.
 \end{frame}
 
 
@@ -379,6 +443,16 @@ The application calls the stored procedures and the procedures manipulate the da
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Stored Procedures}
+
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/storedprocedure.png}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Stored Procedures}
@@ -397,6 +471,11 @@ To reduce confusion and keep it simple we will focus just on procedures.
 When we want to create a procedure, we need to give it a name and define the parameters.
 
 We also make a statement about whether the procedure is deterministic. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Creating Stored Procedures}
 
 Then there is the body of the procedure.
 
@@ -446,6 +525,12 @@ In a practical sense we probably want to have multiple statements.
 When we are giving in the create procedure statement we do not want a semicolon to result in detecting the end of the statement too early.
 
 The common solution to this is to bracket the create procedure statement with statements that change the delimiter (end of statement code). 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Delimiters}
+
 
 The syntax is \texttt{DELIMITER //} which then changes, from that point on, the delimiter to be \texttt{//}. 
  
@@ -606,9 +691,19 @@ Cursors are read only, and they always advance from one item to the next and nev
 \begin{frame}
 \frametitle{Autocommit}
 
-By default, the procedure you create has autocommit set to ``on'' so any changes made are performed immediately, even if you have a multi line statement. 
+By default, the procedure you create has autocommit set to ``on''.
 
-That is not necessarily what you want; it may be that you want the whole block of statements to be processed as a single transaction (yes!). 
+Changes are performed immediately, even if you have a multi-line statement.
+
+That is not necessarily what you want! 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Autocommit}
+
+
+It may be that you want the whole block of statements to be processed as a single transaction (yes!). 
 
 If that is the case then some additional syntax should be added. At the beginning of the transaction, add \texttt{START TRANSACTION;}.
 
@@ -656,6 +751,16 @@ It is possible to define an operation in the database that will take place autom
 
 It follows a logic of ``if $x$ happens, then do $y$''. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/trapcard.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Triggers}
+
 To define a trigger we need to define:
 \begin{itemize}
 	\item An event that causes the trigger to be checked.
@@ -681,7 +786,7 @@ They can also alert humans that some condition is satisfied.
 \begin{frame}[fragile]
 \frametitle{Trigger Example}
 
-There is a ``blog'' table with blog posts (sure, why not) and an audit table that stores deleted entries so they can be recovered if we want.
+There is a ``blog'' table with blog posts and an audit table that stores deleted entries so they can be recovered if we want.
 
 {\small
 \begin{verbatim}

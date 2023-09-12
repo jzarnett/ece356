@@ -22,7 +22,19 @@
 
 String operations are complicated in any language and SQL is no exception. 
 
-We have used some string matching already so we have a pretty good idea how it works: 
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/strings.jpg}
+\end{center}
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{String Operations}
+
+
+We used some string matching already so we have a good idea how it works: 
 
 By default a string is enclosed in single-quote characters such as \texttt{'AAAA 111'}. 
 
@@ -35,7 +47,22 @@ Double quotes can also be used, especially if you need to enclose a single-quote
 \begin{frame}
 \frametitle{String Operations}
 
-The SQL standard says that string comparison with \texttt{=} is case sensitive, but MySQL (and some others) do not respect this and perform case-insensitive comparison. 
+The SQL standard says that string comparison with \texttt{=} is case sensitive.
+
+
+MySQL (and some others) do not respect this and perform case-insensitive comparison. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/table-flip.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{String Operations}
+
 
 Standards are optional, I guess? 
 
@@ -92,8 +119,8 @@ Comparisons involving null are also a hassle; saying whether 1 is ``less than'' 
 Use of ``unknown'' values in boolean operators is also complicated:
 
 \begin{itemize}
-	\item  AND: Comparing true AND unknown results in unknown; false AND unknown results in false; unknown AND unknown results in unknown.
-	\item OR: Comparing true OR unknown results in true; false OR unknown results in unknown; unknown OR unknown results in unknown.
+	\item  AND: Comparing true AND unknown results in unknown; false AND unknown results in false; unknown AND unknown results in unknown. \\[3em]
+	\item OR: Comparing true OR unknown results in true; false OR unknown results in unknown; unknown OR unknown results in unknown. \\[3em]
 	\item NOT unknown also results in unknown.
 \end{itemize}
 
@@ -108,7 +135,21 @@ If a where clause for a particular tuple evaluates to false, it is not added to 
 
 It is possible, though, to test whether something is null, or is not null. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/nospoon.jpg}
+\end{center}
+
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Testing (Not-)Nullity}
+
 As you might expect, those are \texttt{IS NULL} and \texttt{IS NOT NULL}. 
+
 
 Example: \texttt{SELECT * from VEHICLE WHERE year IS NULL;}.
 
@@ -121,11 +162,24 @@ It is correct to use the \texttt{IS NULL} or \texttt{IS NOT NULL} constructions 
 \begin{frame}
 \frametitle{Medium Double-Double}
 
-Thus far if multiple tuples are returned by a query, we get them in no specified order. 
+If multiple tuples are returned by a query, we get them in no specified order. 
 
 You may see consistent behaviour across repeated queries, but no promises are made about the order in which they are delivered. 
 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/order.jpg}
+\end{center}
+
 We can change that, if we want, through the use of an \texttt{ORDER BY} clause. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Medium Double-Double}
+
 
 We specify the attribute to sort by, and we can choose ascending (\texttt{ASC}) or descending (\texttt{DESC}). 
 
@@ -142,11 +196,31 @@ We may specify multiple attributes in the \texttt{ORDER BY} clause, such as \tex
 
 This sorts by the ``make'' attribute (descending), and if the values of two tuples are equal in that attribute, then by ``model'' (descending). 
 
-If no two tuples have the same first sort attribute then the second sort does nothing.
 
-And you can, if desired, choose divergent directions: mixing ascending and descending.
+\end{frame}
 
-The field used to order the tuples does not have to be returned in the result set you have selected.
+
+
+\begin{frame}
+\frametitle{Multiple Orders}
+
+If no two tuples have the same 1st sort attribute, the 2nd sort does nothing.
+
+You can choose divergent directions: mixing ascending and descending.
+
+The field used to order the tuples does not have to be returned in the result set.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Aggregation}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/civileng.jpg}
+\end{center}
 
 
 \end{frame}
@@ -159,6 +233,17 @@ The field used to order the tuples does not have to be returned in the result se
 Aggregate functions perform a reduction on the data. 
 
 If you are given an array of integers and asked to sum it up, that's a reduction. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/reduction.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Aggregation}
 
 The aggregate functions in SQL mostly are:
 \begin{enumerate}
@@ -211,7 +296,7 @@ One can also put \texttt{DISTINCT} in the count expression.
 
 If you wished to count the number of distinct model names, you could write \texttt{SELECT COUNT( DISTINCT make ) FROM vehicle;} which would remove duplicates.
 
-SQL does not permit combination of \texttt{DISTINCT} and \texttt{COUNT(*)}. Although it seems like this is accepted by MySQL.
+SQL does not permit combination of \texttt{DISTINCT} and \texttt{COUNT(*)}.\\ \quad Although it seems like this is accepted by MySQL.
 
 \end{frame}
 
@@ -257,7 +342,7 @@ But that is inefficient. The solution is grouping.
 \begin{frame}
 \frametitle{Restrictions on Aggregation Queries}
 
-The select statement, obviously, selects over some attributes of the relation and they must be either (1) in the group by clause or (2) aggregated in some way. 
+The select statement selects over some attributes of the relation and they must be either (1) in the group by clause or (2) aggregated in some way. 
 
 The statement \texttt{SELECT make, COUNT(model), year FROM vehicle GROUP BY make;} is invalid.
 
@@ -337,6 +422,20 @@ Instead of an explicit list, the list could be generated by a query.
 
 Suppose the ministry of transport has discovered that license plates in the range CCCC 001 through CCCC 999 were manufactured incorrectly.
 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/subquery.png}
+\end{center}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Subquery}
+
+
 The ministry can send an e-mail to everyone affected to tell them of the problem and offer a free replacement. 
 
 \texttt{SELECT name, street, city, province, postal\_code FROM owner\_address WHERE id IN (SELECT owner\_address\_id FROM license\_plate WHERE number LIKE 'CCCC\%');}
@@ -362,6 +461,18 @@ FROM owner_address WHERE id IN
 \end{verbatim}
 }
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Subquery or Join?}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/forkroad.jpg}
+\end{center}
+
+
 We can usually replace a subquery with a join query, and vice versa.
 
  In many cases it is a question of taste, but sometimes a subquery is easier to read and understand (especially if it is complex). 
@@ -376,7 +487,7 @@ We can usually replace a subquery with a join query, and vice versa.
 
 This has by no means been an exhaustive list of all the SQL keywords one could possibly use (e.g., \texttt{UNIQUE}, \texttt{WITH}, et cetera). 
 
-We may introduce additional syntax later if it is relevant to some other operation. 
+We may introduce more syntax later if it is relevant to some other operation. 
 
 For the moment, however, we have enough syntax covered to continue on to modification as well as design. 
 
@@ -392,6 +503,23 @@ Until now all the operations we have looked at the data, combined it, sliced and
 We haven't actually changed the data in any permanent way. 
 
 There are three basic operations we can do: add, remove, and change.
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Modification}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/change-hard.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Modification}
 
 Keep in mind that modification operations are transactions. 
 
@@ -465,7 +593,20 @@ A delete statement cannot be used on multiple relations at once.
 \begin{frame}
 \frametitle{DELETE}
 
-The keyword in SQL is \texttt{DELETE}\footnote{\url{https://www.youtube.com/watch?v=4ecWDo-HpbE}}. 
+The keyword in SQL is \texttt{DELETE}.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/delete.jpg}
+\end{center}
+
+\url{https://www.youtube.com/watch?v=4ecWDo-HpbE}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{DELETE}
 
 The statement \texttt{DELETE FROM license\_plate WHERE number = 'BBCC 394';} will remove from the license plate relation any and all tuples that match the predicate. 
 
@@ -551,13 +692,28 @@ There are also some rules about updating an identifier for this relation (but we
 \begin{frame}
 \frametitle{The Rich Get Richer}
 
-\texttt{UPDATE employee SET salary = salary * 1.05 WHERE id = 1;}. 
+\texttt{UPDATE employee SET salary = salary * 1.50 WHERE id = 1;}. 
 
-This takes the current value of salary for the employee with id ``1'' and increases it by 5\% (the CEO is ever so generous to the CEO, no?). 
+This takes the current value of salary for the employee with id ``1'' and increases it by 50\%.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/medal.jpg}
+\end{center}
+
+(The CEO is ever so generous to the CEO, no?)
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{The Rich Get Richer}
 
 In this case the attribute salary is both read and written. 
 
-The assignment takes place after the right hand side expression has been evaluated.
+The assignment takes place after the right side expression has been evaluated.
+
+Rather like in C: \texttt{x = x + 5;}
 
 \end{frame}
 
