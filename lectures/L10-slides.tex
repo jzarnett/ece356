@@ -20,13 +20,38 @@
 \begin{frame}
 \frametitle{Normalization}
 
-So far, we learned the syntax to create tables, and how to turn modelling diagrams into tables. 
+We learned the syntax to create tables...
+
+And how to turn modelling diagrams into tables. 
 
 The modelling diagrams give us some guidance and tell us about wrong ways to represent the data.
 
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Normalization}
+
+
 We don't yet have enough guidance as to what is correct. 
 
-If we do a good job the relation will be in a \textit{normal form}. Yes, \textit{a} normal form... there are several.
+If we do a good job the relation will be in a \alert{normal form}. \\
+\quad Yes, \alert{a} normal form... there are several.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Normalization Example}
+
+Let's start with a terrible idea. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/bad-example.jpg}
+\end{center}
+
 
 \end{frame}
 
@@ -61,7 +86,7 @@ The budget data is duplicated and risks becoming inconsistent.
 \begin{frame}
 \frametitle{Normalization Example}
 
-Our intuition may tell us this is bad, but we would like a way to express it formally. 
+Our intuition may tell us this is bad, but we want a way to express it formally. 
 
 Informally the rule is that each value of department name corresponds to at most one budget. 
 
@@ -133,6 +158,10 @@ This is an acceptable decomposition and we call it \alert{lossless} because no i
 The first attempt at this caused a loss of information.
 
 If two employees have the same name, there is the possibility of confusion, so it is called a \alert{lossy} decomposition. 
+
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/dont-do.jpg}
+\end{center}
 
 We do not perform lossy decompositions.
 
@@ -216,6 +245,10 @@ The schema is just the data model, and we care if the data in the tables conform
 
 If the data in the table meets all the real-world constraints, that instance of the relation is called a \alert{legal instance}. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/makeitlegal.png}
+\end{center}
+
 If all tables in the database are a legal instance of that relation, then we can say the instance of the database is a legal instance of the database schema.
 
 \end{frame}
@@ -268,6 +301,14 @@ We use them in the design process to identify and record the constraints that ou
 
 They will be used as a way to decide what entities should be formed and how their relationships to others appear. 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Use of Functional Dependencies}
+
+
 And when we have a set of functional dependencies, we can use them to verify if an instance of the database is legal.
 
 If the answer is yes, then we say the set of functional dependencies holds.
@@ -319,6 +360,10 @@ If a set of functional dependencies is $F$, the notation that includes all of th
 
 The \alert{Boyce-Codd Normal Form}, known as BCNF, eliminates all redundancy that can be found using functional dependencies.
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/order66.jpg}
+\end{center}
+
 A schema $R$ is in BCNF with respect to a set of functional dependencies in $F$, if, for all functional dependencies in $F^{+}$ of the form $\alpha \rightarrow \beta$ either: \\
 \quad (1) the functional dependency is trivial, or\\
 \quad (2) $\alpha$ is a superkey for schema $R$.
@@ -331,7 +376,7 @@ A schema $R$ is in BCNF with respect to a set of functional dependencies in $F$,
 \frametitle{Example Callback}
 Calling back to the earlier example where we looked at merging instructor and relation, we can see that this is not in BCNF fairly easily. 
 
-In this relationship a the department name is not a superkey because we had two entries (Sedra, Smith) that were in the same department 
+In this relationship a the department name is not a superkey because we had two entries (Sedra, Smith) that were in the same department.
 
 Those had the same budget. A department cannot have two budgets.
 
