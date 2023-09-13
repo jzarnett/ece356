@@ -26,7 +26,19 @@ This conceptual level has been useful for telling us about how to interact with 
 
 That may have been entirely review for those who have significant experience with using databases. 
 
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Physical Storage}
+
+
 Now it is time to move into the implementation side of the database. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/curtain.jpg}
+\end{center}
 
 \end{frame}
 
@@ -50,9 +62,22 @@ To actually do any of the operations we want to do in a reasonable time, the dat
 
 Eventually if the data is to be saved/updated it has to be written back to secondary storage.
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Moving Data Around}
+
 Secondary storage is generally very slow compared to primary storage. 
 
-How we store our data becomes important because it determines how many times we need to access the slow storage (and how much time we spend waiting for it). 
+\begin{center}
+	\includegraphics[width=0.45\textwidth]{images/hdd.jpg}
+\end{center}
+
+How we store our data becomes important because it determines how many times we need to access the slow storage...
+
+And how much time we spend waiting for it.
 
 \end{frame}
 
@@ -104,7 +129,14 @@ This obviously determines how we can access them. This is part of what determini
 
 Tuples of a relation as returned by a select query do not have a guaranteed ordering (unless there is an order-by clause). 
 
-That is because they could be stored in a primary organization in multiple ways. Our options could be:
+That is because they could be stored in a primary organization in multiple ways. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Ordering}
+Our options could be:
 
 \begin{enumerate}
 	\item \textbf{Heap File}
@@ -122,7 +154,7 @@ Extra work may be needed to sort!
 \begin{frame}
 \frametitle{Secondary Organization}
 
-A \alert{secondary organization} allows efficient access to the data based on other criteria. 
+A \alert{secondary organization} allows access to the data based on other criteria. 
 
 An index is an example of a secondary organization which allows us to efficiently access the data based on that criterion. 
 
@@ -155,9 +187,17 @@ Let us imagine that a relation consists entirely of fixed length fields, so we c
 
 If the sum of the fields' storage needs is, for example, 94 bytes, then we can fit 4096/94 = 43.57 records inside a block. 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Fixed Length}
+
+
 For performance reasons as well as to keep chaos down we will usually not allow a record to be split across two blocks. 
 
-Thus we would round down and say that 43 records can fit in this block (at most).
+Thus we would round down and say that 43 records can fit in this block.
 
 \end{frame}
 
@@ -166,7 +206,21 @@ Thus we would round down and say that 43 records can fit in this block (at most)
 \begin{frame}
 \frametitle{Non-Fixed Length}
 
-This assumes the relation consists entirely of fixed length fields. That is, sadly, not a safe assumption.
+This assumes the relation consists entirely of fixed length fields. 
+
+That is, sadly, not a safe assumption.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/willem.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Non-Fixed Length}
+
 
 Variable length-records that fit within a single block are the subject for another series of allocation algorithms. 
 
@@ -180,7 +234,7 @@ Finally, if there is so much data that we cannot possibly fit it into a block, w
 \begin{frame}
 \frametitle{Fixed Length}
 
-We will assume for the moment that an individual file contains only one kind of record. 
+Assume for the moment that an individual file contains only one kind of record. 
 
 If a record is of fixed length, then we can easily compute how long it will be in storage by simply summing up the length of the fields. 
 
@@ -245,9 +299,9 @@ A second problem is that it is difficult to delete a record in this structure.
 
 Of course, things get complicated when we want to insert or delete records that are not fixed length. 
 
-If we deleted record 3 in the previous example, what do we do if record 11 is bigger than record 3 was? 
+If we deleted record 3 in the previous example, what do we do if record 11 is bigger than record 3 was? Smaller? 
 
-What if it was smaller? We clearly need a different strategy for variable length records.
+We clearly need a different strategy for variable length records.
 
 
 \end{frame}
@@ -256,15 +310,24 @@ What if it was smaller? We clearly need a different strategy for variable length
 \begin{frame}
 \frametitle{Variable Length Records}
 
-As long as one field is of variable length then we have variable-length records in our file. 
+If one field is of variable length then we have variable-length records in our file. 
 
-There are some other situations that might cause record length to vary: 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/frodo.jpg}
+\end{center}
 
-Repeating fields, optional fields, or even putting multiple types of record in the same file. 
+There are some other situations that might cause record length to vary.\\
+\quad Repeating fields, optional fields, or multiple types of record in the same file. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Variable Length Records}
 
 However the variable-length records are implemented, there are two operations we need to consider: 
 
-(1) how to get records out of a block and (2) how to get particular attributes from a record.
+(1) how to get records out of a block and\\ (2) how to get particular attributes from a record.
 
 \end{frame}
 
@@ -277,6 +340,16 @@ Variable length attributes are often represented in one of two ways.
 The first is a terminator character of some sort, something not normally allowed in the domain. 
 
 The next is the attribute is prefixed with its length. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Variable Length Records}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/seenthisone.png}
+\end{center}
 
 If these options sound familiar, they should, because they are the same ways programming languages might represent a variable length string.
 
