@@ -26,6 +26,10 @@ Recall from earlier that the closure contains all the functional dependencies th
 
 That is, if $A \rightarrow B$ and $B \rightarrow C$ then it is implied that $A \rightarrow C$.
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/logical.jpg}
+\end{center}
+
 \end{frame}
 
 
@@ -52,7 +56,7 @@ Instead, we would like to use \textit{axioms}, handy rules of inference, that al
 
 \begin{frame}
 \frametitle{Armstrong's Axioms}
-The first three axions are simple enough and are called \alert{Armstrong's Axioms}:
+The first three axioms are simple enough and are called \alert{Armstrong's Axioms}:
 
 \begin{itemize}
 	\item \textbf{Reflexivity}: If $\alpha$ is a set of attributes and $\beta$ is contained within $\alpha$, then $\alpha \rightarrow \beta$ holds.
@@ -83,7 +87,12 @@ Some convenient shortcuts:
 
 The relation $r$ has the attributes $(A, B, C, G, H, I)$.
 
-The functional dependencies are: (1) $A \rightarrow B$, (2) $A \rightarrow C$, (3) $CG \rightarrow H$, (4) $CG \rightarrow I$, (5) $B \rightarrow H$.
+The functional dependencies are: \\
+\quad (1) $A \rightarrow B$, \\ 
+\quad (2) $A \rightarrow C$, \\ 
+\quad (3) $CG \rightarrow H$, \\ 
+\quad (4) $CG \rightarrow I$, \\ 
+\quad (5) $B \rightarrow H$.
 
 Based on the rules that we have, what logically implied functional dependencies can we observe?
 
@@ -164,6 +173,10 @@ Much like computing the closure of $F$, here we compute the closure of $\alpha$.
 
 Given the rules, is $A$ a superkey? Let's go through the steps. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/superkey.jpg}
+\end{center}
+
 The initial condition is that $A$ is in $\alpha^{+}$ (the result). 
 
 \end{frame}
@@ -220,6 +233,17 @@ There are three ways we can use this attribute closure algorithm:
 	\item Check if a functional dependency holds (by determining if it is in $\alpha^{+}$.
 	\item As another way to compute $F^{+}$; we just compute the $\alpha^{+}$ for each $\alpha$ and then combine them. 
 \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Canonical Cover}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/canonical.jpg}
+\end{center}
+
+Oh wait, not this one.
 
 \end{frame}
 
@@ -356,7 +380,14 @@ There is some redundancy here, though, and we could find out that $B \rightarrow
 
 Because canonical cover is about finding a minimal equivalent set, it is not necessarily that there is only one correct answer. 
 
-If there is redundancy, we may need to delete one of two attributes (but not both). 
+If there is redundancy, we may need to delete one of two attributes (not both). 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Multiple Correct Answers}
 
 Let's go back to the example from earlier with the three attributes. Our functional dependencies are still ($A \rightarrow BC, B \rightarrow C, A \rightarrow B, AB \rightarrow C$). 
 
@@ -374,6 +405,17 @@ One person might choose to delete $B$ and another person might choose to delete 
 Decomposition is breaking up a relation into two or more smaller ones. 
 
 The motivations for doing so are something we will come back to later on, but for the moment, just assume there are good reasons. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/trustme.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Lossless Decomposition}
 
 A decomposition is \alert{lossless} if no information is lost by splitting a relation $r$ into smaller relations $r_{1}$ and $r_{2}$. 
 
