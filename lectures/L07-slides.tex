@@ -23,11 +23,13 @@
 
 In a lot of books, and even in my original plan for how the lectures would be carried out, security was left to the end. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/worf.jpg}
+\end{center}
+
 Security is something you want to bake into your product and something you want to have in your mind when you are designing it. 
 
-It doesn't work to try to bolt it on afterwards. 
-
-\end{frame}
+ \end{frame}
 
 
 \begin{frame}
@@ -56,9 +58,20 @@ We will focus on how access is controlled in the database, and specifically abou
 \begin{frame}
 \frametitle{Sensitive Data}
 
-The truth is that databases contain a lot of data and some of it might be sensitive. 
+Databases contain a lot of data and some of it might be sensitive. 
 
 It might be that it is personal information, such as medical history of a patient or an employee's home address.
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/private-data.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Sensitive Data}
+
 
 It could also be that it comes from a sensitive source. 
 
@@ -73,11 +86,21 @@ The sensitive data might not be the entire tuple; it might just be a particular 
 
 Regardless of why some data is sensitive, database administrators must see to it that the security policies are enforced. 
 
-This means specifically that sensitive data is protected, but also that data is not corrupted and that access to any data is limited to those who should have access. 
+Ensure sensitive data is protected, but also that data is not corrupted and that access to any data is limited to those who should have access. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Sensitive Data}
 
 Security policies do have some tradeoff with usability.
 
 You most certainly do NOT want to find your company's name on TV having to report a data breach in which user personal data was stolen.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/data-breach.png}
+\end{center}
 
 \end{frame}
 
@@ -86,9 +109,7 @@ You most certainly do NOT want to find your company's name on TV having to repor
 \begin{frame}
 \frametitle{Access Control}
 
-We will talk about access control. 
-
-That is, what users have access to what in the database. 
+We will talk about access control: what users have access to what in the DB. 
 
 If this is configured correctly, then a lot of the security (although not all) is handled by the database server. 
 
@@ -101,11 +122,21 @@ But like seatbelts, access control doesn't work if you don't use it.
 \begin{frame}
 \frametitle{The DBA}
 
-It is the job of the database administrator, mostly, to control accounts and privileges. 
+It is the job of the database administrator to control accounts and privileges. 
 
 This is analogous to the administrator or root or superuser account in operating systems, in that they have permissions to do everything and anything... 
 
 But it is not good practice to log in using that account... 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Storing Internally}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/least-privilege.png}
+\end{center}
 
 It is better to create limited accounts and assign only the exact privileges needed to those accounts...
 
@@ -118,7 +149,7 @@ It is better to create limited accounts and assign only the exact privileges nee
 
 Database systems have accounts and user accounts have passwords. 
 
-Users are expected to log in with their names and passwords when database access is needed. 
+Users are expected to log in with names and passwords when access is needed. 
 
 The user name and password will be checked by the database server and if they match, the user is granted access. Otherwise, access denied.
 
@@ -147,6 +178,17 @@ After all, the data could be organized using the toolset we already have... rela
 When a database user has successfully logged in, they have a \alert{login session}.
 
 The session is associated with all of the interactions that user does while logged in. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/notes.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Audit Trail}
 
 This can be used to track who has logged in and who made what changes so that administrators can see the history in case something has gone wrong. 
 
@@ -210,12 +252,18 @@ Obviously, if privileges can be granted, they should also be able to be revoked.
 \begin{frame}
 \frametitle{Using Grant}
 
-Our basic syntax is as follows: \textbf{GRANT} <privilege list> ON <relation> TO <user list>; 
+Our basic syntax is: \textbf{GRANT} <privilege list> ON <relation> TO <user list>; 
 
 So if we want to allow selection for user Alice on the table for books, it is \texttt{GRANT SELECT ON books TO alice;}.
 
  We can be as specific as we want to be: \texttt{GRANT UPDATE books( price ) TO bob, charlie, donna;} 
  
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Using Grant}
  
 If we didn't specify any particular attributes, it would be possible to update all attributes of the relation. 
 
@@ -245,6 +293,10 @@ The revocation basic syntax is as follows: \textbf{REVOKE} <privilege list> ON <
 
 So if we no longer want to allow selection for user Alice on the table for books, it is \texttt{REVOKE SELECT ON books FROM alice;}. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/revoked.jpg}
+\end{center}
+
 \end{frame}
 
 
@@ -253,6 +305,18 @@ So if we no longer want to allow selection for user Alice on the table for books
 \frametitle{Why Reference?}
 
 Are  you wondering why we might ever want to grant the reference privilege?
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/cap-reference.png}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Why Reference?}
+
 
 Foreign key constraints restrict deletion and update operations on the referenced relation. 
 
@@ -286,6 +350,16 @@ Giving out permissions individually to users might be rather tedious.
 Every time a new user is added it might be necessary to run hundreds of grant statements to that new user for each table.
 
 To manage the complexity, we might want to use \alert{roles}. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Roles}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/role-model.jpg}
+\end{center}
+
 
 \end{frame}
 
@@ -411,7 +485,7 @@ But in constructing the graph we would see the problem immediately.
 
 There is the possibility to modify the revoke command to prevent cascading revocation; in that case just put \texttt{RESTRICT} at the end of the statement. 
 
-If that is the case, then if the permission has been granted to anyone else (i.e., it would cascade), the revocation will not happen and the system will return an error.
+If that is the case, then if the permission has been granted to anyone else, the revocation will not happen and the system will return an error.
 
 The opposite of that is the \texttt{CASCADE} keyword, but it's unnecessary to use it because it is the default behaviour.
 
@@ -466,6 +540,17 @@ And what can you do with this sort of access?
 	\item Execute arbitrary commands on the database (as we have seen).
 	\item Determine what type of database is in the backend so we can see what is vulnerable.
 	\item Denial of service attacks.
+	\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{SQL Injection}
+
+And what can you do with this sort of access?
+\begin{itemize}
+
 	\item Skip authentication (as above).
 	\item Learn more about the internal structure of the application (mostly because error pages are very verbose).
 	\item Privilege escalation -- gaining access to things that you should not be able to access.
@@ -484,8 +569,6 @@ This alone might not be enough, and it is better to bind the user input to param
 
 In this course we don't talk about how to write an application program that interacts with the database (we just tell the database what we want). 
 
-But do keep this in mind for the future.
-
 
 \end{frame}
 
@@ -496,11 +579,22 @@ But do keep this in mind for the future.
 
 As another small note, data encryption is another way to protect your data. 
 
-Certain sensitive data, such as passwords, must always be kept encrypted in the database. 
+Sensitive data, such as passwords, must always be encrypted in the database. 
 
 It should be encrypted with a one way hash function. 
 
-A security breach means that the passwords of your users will be leaked to the internet.
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Encryption}
+
+A security breach means that the passwords of your users will be leaked.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/dataleak.jpg}
+\end{center}
 
 Users re-use passwords between sites, so if someone's password on your service is leaked, it could very easily be someone's online banking password...
 
@@ -515,9 +609,17 @@ With that in mind, encryption keys should also not be stored in the database eit
 
 Or, if they are stored in the database, they can be stored encrypted. 
 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Encryption Keys}
+
 The standard sort of solution to this is to encrypt the key with the user's password. 
 
-You don't want to see your company named and shamed on cable TV as having leaked the personal data of your users, do you?
+You don't want to see your company named and shamed on the news as having leaked the personal data of your users, do you?
 
 
 \end{frame}

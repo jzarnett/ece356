@@ -23,7 +23,21 @@ We have talked at some length about the tools for defining the database, but we 
 
 Knowing how hammers work is not enough; we also need to understand what good architectural plans look like.
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/floorplan.jpg}
+\end{center}
+
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Good Design}
+
 The first thing we would like to watch out for is redundancy in the database and eliminate it wherever possible. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/dept.jpg}
+\end{center}
 
 In short, if there is redundant data then there is the potential for data to get out of date or be in some other inconsistent state. 
 
@@ -37,6 +51,15 @@ In short, if there is redundant data then there is the potential for data to get
 When we have some data that we would like to represent we need to turn it into some database tables. 
 
 Going directly from some ideas about what data we need to the tables is sometimes difficult and may produce undesirable results. 
+
+What do we do?
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Design with Diagrams}
 
 Instead, we should devise a plan for how it should be implemented and for that we will create diagrams. 
 
@@ -55,14 +78,35 @@ Entity-relationship diagrams have the following symbols and their meanings:
 \begin{itemize}
 	\item \textbf{Divided Rectangles} represent an entity; an entity has a title (the top part) and a list of the attributes of that entity (the bottom part).
 	\item \textbf{Diamonds} represent a relationship set.
-	\item \textbf{Undivided Rectangles} represent the attributes of a relationship set. 
+	\item \textbf{Undivided Rectangles} represent the attributes of a relationship set.
+	\end{itemize}
+
+Note also that in rectangles, attributes that are or form part of the primary key are underlined. 
+
+\end{frame} 
+
+\begin{frame}
+\frametitle{Entity-Relationship Diagrams}
+
+Entity-relationship diagrams have the following symbols and their meanings:
+
+\begin{itemize}
+	\item \textbf{Diamonds} represent a relationship set.
+	\item \textbf{Double Diamonds} represent identifying relationship sets linked to weak entity sets.
+\end{itemize}	
+
+\end{frame}
+	
+\begin{frame}
+\frametitle{Entity-Relationship Diagrams}
+
+Entity-relationship diagrams have the following symbols and their meanings:
+
+\begin{itemize}
 	\item \textbf{Lines} link entity sets to relationship sets.
 	\item \textbf{Dashed Lines} link the attributes of a relationship set to its relationship set.
 	\item \textbf{Double lines} indicate total participation of an entity in a relationship set.
-	\item \textbf{Double Diamonds} represent identifying relationship sets linked to weak entity sets.
 \end{itemize}
-
-Note also that in rectangles, attributes that are or form part of the primary key are underlined. 
 
 \end{frame}
 
@@ -120,6 +164,15 @@ Or a relation may involve many relations as in a ternary relationship:
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Weak Entity Sets}
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/strong-weak.jpg}
+\end{center}
+
+
+\end{frame}
 
 
 \begin{frame}
@@ -231,13 +284,24 @@ A weak entity can be the owner of another weak entity, or a weak entity can belo
 
 When does it make sense to have a weak entity? 
 
-You might ask yourself if a particular entity can exist independently of any other entity. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/weak.jpg}
+\end{center}
 
-In an e-commerce scenario, there are customers, who have orders composed of items. 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{When to Use Weak Entities}
+
+
+Ask if a particular entity can exist independently of any other entity. 
+
+In e-commerce, there are customers, who have orders composed of items. 
 
 Customers can exist if they don't have any orders, and items can exist if they don't appear in any orders. 
 
-In that case, we would expect that both customer and order both to be strong entities.
+We would expect that both customer and order both to be strong entities.
 
 \end{frame}
 
@@ -248,9 +312,16 @@ In that case, we would expect that both customer and order both to be strong ent
 
 Continuing this analogy, what about product reviews? 
 
-A review belongs to an item, and if it is not anonymous then it also belongs to a user. 
+A review relates to an item, and it also belongs to a user. 
 
 But a review does not make sense independent of an item, otherwise, what would it be a review of? 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Customer Reviews}
 
 In this case, review can be modelled as a weak entity and it can have one identifying set (item) or two (item and customer).
 
@@ -283,9 +354,9 @@ There must be at least SOME strong entities in the system.
 
 The mirror image operation of this is generalization, which is analogous to extracting a superclass in object-oriented programming. 
 
-In that case we would identify some common attributes between certain entities. 
+We would identify some common attributes between certain entities. 
 
-Consolidate the common attributes in a single entity from which the other ones are derived.
+Consolidate common attributes in one entity from which the others are derived.
 
 \end{frame}
 
@@ -348,9 +419,8 @@ This is called \alert{total specialization}.
 
 \begin{frame}
 \frametitle{Aggregation}
-Aggregation allows us to treat a grouping of entities that are related as a single block. 
+Aggregation allows us to treat a grouping of related entities as a single block. 
 
-This can simplify the diagram and show us a relationship between relationships. 
 
 Aggregation may not seem very useful in the context of a database schema that can be handily represented on a piece of paper.
 
@@ -382,6 +452,13 @@ But we may not want to do that if some sets of (instructor, student, project) do
 
 Now possibly the data is redundant! 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Aggregation Example}
+
 If the evaluation is a simple enough element (e.g., it is an enumeration or an integer letter grade) then it could be an attribute of the \textit{proj\_guide} relationship. 
 
 But this option is not suitable if the evaluation relation is used in some other relationship or in some other context. 
@@ -400,6 +477,13 @@ We can consider \textit{proj\_guide} a higher level entity,  leaving a binary re
 The textbook contains a couple of alternative diagram notations. 
 
 You may encounter them in the real world, but we will not invest any time discussing them as they could be confusing.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Let's Go}
 
 Given a good understanding of how diagrams are formed, we will next think about how to turn models into tables, and what makes up a good design.
 
