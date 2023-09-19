@@ -23,6 +23,16 @@ Buffering and caching are important in computing, as you surely know, since you 
 
 The most recent probably related to caching in operating systems, where you may have modelled putting things into the L1 cache of a CPU. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/pfr.png}
+\end{center}
+
+ \end{frame}
+ 
+
+\begin{frame}
+\frametitle{Buffering and Caching}
+
 It is, nevertheless, applicable to databases as well. 
 
 Where before we were concerned about whether we needed to fetch a page from memory into cache. 
@@ -39,6 +49,13 @@ As discussed, a block number is used for a read or write operation, which we can
 
 Ideally, the block is found in the buffer, because that would be faster. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Buffering and Caching}
+
+
 If the requested block is not there, we must load the block from disk, a very slow operation. 
 
 Buffers are limited in size because memory is limited and it is expensive.
@@ -50,11 +67,22 @@ Buffers are limited in size because memory is limited and it is expensive.
 \frametitle{Manage Carefully}
 As you can imagine, we must manage the buffer carefully, just as cache has to be managed to figure out what blocks should be in it. 
 
-The what will make the biggest difference is the replacement algorithm: 
+The what will make the biggest difference is the replacement algorithm.
 
-How we choose what blocks to be replaced. 
+How we choose what blocks to be replaced is critical! 
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Manage Carefully}
 
 That's a subject we know something about since we have already covered it in the operating systems course.
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/seenit.jpg}
+\end{center}
 
 There are two considerations that change the scenario a little bit from the operating system view: pinned blocks and forced output of blocks.
 
@@ -77,7 +105,7 @@ Partial state should not be written to stable storage.
 
 \alert{Forced Output} of blocks is the mirror image of that; it's writing a block out to disk even though we do not need the space it's currently taking up. 
 
-This is often done to save the data to stable storage to minimize data loss in a crash.
+This is done to save the data to stable storage to minimize data loss in a crash.
 
 \end{frame}
 
@@ -88,6 +116,13 @@ This is often done to save the data to stable storage to minimize data loss in a
 If a block has been altered in the buffer, then that change has to be written to disk at some point. 
 
 It can be done immediately when the block is changed, or it can be done when the block is evicted from the buffer. 
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Now, Or Later?}
 
 The second option means fewer main memory accesses, if a block is written to multiple times before it is sent to main memory. 
 
@@ -118,6 +153,11 @@ The least recently used (LRU) algorithm means the page that is to be replaced is
 
 You might consider time stamps and searching a list, but because there are only two operations, it need not be that complex. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Replacement Algorithms}
+
 When a page in the cache is accessed, move that page to the back of the list. 
 
 When a page is not found in cache, the page at the front of the list is removed and the new page is put at the back of the list. 
@@ -135,6 +175,17 @@ This is reasonable in an operating system, which uses the past accesses to predi
 
 The database may be capable of making predictions about what it going to happen, allowing better results. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Best Algorithm}
+
+
+
+\begin{center}
+	\includegraphics[width=0.35\textwidth]{images/predictable.jpg}
+\end{center}
+
 If the user requests an operation that will access all blocks of a record, we have a pretty good idea which ones we will want.
 
 \end{frame}
@@ -144,7 +195,16 @@ If the user requests an operation that will access all blocks of a record, we ha
 
 Suppose then that there is a request for a select query that covers all tuples of a particular relation. 
 
-Something as simple as summing up the salaries of all the employees (``what is our payroll this month?'') requires us to examine every tuple once and only once. 
+Example: sum up the salaries of all the employees. 
+
+To execute: examine every tuple once and only once. 
+
+LRU would not be the best thing here!
+
+\end{frame}
+
+\begin{frame}
+\frametitle{I Want It All!}
 
 Once all the records in a block of the employee relation have been examined and added to the sum,  it can be replaced immediately. 
 
@@ -159,9 +219,8 @@ Now imagine that we need to do a join query, such as selecting from addresses jo
 
 Now, we need to consider each block of employees for a given address.
 
-That is to day, after a block is used, it will not be needed again for a long time... 
-
-... which is the exact opposite of the assumptions for the LRU strategy to make sense. 
+That is, after a block is used, it will not be needed again for a long time...\\
+which is the opposite of the assumptions for the LRU strategy to make sense. 
 
 So what should we do instead?
 
@@ -170,6 +229,10 @@ So what should we do instead?
 \begin{frame}
 \frametitle{I Want It Most!}
 The answer is: MOST recently used (MRU). 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/mru.jpg}
+\end{center}
 
 When we are finished with a block, since we don't need it for a long time, we choose it for replacement.
 
@@ -183,7 +246,7 @@ This strategy must be combined with the pinning strategy so we do not evict from
 
 In addition to pinned blocks, there is also the forced output of blocks. 
 
-Sometimes the crash recovery subsystem insists that certain blocks be written before the requested write can take place~.
+Sometimes the crash recovery subsystem insists that certain blocks be written before the requested write can take place.
 
 That is something that we will come to in the future. 
 
@@ -196,7 +259,7 @@ Another small exception to our strategy for block replacement is index blocks.
 
 Since we will likely access the index frequently over the course of any operation, we want it to stay in memory. 
 
-That does assume our query makes use of indices of course. 
+That does assume our query makes use of indices.
 
 But the index blocks idea leads us into a discussion of the index in general.
 
@@ -206,6 +269,16 @@ But the index blocks idea leads us into a discussion of the index in general.
 \frametitle{Indexing}
 
 The concept of an index is familiar to anyone who has read a textbook or other large volume. 
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/toc.png}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Indexing}
 
 At the beginning of the book there's an index (the ``table of contents'') and this can be used to quickly get to where you want to go in the book. 
 
@@ -229,9 +302,16 @@ The index saves us from doing that... if what we are looking for has an index.
 \begin{frame}
 \frametitle{Do We Have an Index?}
 
-Not all attributes in a relation will have an index, nor should they. Creating and maintaining an index takes significant work. 
+Not all attributes in a relation will have an index, nor should they. 
+
+Creating and maintaining an index takes significant work. 
 
 And it makes sense to have an index for things we expect to search. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Do We Have an Index?}
 
 If you are searching for a book, you can search by title or author, for example.
 
@@ -253,7 +333,7 @@ It can be kept sorted which means that it is quick to binary search the index an
 \begin{frame}
 \frametitle{Types of Index}
 
-\alert{primary index} is the ordering key field of an ordered file. 
+The \alert{primary index} is the ordering key field of an ordered file. 
 
 This is the physical ordering of the file. 
 
@@ -268,7 +348,7 @@ A \alert{secondary index} is an index on any field other than the one(s) used fo
 
 The primary index is a file itself, which itself is a listing of tuples. 
 
-Each tuple contains the key and the address of the block where the data is stored. 
+Each tuple contains the key \& address of the block where the data is stored. 
 
 So if there is an address with id \texttt{24601} and it corresponds to disk block $x$ then the entry for this in the index is $<24601, x>$. 
 
@@ -295,9 +375,14 @@ Find the index entry with the largest search key value that is less than or equa
 
 Then we go to the record pointed to by that index entry and then search in that block until we find a match (or can conclude that there is no match). 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Sparse Index}
+
 This has the advantage that the index file is significantly smaller, but it will be slower to return an empty result if we do not find the value sought.
 
-It does, however, mean there are not quite as many entries that all point to the same block.
+It does mean there are not as many entries that all point to the same block.
 
 \end{frame}
 
@@ -473,7 +558,16 @@ Thus, we don't need to consider update separately.
 
 These algorithms are generally extensible to multi-level indexes as well. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/deeper.jpg}
+\end{center}
+
 Update the lowest level index and the changes will cascade upwards if needed. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Next Steps}
 
 From the point of view of the second level, the lower level is the same as if it is a file containing records. 
 
