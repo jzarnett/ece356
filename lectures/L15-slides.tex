@@ -24,6 +24,17 @@ If instead of having just a flat index file, we decide to have multiple levels?
 
 Then it means instead of performing a simple binary search on the index, we must traverse a tree. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/toomuchwork.jpg}
+\end{center}
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Multilevel Index: B$^{+}$ Trees}
+
 At first that may appear counterproductive, or at least, not helpful, since we would still have to traverse a bunch of blocks to get to the item we want to find. 
 
 That is true if we pick a binary tree, but, as the title of this section gives away, that's not what we will do.
@@ -37,6 +48,16 @@ That is true if we pick a binary tree, but, as the title of this section gives a
 Thinking back on how linear search works, we check an item to see if it matches and we reduce the remaining space to check by 1. 
 
 Not efficient. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/84years.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Multilevel Index: B$^{+}$ Trees}
 
 If we do a binary search, we reduce the remaining space to check by half of its current size. 
 
@@ -56,9 +77,16 @@ Instead of dividing the remaining space to search by 2 like in binary search, we
 
 Then we reduce the record space by a lot.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Fan Out}
+
+This is called the \alert{fan out} of the multilevel index. 
+
 Searching the multi-level index requires about $log_{fo}($ number of blocks $)$. 
 
-We would like to see the fan out is in the order of 50 - 200~\cite{fds}.
+We would like to see the fan out is in the order of 50 - 200.
 
 
 \end{frame}
@@ -70,16 +98,21 @@ If our fan out is five, for example, when we need to find some data then it mean
 
 This pattern can be repeated at multiple levels of the index, which allows us to narrow in on the target quickly.
 
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/shield-generator.jpg}
+\end{center}
+
 \end{frame}
 
 \begin{frame}
 \frametitle{ISAM}
 
-A common organization for files is called ISAM -- Indexed Sequential Access Method. 
+A common file organization is called ISAM -- Indexed Sequential Access Method. 
 
 The IBM version of this has a two level index which maps as closely as possible to the hard drive underlying structure. 
 
-MySQL has its own implementation called MyISAM but it is terrible... Please do not use it; use InnoDB instead. 
+MySQL has its own implementation called MyISAM but it is terrible...\\
+\quad Please do not use it; use InnoDB instead. 
 
 \end{frame}
 
@@ -87,9 +120,15 @@ MySQL has its own implementation called MyISAM but it is terrible... Please do n
 \frametitle{Multilevel Index}
 Let us examine a very simple approach for multi-level indexing. 
 
-The lowest (or first, or base) level consists of blocks that contain pointers to the second level. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/happenedbefore.jpg}
+\end{center}
+
+
+The lowest level consists of blocks that contain pointers to the second level. 
 
 The second level has blocks that contain pointers to the actual file. 
+
 
 
 \end{frame}
@@ -191,11 +230,18 @@ Deletion is a little bit similar to insertion (but a little bit complicated):
 \begin{frame}
 \frametitle{B+? Why not A+?}
 
-We require that leaf nodes be at least half full (unless it is the root node and there isn't much in the file). 
+We require that leaf nodes be at least half full (unless it is the root node).
 
 The last pointer in a leaf node chains to the next leaf node to allow relatively quick access if we need to move through the data sequentially. 
 
 So the last pointer is reserved and can't point directly to data. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{B+? Why not A+?}
+
 
 Non-leaf nodes are sometimes called internal nodes. 
 
@@ -214,6 +260,10 @@ Assume a node is 4~KB, we are searching a field of length 32 bytes, and pointers
 This means we can fit about 100 entries in a block. 
 
 If the file to be queried contains 1 million records, then a lookup requires only $\lceil log_{50}(1~000~000) \rceil = 4$ accesses. 
+\end{frame}
+
+\begin{frame}
+\frametitle{B$^{+}$ Example}
 
 This is the worst case, though, since the root node may be in the buffer frequently due to its frequent access. 
 
@@ -264,6 +314,12 @@ Strings can cause a bit of a small problem when it comes to B$^{+}$ Trees becaus
 
 This may cause a pretty ``tall'' tree and lose the benefits of the structure. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Small Considerations in Indexing: Strings}
+
+
 The suggested solution is called prefix compression: store a prefix of the search key value that is sufficient to distinguish the sub-trees. 
 
 Thus we could store in a non-leaf node ``Jans'' instead of ``Jansen''. 
@@ -308,6 +364,10 @@ This would mean that queries where only the name is required, or name and ID, do
 
 All discussion so far has covered the simple scenario where one index on one attribute is being used for a query. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/keys.png}
+\end{center}
+
 However, that is not the only way. Sometimes an index will be constructed on two attributes, or, we can combine two (or more) indexes on a single attribute. 
 
 
@@ -320,20 +380,25 @@ Let us imagine that we have a set of addresses.
 
 It is likely that we may want a composite key on the attributes of (city, province) since city names can be duplicated. 
 
-There is a Waterloo in Ontario and there is a Waterloo in Quebec (to say nothing of Belgium...). 
+There is a Waterloo in Ontario and also Quebec (also Belgium...). 
 
-If such an index is defined, then the search key in the tree structures will be the combination of both attributes. 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/belgium.jpg}
+	\includegraphics[width=0.4\textwidth]{images/sad-napoleon.jpg}
+\end{center}
 
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Indexes on Multiple Attributes}
+
+If such an index is defined, then the search key in the tree structures will be the combination of both attributes. 
+
+
 This is helpful in situations where we know that we are going to search on particular combinations of a certain attribute frequently. 
 
 The city-province example is just one of many where we are likely to perform queries that hit both attributes. 
-
-Another example might be first and last name.
 
 
 \end{frame}
@@ -343,7 +408,7 @@ Another example might be first and last name.
 \frametitle{Indexes on Multiple Attributes}
 It may help to think of composite keys as just sort of smashing together the two attributes (perhaps with some separator like a dash).
 
-You end up with Waterloo-ON as they key. 
+You end up with Waterloo-ON as the key. 
 
 From there it works mostly like the regular search. 
 
@@ -368,14 +433,40 @@ How would we do it?
 \begin{frame}
 \frametitle{Three Roads to Success}
 
-\begin{enumerate}
-	\item Use the index on the department to find all records for the development department. Check each record to see if the salary is above \$100~000.
-	\item Use the index on salary to find all records for employees with a salary above \$100 000. Check each record to see if the department equals development.
-	\item Use the index on the department to find all records for the development department. Use the index on salary to find all records for employees with a salary above \$100 000. Compute the intersection of the pointers to find out which ones satisfy both criteria.
-\end{enumerate}
+
+1. Use the index on the department to find all records for the development department. 
+
+Check each record to see if the salary is above \$100~000.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Three Roads to Success}
+2. Use the index on salary to find all records for employees with a salary above \$100 000. 
+
+Check each record to see if the department equals development.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Three Roads to Success}
+	3. Use the index on the department to find all records for the development department. 
+	
+	Use the index on salary to find all records for employees with a salary above \$100 000. 
+	
+	Compute the intersection of the pointers to find out which ones satisfy both criteria.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Three Roads to Success}
 
 Which approach is best?
 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/threeways.png}
+\end{center}
 
 \end{frame}
 
