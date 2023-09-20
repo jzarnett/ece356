@@ -20,6 +20,18 @@
 
 Imagine you are given an assignment in a course and you are going to do it now. 
 
+As the requester (professor):\\
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/dontcarehow.jpg}
+\end{center}
+
+But you need to know how to do it, right?
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Query Processing}
+
 To get the assignment done, you will probably: 
 
 (1) Figure out what exactly the assignment is asking you to do; 
@@ -50,6 +62,14 @@ First, the scanner needs to figure out what are keywords and attribute names and
 
 The parser will then check that it is valid SQL syntax. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/syntaxerror.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Steps Breakdown}
 If so, then it will be validated to make sure that the attribute and relation names are valid inside the schema of the database being queried. 
 
 Then this query is turned into a query tree or graph, which is used to devise the execution strategy. 
@@ -94,6 +114,13 @@ A query like \texttt{SELECT salary FROM employee WHERE salary > 100000;} consist
 
 The relational algebra for this expression is pretty easy to work out, and it gives us two possibilities. 
 
+What are they?
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Select Your Choice}
+
 We can select all tuples where salary is more than 100~000 and then perform a projection of the salary field of that result. 
 
 The alternative is to do the projection of salary first and then perform the selection on the cut-down intermediate relation.
@@ -118,6 +145,17 @@ If there are multiple query blocks, then they do not have to follow the same str
 
 
 What we need instead is a \alert{query execution plan}.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/blackadder.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Make the Plan}
+
 
 To build that up, each step of the plan needs annotations that specify how to evaluate the operation. 
 
@@ -158,6 +196,10 @@ If you do this for all routes, you can see which route is the best.
 
 If there is a crash on the highway, traffic really sucks and your decision that taking this particular route would be fastest turns out to be wrong. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/traffic.jpg}
+\end{center}
+
 Short of being able to see into the future, this is more or less inevitable.
 
 Estimates are just informed opinions and things may be worse (or better) than expected. 
@@ -189,9 +231,16 @@ For a hard drive, transfer times are on the order of 0.1~ms and seek times are a
 \begin{frame}
 \frametitle{Estimation Strategy Caveats}
 
-Sometimes writes can be twice as expensive as reads. This is because the disk subsystem may read back the written data to check that the write succeeded, but we will assume that does not happen here. 
+Sometimes writes can be twice as expensive as reads. 
+
+This is because the disk subsystem may read back the written data to check that the write succeeded, but we will assume that does not happen here. 
 
 Similarly, at this first level we are not including the amount of time it takes to write a final result back. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Estimation Strategy Caveats}
 
 We will imagine the worst case scenario, that is, only one block per relation can be in memory at a time. 
 
@@ -216,18 +265,28 @@ Unfortunately, there are several factors that will potentially affect the actual
 
 You can probably think of various other factors.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Estimates of Work}
+
 Remember: the lowest cost approach is not necessarily the fastest!
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/terminal.jpg}
+\end{center}
+
+But the shorter connection time for the next flight cost \$50 more...
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Select Operation}
 
-The first example we will see about estimating cost is how to do a select operation. 
+The first example for estimating cost: how to do a select operation. 
 
 We will consider a lot of possibilities, some of which are obviously sub-optimal. 
 
-We should consider all options... 
 
 Sometimes, a seemingly-terrible algorithm is our last resort, such as if we have to find something that has no index, we perform a linear search.
 
@@ -238,9 +297,9 @@ Sometimes, a seemingly-terrible algorithm is our last resort, such as if we have
 \begin{frame}
 \frametitle{Selection Scenario}
 
-We will assume that we have a select-from-where condition to be evaluated on a single relation.  
+We have a select-from-where condition to be evaluated on a single relation.  
 
-The relation itself is stored in a single file and this file contains only records of that single relation. 
+The relation is stored in 1 file and the file contains only records of that relation. 
 
 The first approach is general and really needs no introduction.
 
@@ -267,7 +326,7 @@ This will work as a last resort if we have no other choice.
 
 We would much prefer, if we can, to use an index of some sort.
 
-If we have that, we can access a lot fewer records than we would otherwise need to. 
+If we have that, we can access fewer records than we would otherwise need to. 
 
 The following group of strategies are applicable when the where condition contains an equality test, e.g., ``province equals Ontario''.
 
@@ -356,7 +415,9 @@ We will continue to assume that the file index is organized in a B$^{+}$ tree.
 
 Suppose our desired search value is $x$. 
 
-If the attribute being compared is $A$, then our possibilities are (1) $A > x$ or $A \geq x$, (2) $A < x$ or $A \leq x$.
+If the attribute being compared is $A$, then our possibilities are\\
+\quad (1) $A > x$ or $A \geq x$,\\
+\quad (2) $A < x$ or $A \leq x$.
 
 For the first case, we use the tree to go to the first tuple where $A = x$ or $A > v$ respectively. 
 
@@ -379,7 +440,7 @@ When doing this comparison, the index contributed absolutely nothing.
 \begin{frame}
 \frametitle{Select Strategy 6: Secondary Index, Comparison}
 
-This case very much resembles the case of strategy 4, equality on a non-key field. 
+This case resembles the case of strategy 4, equality on a non-key field. 
 
 Fetching the actual data is a pain, of course. 
 
@@ -393,13 +454,13 @@ It depends on the value of $k$, how many records will match.
 \begin{frame}
 \frametitle{Complex Selection}
 
-The previous strategies, aside from linear search, assumed the predicate had one clause. 
+Previous strategies, except linear search, assumed the predicate had 1 clause. 
 
-Before we start, a quick review of the ideas of conjunction, disjunction, and negation (from basic algebra).
+Before we start, a review of the ideas of conjunction, disjunction, and negation.
 
-A conjunctive selection involves the logical and operation.
+A conjunctive selection involves the logical AND operation.
 
-A disjunctive selection involves the logical or operation. 
+A disjunctive selection involves the logical OR operation. 
 
 A negation selection $\sigma_{\neg \theta}(r)$ is the set of all tuples of $r$ for which the condition $\theta$ evaluates to false. 
 
@@ -445,11 +506,11 @@ If there are some conditions that form the composite index and others that do no
 
 \begin{frame}
 \frametitle{Select Strategy 9: Conjunction, Intersection}
-Another way we could do the conjunction would be to look at the record pointers. 
+Another way we could do the conjunction: look at the record pointers. 
 
 We get a list of record pointers for each simple condition that has an index and compute the intersection of these. 
 
-If there are any conditions on attributes without an index, then we must further look through the results to throw away those records that don't meet all conditions.
+If there are any conditions on attributes without an index, then we must look through the results to throw away those records that don't meet all conditions.
 
 The cost here is the sum of the cost of looking through each index, plus the cost of loading the records after the intersection is computed. 
 
@@ -461,7 +522,7 @@ Much like the conjunction strategy, we get a list of record pointers for each of
 
 Instead of computing the intersection, we find the union (no duplicates) of these pointers. 
 
-Again, sorting may make the disk reads closer and speed things along significantly.
+Sorting may make the disk reads closer and speed things along.
 
 If there is at least one condition that does not have an index, then it is makes sense to just linear scan since we are going to have to do that anyway.
 
