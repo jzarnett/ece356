@@ -24,6 +24,19 @@ NoSQL, well, originally ``non SQL'' or ``non relational'', is about data storage
 
 Now it's ``Not Only SQL'', because some of the alternative databases can operate on SQL or SQL-like query languages (but that's sort of not what they are for). 
 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/denormalize.jpg}
+\end{center}
+
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{NoSQL}
+
+
 I sometimes have Fourth Year Design Project groups come to me and tell me they want to use NoSQL on a single user app that runs occasionally... 
 
 Does that make sense?
@@ -38,7 +51,19 @@ Does that make sense?
 
 If you ask them their motivations, such students will say something along the lines of, NoSQL is faster. 
 
-As we will soon see, it can be but nothing comes for free. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/serious.png}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{NoSQL = Speed!}
+
+As we will soon see, it can be... but nothing comes for free. 
 
 In any case, how much any particular app needs speed is an open question. Speed isn't everything. 
 
@@ -105,9 +130,24 @@ There exists an iron triangle in distributed data stores.
 \begin{frame}
 \frametitle{CAP Theorem}
 
-Instead of 2 out of 3, it's choose either availability or consistency (maybe the descriptions gave you this hint). 
+Instead of 2 out of 3, it's choose either availability or consistency.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/downtime.jpg}
+\end{center}
 
 This is because there \textit{will} be network failures or at least delays, meaning there is partitioning, even if it is temporary. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{CAP Theorem}
+
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/cap.jpg}
+\end{center}
 
 If reads can happen before all nodes are updated, we get availability. 
 
@@ -149,11 +189,11 @@ One copy of the book is as good as any other, isn't it?
 
 I was looking to buy a shirt and sweater, both of which were listed on the website as being available in the colours and sizes that I wanted. 
 
-After suffering through the insufferable checkout process I received an e-mail telling me that I had successfully placed the order and the items would be shipped. 
+After suffering through the checkout process I received an e-mail telling me that I had successfully placed the order and the items would be shipped. 
 
 Then, a while later I received another e-mail telling me they don't actually have the items and can't ship them and they're really sorry. 
 
-And their website still showed the items as available. This is slightly embarrassing for the company, but it does happen.
+And their website still showed the items as available. 
 
 \end{frame}
 
@@ -177,11 +217,29 @@ The first two points are fairly obvious, but the new part in that acronym is \al
 
 This is to say that eventually, after some nontrivial period of time, the data will reach consistency. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/eventually.png}
+\end{center}
+
 If someone posts something you may not see it eventually as it could take some time for that thing to propagate its way through the network to you. 
 
-Now, the problem is you might never catch up, because the content is constantly being updated. People are posting new pictures of their dinner at every moment. 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Eventual Consistency}
+
+
+Now, the problem is you might never catch up, because the content is constantly being updated. 
+
+People are posting new pictures of their dinner at every moment. 
 
 It is not super important whether or not you learn whether your friend Terry ate that artisan heirloom radicchio.
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/eidti.jpg}
+\end{center}
 
 \end{frame}
 
@@ -190,13 +248,24 @@ It is not super important whether or not you learn whether your friend Terry ate
 \begin{frame}
 \frametitle{Freeeeeeeedooooooommmmmm!}
 
-As a developer it can feel like freedom to no longer have to worry about designing database tables and worrying about adding columns and thinking about foreign keys. 
+As a developer it can feel like freedom to no longer have to worry about designing database tables, adding columns, and thinking about foreign keys. 
 
 The rules are just slowing you down! 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/breakrules.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Freeeeeeeedooooooommmmmm!}
+
 Making you do a bunch of boring stuff, forcing you to talk with a database administrator about adding a column here or changing a data representation... 
 
-Although there are probably some rules in organizations that you can do without, there are reasons for some of them that are valid and should probably be observed.
+Although there are probably some rules in organizations that you can do without, there are reasons for some of them that are valid...
 
 \end{frame}
 
@@ -210,6 +279,14 @@ Structure standardizes data representation where possible.
 If there is an address table in the database and different developers want to use it in different scenarios, they can re-use the already existing structure.
 
 You don't want three different address types, all subtly different.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Structure Can Be Good}
+
 
 Moreover, if you make some changes in a SQL database to a table you will need to think about the migration strategy.
 
@@ -225,6 +302,13 @@ In a relational database you're kind of forced to do this...
 Some of the NoSQL databases get speed by deleting some features that were very important throughout the course. 
 
 There may be no joins. Really, no joins at all. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Go Faster Through Lack of Safety}
 
 And why would there be if there are no tables and therefore no good ways to relate two data elements together? 
 
@@ -258,6 +342,14 @@ Some NoSQL implementations do allow joins but they don't work quite like your ty
 
 You can, if you want, write your own sort of join, where you do some sequential lookup: first look up record $x$ which contains a way to find related record $y$...
 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{NoSQL with Joins}
+
  This might be acceptable for finding an individual record, but to do so for 10~000 records is tedious. 
  
  So perhaps you need to write your own join? At least we learned how those algorithms work... 
@@ -289,7 +381,7 @@ We'll consider, later, a case study about the Oracle NoSQL product that has some
 
 As you might already know, the variants of SQL that different databases speak can cause some problems.
 
-You can't necessarily take a query written for MySQL and use it in a Postgres database. 
+You can't necessarily take a query written for MySQL and use it in Postgres.
 
 It might be necessary to convert it because keywords are a little different.
 
@@ -306,9 +398,20 @@ There's no simple, single answer to this because there are a lot of options.
 
 We'll look at: key-value databases, document databases, column databases, and graph databases.
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Types of NoSQL Database}
+
 NoSQL tools do not have any sort of standardized language between them.
 
-Every vendor has their own idea about what is best and how things should work. 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/saru.jpg}
+\end{center}
+
+Every vendor has their own idea about what's best and how things should work. 
 
 
 \end{frame}
@@ -349,6 +452,13 @@ This scales well, since the only operations are get (read) and put (write).
 
 There are no complexities related to searching, foreign keys, transaction management...
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Key-Value Databases}
+
 Eventual consistency can be achieved when every location, sooner or later, gets the update of the data. 
 
 Put operations simply overwrite old data, and data elements (values) have no formal relationships to one another. 
@@ -369,9 +479,16 @@ Remember that you can ask a relational database to sum a certain thing for you: 
 
 This is a select with aggregation and we can load just the data we need and crush it down to a single number (385~000) and transmit that result. 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Key-Value Databases}
+
 In a key-value store you have to do your own addition in application code. 
 
-That itself isn't necessarily bad but your performance might be very slow if you have to load a large amount of data from the database and send it to the application. 
+That itself isn't necessarily bad but your performance might be slow if you have to load a large amount of data from the database and send it to the application. 
 
 \end{frame}
 
@@ -381,9 +498,15 @@ That itself isn't necessarily bad but your performance might be very slow if you
 
 Column databases are pretty much like key-value pairs with a slight bit of structure tacked on to the value part of it. 
 
-In this case, a value has three components: name, the content (``value''), and a timestamp. 
+A value has three components: name, the content (``value''), and a timestamp. 
 
-The name is really the key; obviously, the value and timestamp are stored under that key.
+The name is really the key; the value and timestamp are stored under that key.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Column Databases}
 
  A column is then a logical view that encompasses, key, value, and timestamp all together. 
  
@@ -399,6 +522,16 @@ The name is really the key; obviously, the value and timestamp are stored under 
 A document oriented store is somewhat more structured than the simple key-value pair. 
 
 Instead of just treating the value in they key-value pair as an opaque series of bytes, we might analyze it and do something with it. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Document Database}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/folders.jpg}
+\end{center}
 
 Based on the structure of the value, as a document, it might be possible to extract some (meta)data about the document. 
 
@@ -417,7 +550,7 @@ The documents themselves don't need to be formatted in any specific way.
 
 The basic operations are generally defined as CRUD:
 
-\textbf{C}reate (insert, put), \textbf{R}etrieval (query, search, get), \textbf{U}pdate (edit), \textbf{D}elete (remove).
+\textbf{C}reate (insert/put), \textbf{R}etrieve (query/search/get), \textbf{U}pdate (edit), \textbf{D}elete (remove).
 
 \end{frame}
 
@@ -432,6 +565,17 @@ If we wanted to search for documents with a certain element, e.g., find all docu
 
 Having done the meta-analysis we could (maybe) find them relatively quickly if we have an index.
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Document Database}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/undertaker.jpg}
+\end{center}
+
 Still, this can be a ``Data Grave...''
 
 \end{frame}
@@ -441,11 +585,21 @@ Still, this can be a ``Data Grave...''
 \begin{frame}
 \frametitle{Graph Databases}
 
-In a graph database, a graph structure is used: there are nodes, edges, and properties. 
+In a graph database, a graph structure is used.
+
+There are nodes, edges, and properties. 
 
 Nodes and edges are first-class entities. 
 
-What we would normally consider an entity in a relational database is modelled as a node. 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Graph Databases}
+
+
+What we consider an entity in a relational database is modelled as a node. 
 
 What is modelled as a relationship in the relational database is an edge. 
 
@@ -479,6 +633,10 @@ But we don't necessarily give up the idea of formal relationships between entiti
 
 The Oracle NoSQL database provides something like transactions that are a practical approximation of ACID compliance. 
 
+\begin{center}
+	\includegraphics[width=0.35\textwidth]{images/oracle.jpg}
+\end{center}
+
 Instead of a simple key-value structure, Oracle divides the key into major and minor parts. 
 
 The major is an object identifier and the minor parts are the ``fields'' in the record. 
@@ -508,7 +666,7 @@ This makes it suitable for certain types of work: updating a user's personal inf
 
 It is not suitable, however, for a standard bank example of transferring money from account $A$ to $B$. 
 
-Because the transaction hits two separate accounts, under two separate major keys. 
+Because the transaction hits 2 separate accounts under 2 separate major keys. 
 
 \end{frame}
 
@@ -565,6 +723,14 @@ NoSQL has lots of advantages and disadvantages when compared to standard relatio
 If used in the right situation, it can speed operations and provide a lot of scalability and availability.
 
  If used in the wrong situation it either wrecks your application/company, causes endless headaches, or forces you to reinvent the wheel.
+ 
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{NoSQL: Conclusions}
+
  
  Start with the idea of using a relational database, and consider carefully what you would be losing if you went to a NoSQL approach.
  

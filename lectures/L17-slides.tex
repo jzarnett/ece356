@@ -24,9 +24,22 @@ The next thing we would like to do is expand to more advanced queries, specifica
 
 Join queries will be cripplingly inefficient if they operate on unsorted data. 
 
+ \end{frame}
+ 
+ 
+
+\begin{frame}
+\frametitle{Query Processing}
+
+
+
 Remember that in a join, we need to match a tuple of the left hand relation with a tuple of the right hand relation. 
 
 If for every tuple we had to linearly search the right hand relation, that would be painful. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/sorting.jpg}
+\end{center}
 
 One way or another, we have to sort one of the relations to make this work.
 
@@ -68,6 +81,11 @@ If $N$ is less than $M-1$ we have the simpler case and we can complete the merge
 
 In that case we load the first block of $R_{i}$ for each $i$ from $0$ to $N-1$ into memory and we allocate an output block. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{External Sort-Merge}
+
 Then we choose the first tuple from the all of the blocks, and move it into the output block. 
 
 If a block $R_{i}$ becomes empty, replace it with the next block in that run (if any).
@@ -82,11 +100,11 @@ If a block $R_{i}$ becomes empty, replace it with the next block in that run (if
 \begin{frame}
 \frametitle{We're gonna need a bigger boat...}
 
-If $N$ is large enough that we cannot do it all in a single pass, we will do multiple passes. 
+If $N$ is large enough that we can't do it all in one pass, we need multiple passes. 
 
 We will combine the first $M-1$ runs into a temporary file, and then the next (up to) $M-1$ runs, and so on, until the last run has been processed. 
 
-Then we repeat the process using the larger runs as input until we produce the sorted file.
+Repeat the process with the larger runs as input until we produce the sorted file.
 
 \end{frame}
 
