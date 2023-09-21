@@ -26,7 +26,18 @@ The database is stored on multiple computers and almost always at multiple physi
 
  The systems that make up the distributed database need not be the same. 
  
+  \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Distributed Databases}
+
 This is probably out of necessity: you can't order a computer with 4000 CPUs and 64~000 GB of RAM and 2000 hard drives, right? 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/nomoon.jpg}
+\end{center}
  
 But you can order a thousand computers that each have 4 CPUS, that have 64~GB of RAM and 2 hard drives.
 
@@ -36,9 +47,19 @@ But you can order a thousand computers that each have 4 CPUS, that have 64~GB of
 \begin{frame}
 \frametitle{Transparency}
 
-When designing a distributed system one of the primary concerns is \alert{transparency}. 
+When designing a distributed system one of the main concerns is \alert{transparency}. 
 
 What we want is for it to be imperceptible to the users that the database is distributed.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/samepicture.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Transparency}
 
 Types of transparency: 
 \begin{itemize}
@@ -59,7 +80,7 @@ Fragmentation is splitting up data.
 
 A relation $r$ can be divided up into arbitrarily many fragments $r_{1}, r_{2}, ..., r_{n}$.
 
-Combining all the fragments again will allow reconstruction of the original relation $r$. 
+Combining all the fragments allows reconstruction of the original relation $r$. 
 
 
 \end{frame}
@@ -79,9 +100,9 @@ It does not mean that the tuples are inaccessible at other locations; they are j
 \begin{frame}
 \frametitle{Horizontal Fragmentation}
 
-In relational algebra representation, a fragment $r_{i}$ is created by a selection with a predicate. 
+In relational algebra, a fragment $r_{i}$ is created by a selection with a predicate. 
 
-So a fragment $r_{i} = \sigma_{P_{i}}(r)$ and the entire relation can be reconstructed as a union of the sets. 
+So a fragment is $r_{i} = \sigma_{P_{i}}(r)$; the entire relation can be reconstructed as a union of the sets. 
 
 This works only if the sets are disjoint -- no tuples are duplicated. 
 
@@ -93,11 +114,11 @@ This works only if the sets are disjoint -- no tuples are duplicated.
 
 \alert{Derived horizontal fragmentation} applies the partitioning of a relation rules to some secondary tables that are related by a foreign key. 
 
-Imagine you have a relation that is a shipment and there is a related relation of containers. 
+You have a relation that is a shipment and there is a related relation of containers. 
 
 Some number of containers are associated with the shipment.
 
-If a shipment is at location 1, its associated containers should also be at that location.
+If a shipment is at location 1, its associated containers should also be there.
 
 \end{frame}
 
@@ -128,6 +149,15 @@ Recombination of the relation is accomplished by performing the union and outer 
 \begin{frame}
 \frametitle{Replication}
 
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/roybatty.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Replication}
 
 Replication is making copies of the data available in different database servers. 
 
@@ -158,7 +188,7 @@ The system can continue to function as long as any one location is operational.
 
 It can improve performance of retrieval of data since we can always query the closest database. 
 
-Unfortunately it means much more work on an update since all locations have to be updated.
+Unfortunately, it means much more work on an update since all locations have to be updated.
 
 \end{frame}
 
@@ -177,6 +207,12 @@ A special case is when mobile workers go out into the field in areas where there
 Wherever data is replicated, we can choose one of the replicas to be the primary copy.
 
 In databases under heavy load, replication is one of the keys to improving performance. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Replication}
 
 A very common strategy is for reads to be done on replicas. 
 
@@ -226,7 +262,7 @@ But it does mean that we no longer are constrained by the single site.
 \begin{frame}
 \frametitle{Primary Copy}
 
-A simple approach to distributed locking is using the primary copy as controlling. 
+A simple approach to distributed locking: the primary copy as controlling. 
 
 If a site wishes to lock an item, it has to acquire the lock at the primary site. 
 
