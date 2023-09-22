@@ -16,7 +16,7 @@ notebook:
 	@pdflatex -interaction=batchmode notebook.tex > /dev/null;
 
 clean:
-	rm -f *~ *.aux *.log *.bbl *.blg *.brf *.cb *.ind *.idx *.ilg *.pdfsync *.xdv  \
+	rm -f *~ *.aux *.log *.bbl *.blg *.brf *.cb *.ind *.idx *.ilg *.pdfsync *.xdv  *.synctex.gz \
 		*.inx *.ps *.dvi *.toc *.out *.nav *.snm *.d *.bak _region* *.vrb *.fls *.fdb_latexmk \
 		makefileDependencies/*
 	rm -rf auto

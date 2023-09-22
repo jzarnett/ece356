@@ -25,9 +25,25 @@ Bad things will happen and it matters how we deal with them.
 
 There are stories of tech companies who have a process specifically designed to cause random things to fail and crash... 
 
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/chaosmonkey.png}
+\end{center}
+
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Anything that can go wrong...}
+
 That's extreme, but we need to be prepared. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/redalert.jpg}
+\end{center}
+
 There will be failures: power failures, hardware failures, user failures...
+
+
 
 
 \end{frame}
@@ -38,10 +54,10 @@ There will be failures: power failures, hardware failures, user failures...
 There are a few different types of failure that are worthy of our consideration:
 
 \begin{itemize}
-	\item \textbf{Transaction Failure: Logical Error.} 
-	\item \textbf{Transaction Failure: System Error.} 
-	\item \textbf{System Crash.} 
-	\item \textbf{Disk Failure.} 
+	\item \textbf{Transaction Failure: Logical Error} 
+	\item \textbf{Transaction Failure: System Error} 
+	\item \textbf{System Crash} 
+	\item \textbf{Disk Failure} 
 \end{itemize}
 
 \end{frame}
@@ -51,7 +67,17 @@ There are a few different types of failure that are worthy of our consideration:
 
 As is typical in a lot of programs, an error or bug brings the system down immediately, which is called ``fail-stop'' behaviour. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/shutdown.jpg}
+\end{center}
+
 This is normal behaviour in a C program, for example, but it may be even more important in the database. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Fail Stop Behaviour}
+
 
 The fail-stop assumption is important because it prevents (or minimizes) corruption of the data. 
 
@@ -67,9 +93,13 @@ Fail-stop prevents this risk, even if it is sometimes frustrating.
 
 If something goes wrong, we want to ``recover'' from that failure. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/restart.jpg}
+\end{center}
+
 Recovery is this sense is, as you will recall, putting the database back into a consistent state. 
 
-For that to work we need either to have some sort of log, or some sort of backup.
+For that to work we need either some sort of log, or some sort of backup.
 
 \end{frame}
 
@@ -81,7 +111,18 @@ If things are really bad the recovery method is to restore from backups.
 
 We copy the data from the backup storage media and then restart the database server with that restored data set. 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{You Did Take Backups, Right?}
+
+
 Any data that has changed between the time of the backup and the time of the crash is quite simply lost. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/nobackup.jpg}
+\end{center}
 
 So it is important for backups to be current...
 
@@ -97,7 +138,13 @@ Supposing things are not so bad then we can use the log to try to recover.
 
 Particular operations are undone or re-done to restore the consistent database. 
 
-Looking at the log tells us what transactions were in progress, and based on what information is available, we can choose to carry out the changes or roll them back. 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{You Did Take Backups, Right?}
+
+Looking at the log tells us what transactions were in progress, and based on what information is available, we can carry out the changes or roll them back. 
 
 For a transaction that was not complete, roll it back.
 
@@ -127,6 +174,11 @@ The opposite approach is \alert{immediate updates}.
 
 The data is updated before the commit but still the operations are recorded in persistent storage before they take place. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Immediate Updates}
+
 If the failure occurs before we get to the commit point, then we have to roll back and undo some changes of the transaction. 
 
 It turns out that under this algorithm both undo and redo operations may be necessary so it is called the ``undo / redo'' algorithm. 
@@ -146,7 +198,13 @@ We should remember that recovery can fail too.
 
 That means the undo and redo operations need to be \alert{idempotent}.
 
-Executing the operation multiple times has the same effect as executing it just once. 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Failure Recovery Failure}
+
+Executing the operation multiple times has the same effect as executing it once. 
 
 If we need to restart the recovery process, we don't want inconsistent results. 
 
@@ -158,7 +216,7 @@ An operation like \texttt{x = 7;} is idempotent because that operation can be re
 \begin{frame}
 \frametitle{Failure Recovery Failure}
 
-On the contrary, \texttt{x++} is not idempotent because every execution changes the value of \texttt{x}.
+On the contrary, \texttt{x++} is not idempotent; every execution changes the value of \texttt{x}.
 
  This is why, for example, we would want to record the operation in the database log as being something like an assignment statement. 
  
@@ -171,7 +229,7 @@ On the contrary, \texttt{x++} is not idempotent because every execution changes 
 
 If we really want to be sure that a write has succeeded, we need to check. 
 
-A transfer may succeed completely, have a partial failure, or suffer a total failure. 
+A transfer may succeed completely, have a partial failure, or suffer total failure. 
 
 If something goes wrong we need to actually detect it, of course, to know that something has gone wrong. 
 
@@ -194,11 +252,21 @@ After the second write has happened, the write is finally considered completed.
 \begin{frame}
 \frametitle{Double Entry Failure}
 
-If a failure takes place during the writing of either one of the blocks, they may not match. 
+If a failure takes place during the writing of either block, they may not match. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/itsafake.jpg}
+\end{center}
 
 If they are the same then no error is detected and we don't have to do anything. 
 
 If there is a mismatch then we can look at the checksum of each disk block. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Double Entry Failure}
 
 The block with the invalid checksum is the one that is wrong and the other one will be treated as correct; the correct overwrites the incorrect. 
 
@@ -211,11 +279,16 @@ If the write did not complete the full process and update both blocks, we consid
 \begin{frame}
 \frametitle{Caching (Buffering) of Disk Blocks}
 
-As we have already examined, there are often disk blocks in memory being cached. 
+There are often disk blocks in memory being cached. 
 
 The recovery process's success or failure may depend on how the data in the cache is handled. 
 
 Because the cache data is in volatile memory, a crash or loss of power causes it to wink out of existence. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Caching (Buffering) of Disk Blocks}
 
 Normally, management of paging memory out to disk and back into RAM is the purview of the operating system. 
 
@@ -261,9 +334,8 @@ That sort of ``normal'' writing out to disk has some restrictions.
 
 Previous discussions of caching have covered the various algorithms and keeping track of whether the block was modified. 
 
-There exists an additional restriction. 
 
-This is whether or not the block is \alert{pinned} -- that is, forced to remain in memory and not permitted to be written to disk. 
+Another restriction: if a block is \alert{pinned} -- that is, forced to remain in memory and not permitted to be written to disk. 
 
 This is often implemented as just a single bit in the block.
 \end{frame}
@@ -286,6 +358,11 @@ That block still might be needed for other operations.
 
 That can cause a bit of a headache because a crash before the output operation takes places means the data is lost... 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Writing It Out}
+
 The recovery system can choose, however, to insist a block be written to disk immediately. 
 
 That is called a \alert{force output} if a write command is explicitly issued.
@@ -297,7 +374,18 @@ That is called a \alert{force output} if a write command is explicitly issued.
 
 What we really want to avoid is that a transaction is incompletely recorded in the non-volatile storage, violating the atomicity of the transaction. 
 
-The example we'll use is the standard banking sort of example. 
+The example we'll use is the standard banking sort of example.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/latinum.jpg}
+\end{center} 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Ensuring Atomicity}
+
 
 We want to transfer \$50 from account $A$ (initial balance, \$1000) to account $B$ (initial balance, \$2000). 
 
@@ -381,6 +469,16 @@ As you might imagine, if there are multiple things to be undone or redone, the o
 
 If you don't believe that order matters, next time you bake a cake, first bake all the ingredients, then mix them. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/kurn.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Multiple Undo/Redo}
+
 The redo approach then, requires us to scan the log from top to bottom, performing appropriate redo actions where necessary on each log record. 
 
 This is efficient and sensible, preserving order and reading the log only once, sequentially.
@@ -392,7 +490,7 @@ This is efficient and sensible, preserving order and reading the log only once, 
 
 The undo operation works a little differently. 
 
-It restores data items to their old values, but also writes a log noting what it has done. 
+It restores data items to their old values, and writes a log noting what it's done. 
 
 The log records created are noted as ``redo-only'' because they don't contain the old (now-erased) value of the log record.
 
@@ -489,7 +587,18 @@ If there is a crash we need only resume from the last checkpoint rather than sta
 
 You are very likely already familiar with checkpoints, because they have been something you encountered in another context. 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Checkpoint}
+
+
 Suppose everyone's favourite Italian plumber plunges to an untimely death... 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/checkpoint-flag.png}
+\end{center}
 
 You can resume from some partial progress, such as the beginning of the level, or even some halfway point within the level.
 
