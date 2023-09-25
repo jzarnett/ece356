@@ -341,9 +341,20 @@ The request ordering problem is still at issue and the risk of deadlock still ex
 
 In the \alert{quorum consensus protocol}, every site is assigned a weight (non-negative) and then to perform an operation enough sites need to agree. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/democracy.jpg}
+\end{center}
+
 To execute a read, enough sites must agree such that their weights reach some threshold $r$. 
 
 To execute a write enough sites must agree such that their weights reach a threshold $w$. 
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Quorum Consensus Protocol}
 
 The values for $r$ and $w$ can be the same or they can be set independently.
 
@@ -458,6 +469,10 @@ In addition to the usual transaction management, there is the global transaction
 
 This may be a position where one database server holds the role permanently.
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/senate.jpg}
+\end{center}
+
 Or it might be that the database that handles the actual execution, or the one that started it.
 
 \end{frame}
@@ -467,7 +482,9 @@ Or it might be that the database that handles the actual execution, or the one t
 
 Our biggest concern is making sure that everyone agrees. 
 
-At a fundamental level that means everyone needs to know about the transactions, and needs to agree about whether the transactions are committed or aborted. 
+At a fundamental level that means everyone needs to know about the transactions...
+
+...and needs to agree about whether the transactions are committed or aborted. 
 
 The first strategy we will examine is the two-phase commit protocol.
 
@@ -513,6 +530,10 @@ If something else happened, then the abort message is sent and all systems roll 
 
 At the end of this, all systems have either committed or aborted the transaction and a consistent state is ensured whether the transaction succeeds or not. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/overdone.jpg}
+\end{center}
+
 If a failure occurs during step one it usually results in rolling back, but if a failure occurs during phase 2 it usually results in commit.
 
 \end{frame}
@@ -554,6 +575,16 @@ This limits the wait time: based on the phase 1 information we know how the othe
 If no such message has been received, abort and proceed with other operations.
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Headaches}
+
+As you can imagine, getting many systems to agree is a difficult problem!
+
+
+\end{frame}
+
 
 
 \end{document}
