@@ -102,6 +102,10 @@ If a block $R_{i}$ becomes empty, replace it with the next block in that run (if
 
 If $N$ is large enough that we can't do it all in one pass, we need multiple passes. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/biggerboat.jpg}
+\end{center}
+
 We will combine the first $M-1$ runs into a temporary file, and then the next (up to) $M-1$ runs, and so on, until the last run has been processed. 
 
 Repeat the process with the larger runs as input until we produce the sorted file.
@@ -164,14 +168,14 @@ So the total number of block transfers is $b_{r}(2\lceil log_{M-1}(b_{r}/M)\rcei
 \begin{frame}
 \frametitle{Sorting Costs}
 
-If each run has $b_{b}$ blocks, then each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. 
+If each run has $b_{b}$ blocks, each merge pass requires $\lceil b_{r}/b_{b}\rceil$ seeks to read data. 
 
 And we need to then write the output which costs  $2\lceil b_{r}/b_{b}\rceil$ for ever merge pass, except the last, since it gets sent on. 
 
 So the total number of seeks is $2\lceil b_{r}/M\rceil + \lceil b_{r}/b_{b}\rceil(2 \lceil log_{M-1}(b_{r}/M)\rceil - 1)$.
 
 
-We get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks if the value of $b_{b}$ is set at 1.
+We get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks if $b_{b}$ = 1.
 
 \end{frame}
 
@@ -180,7 +184,17 @@ We get a total of 44 seeks: computed as $8 + 12 \times (2 \times 2 - 1)$ seeks i
 
 There are several ways to compute a join, and we will analyze the costs of a few of the different approaches. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/fusion.jpg}
+\end{center}
+
 Whatever route is actually taken, it's important to note that joins can be very expensive depending on how this is to be computed. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Join Operation}
 
 The join we are looking to examine is the one introduced in relational algebra as $\Join_{\theta}$, specifically $r_{1} \Join_{r_{1}.a = r_{2}.b} r_{2}$.
 
@@ -537,6 +551,12 @@ One approach to aggregation is like the idea of duplicate removal.
 We select all the ones we need to aggregate, then take a second pass through the data to sort it, and then merge the values as are necessary.
 
 Count might be done slightly more efficiently since we can skip the sort and merge entries part by simply keeping a running count. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Aggregation}
+
 
 That might also be applied to min, max, sum if we are clever enough to maintain those values and update them accordingly. 
 
