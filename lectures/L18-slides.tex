@@ -22,7 +22,16 @@ The strategies we have looked at thus far have explained how to perform individu
 
 If a simple select statement or a select-join is needed then we just have to carry it out using an evaluation plan. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/options.jpg}
+\end{center}
+
 Choosing which evaluation plan, as we saw, is not trivial. 
+
+ \end{frame}
+ 
+\begin{frame}
+\frametitle{Query Evaluation}
 
 Soon we will examine how we can ``guess'' about which plan is likely to be best. 
 
@@ -37,7 +46,15 @@ Our normal expectation of how a composite operation works is that we do a subpar
 
 This is called \alert{materialization} and usually results in the temporary relation being written to disk. 
 
-That seems undesirable but it may be necessary. 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/beaming.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Evaluation of Expressions}
+
 
 The other option is a \alert{pipeline} which would allow us to immediately forward on the partial results from a particular operation.
 
@@ -56,7 +73,7 @@ Then temporarily store the output in some temporary relation $r_{4}$ which is th
 \begin{frame}
 \frametitle{Compile This!}
 
-Think back to compilers!
+Consider compilers!
 
 When presented with a complex statement, we need to parse it and form a tree. 
 
@@ -86,6 +103,11 @@ The cost of materialization is the sum of the individual operations, plus the co
 How large those intermediate costs are depends very heavily on how much data is to be written to disk at each step. 
 
 However many tuples of each intermediate step fit into a block is important because it determines how many blocks are needed at each step. 
+\end{frame}
+
+\begin{frame}
+\frametitle{Materialization Has Costs}
+
 
 Once again, we get a hint that says if we get some choices about which operations to do sooner rather than later.
 
@@ -102,6 +124,15 @@ The idea behind pipelining is to reduce or avoid the costs of storing those temp
 Without pipelining, the first data item to finish stage 1 just kind of sits around waiting for the last item to finish stage 1 before the first item can start stage 2. 
 
 It accordingly needs a place to wait. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Pipelining}
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/waiting.jpg}
+\end{center}
+
 
 Eliminating that place of waiting is the goal of pipelining.
 
@@ -137,6 +168,15 @@ The catch, when it comes to pipelining, is that there are some operations that d
 
 Sorting is the most obvious example: you cannot send the first chunk of the sorted file on to the next stage until the entire file has been sorted. 
 
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/choppa.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Pipelining Problems}
+
 Our choice of evaluation algorithm for a select or join operation may also limit the ability to pipeline. 
 
 These sorts of things are just limitations we cannot easily get around and may need to be accounted for in our plan for how to evaluate a query.
@@ -161,11 +201,11 @@ Conclusion: it is worth while for the database server to make the effort to deci
 
 We have looked at techniques for evaluation of how long we think a certain plan is going to take to execute.
 
-They concentrated primarily on how many disk operations we expected to take place. 
+They concentrated on how many disk operations we expected to take place. 
 
-These typically included numbers like the number of tuples or the number of blocks.
+These typically included numbers like the number of tuples or blocks.
 
-That left open the question of how did we know how many tuples or blocks are in this relation?
+Question: how did we know how many tuples/blocks are in this relation?
 
 \end{frame}
 
@@ -176,6 +216,16 @@ That left open the question of how did we know how many tuples or blocks are in 
 One way that might have immediately come to mind is the metadata kept by the database system. 
 
 If it does provide us with some useful information like relation $r$ has 10592 tuples and is currently stored in 2591 blocks then we have some values to go on. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Use Metadata}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/scorpio.jpg}
+\end{center}
 
 Those are the easy values to get. 
 
@@ -188,7 +238,7 @@ And how many blocks will those tuples be in?
 
 \begin{frame}
 \frametitle{Heuristics}
-The answer lies mostly in \alert{heuristics}, or perhaps less charitably, educated guessing. 
+The answer lies mostly in \alert{heuristics}, or less charitably, educated guessing. 
 
 A heuristic is a guideline or ``rule of thumb'' the gives us some hints. 
 
@@ -529,7 +579,19 @@ These rules are (sadly) neither a complete set nor minimal.
 
 There are other potential transformations that can be done, including various rules from boolean algebra (e.g., $\neg (a \wedge b) = \neg a \vee \neg b$)...
 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Rules Review}
+
+
 Having learned a bit about equivalence rules and what they are for, next time we will work on putting them to use and affixing cost estimates.
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/cost-estimates.jpg}
+\end{center}
 
 \end{frame}
 
