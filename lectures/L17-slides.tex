@@ -321,9 +321,14 @@ Thus there are $b_{1} \times b_{2} + b_{1}$ transfers and $2\times b_{1}$ seeks 
 \begin{frame}
 \frametitle{Join Strategy 2: Block Nested-Loop}
 
-Now: $2 \times b_{1} = 2 \times 100 $ seeks which at a cost of 4 ms = $200 \times 4 = 800$ ms seek time, plus $b_{1} \times b_{2} + b_{1} = 100 \times 500 + 100 = 50100$ at a cost of 0.1 ms = $5010$ ms. 
+Now: $2 \times b_{1} = 2 \times 100 $ seeks (4 ms each) = $200 \times 4 = 800$ ms seek time, plus $b_{1} \times b_{2} + b_{1} = 100 \times 500 + 100 = 50100$ (0.1 ms each) = $5010$ ms. 
 
 Summed up, a total of $5810$ ms to complete this.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Join Strategy 2: Block Nested-Loop}
 
 As before it could be worse if we swapped the order of the relations. 
 
