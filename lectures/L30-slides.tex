@@ -23,6 +23,17 @@ Thus far when we have talked about creating a checkpoint assumes that we stop al
 
 This sort of thing is not unheard of in programs, such as the ``stop the world'' garbage collector behaviour in Java. 
 
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Fuzzy Checkpointing}
+
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/stopthemusic.jpg}
+\end{center}
+
+
 It might be, however, undesirable or even unacceptable: for a sufficiently large buffer it might take a very long time. 
 
 Therefore we would like to modify the checkpoint system to avoid having to halt all execution.
@@ -72,6 +83,15 @@ The recovery routines considered so far are about booting the server up again af
 
 In those, nonvolatile storage is unaffected. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/secretsafe.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Recovering from Loss of Nonvolatile Storage}
 But bad things will happen to even nonvolatile storage. 
 
 So we need to take copies of the data to account for the fact that even supposedly nonvolatile storage is lost.
@@ -88,7 +108,16 @@ But how do we back up the database data? It is called a \alert{dump}.
 
 It is basically taking a copy of all the data.
 
-If we are doing it live, we require that no transactions are running and the steps are:
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Backing Up Database Data}
+
+If we are doing it live, we require that no transactions are running. 
+
+
+The steps are:
 
 \begin{enumerate}
 	\item Write all log records currently in main memory to stable storage
@@ -114,9 +143,21 @@ Such a dump can be used to copy the database from one system to another or migra
 \frametitle{Do You Have Time?}
 The approach described above does have the obvious downside of needing to stop execution for a very long time. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/cantwont.jpg}
+\end{center}
+
 That is, however, not realistic. 
 
-A tool that dumps the database like \texttt{mysqldump} takes a complete database dump, but it does so as a transaction: it gets a snapshot of the data at the time the dump is requested.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Do You Have Time?}
+
+A tool that dumps the database like \texttt{mysqldump} takes a complete database dump, but it does so as a transaction! 
+
+It gets a snapshot of the data at the time the dump is requested.
 
 Further changes can still go on in the meantime but this transaction will be left running for as long as it takes (and it can be HOURS!).
 
@@ -139,9 +180,17 @@ Otherwise the previous (corrupt, partial, or otherwise problematic) data is drop
 \begin{frame}
 \frametitle{Obey the Rules}
 
-Exporting seems fairly easy from a technical perspective: just copy the data to the output file in the form of create table statements and then insert into statements. 
+Exporting seems fairly easy from a technical perspective... 
+
+Just copy the data to the output file in the form of create table statements and then insert into statements. 
 
 That works but there is a problem when importing. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Obey the Rules}
+
 
 Tables are added and they have foreign key constraints. 
 
@@ -156,9 +205,19 @@ And how can you insert the data for one table that references another without th
 
 There is some possibility to do a topological sort where you find a sequence of create table and add constraint statements, then one for insert statements... 
 
-This is very difficult and potentially impossible depending on how your data is defined. 
+This is difficult and maybe impossible depending on how your data is defined. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Ignore the Rules!}
 
 The real answer is that when importing data via this method, integrity constraints are temporarily disabled.
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/safeties.jpg}
+\end{center}
 
 
 \end{frame}
@@ -169,7 +228,18 @@ The real answer is that when importing data via this method, integrity constrain
 
 Another way that backups tend to get taken is at the level outside of the database: the operating system. 
 
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/timemachine.png}
+\end{center}
+
 The data is ultimately stored somewhere on a volume (or volumes) and the operating system can do things like shadow copies and image backups. 
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Next Level Backups}
 
 Of course, the state that is stored to the disk at the time of the backup is what gets copied. 
 
@@ -195,13 +265,13 @@ ARIES is broken up into three phases: analysis, redo, and undo.
 \begin{frame}
 \frametitle{Analysis Phase}
 
-In the analysis phase, the goal is to figure out what pages in the buffer were dirty. 
+Analysis phase: the goal is to figure out what pages in the buffer were dirty. 
 
-We don't have the actual pages, of course, because the crash caused the loss of that data. 
+We don't have the actual pages, because the crash caused the loss of that data. 
 
 However, we can determine the information based on the log data from the checkpoints: the dirty page table, transaction table, et cetera. 
 
-During this phase a determination will also be made as to where to begin the redo phase.
+During this phase, decide where to begin the redo phase.
 
 
 \end{frame}
@@ -225,7 +295,8 @@ We only redo operations that are necessary.
 
 The last phase is the undo phase, and the log is scanned backwards.
 
-Transactions that were active at the time of the crash are undone in reverse order. 
+Transactions that were active at the time of the crash are undone...\\
+\quad in reverse order. 
 
 
 \end{frame}
@@ -237,7 +308,12 @@ Every log has a LSN -- \alert{Log Sequence Number}.
 
 This is an incrementing counter that indicates the log record's address on disk; each number corresponds to a specific change of some transaction. 
 
-Each data page stores the LSN of the most recent log record that changed that page. 
+Each data page stores the LSN of the most recent log record that changed it. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Take a Number}
 
 Log records are generated for updating a page, committing a transaction, aborting a transaction, undoing an update, and ending a transaction. 
 
@@ -351,6 +427,11 @@ For each change, consider whether the page $P$ is in the dirty page table.
 
 If it is not, then the change is already on disk. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Redo or Don't Redo?}
+
 If $P$ is in the dirty page table, but has a LSN larger than the current change, the change is already written to disk and does not need to be reapplied. 
 
 If $P$ is in the dirty page table but does not have a larger LSN, page $P$ is read from disk and the disk stored version is checked.
@@ -453,9 +534,11 @@ For pages that have higher LSNs than the updates, no need to repeat that update.
 \begin{frame}
 \frametitle{Executing the Algorithm: Undo}
 
-The undo phase here is very simple: the only thing to undo is the operations of $T_{3}$. 
+The undo phase here is simple: the only thing to undo is the operations of $T_{3}$. 
 
-We go backwards and the only log entry we need to undo is LSN 6. At that point we are all done.
+We go backwards and the only log entry we need to undo is LSN 6. 
+
+At that point we are all done.
 
 
 \end{frame}
@@ -506,6 +589,13 @@ In the meantime, the backup does the job of the primary.
 
 If the first system comes back online, it could be the new backup or it could retake the role of primary. 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{You Have the Bridge, Number One}
+
+
 Either way, it needs to get caught up on the things that have happened in the meantime. 
 
 Once both systems are back online, the redo logs can be sent to the system that is behind to get it caught up.
@@ -539,6 +629,13 @@ We're not limited to only two-safe protocols, of course.
 We could insist on an $n$-safe protocol where we have some additional replicas... 
 
 The cost of having $n$ servers contain the data is really not much higher than the cost of having two...
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Why Not Three?}
 
 But if we are going to be sending data out to multiple databases... 
 
