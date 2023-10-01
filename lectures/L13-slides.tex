@@ -20,14 +20,19 @@
 \begin{frame}
 \frametitle{File Organization}
 
-A few different file organization options we could choose:
-
+A few different file organization options we could choose: 
+\begin{multicols}{2}
 \begin{enumerate}
 	\item \textbf{Heap File}
 	\item \textbf{Sorted File}
 	\item \textbf{Hashed File}
 	\item \textbf{B-Tree File}
 \end{enumerate}
+\columnbreak
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/filingcabinet.jpg}
+\end{center}
+\end{multicols}
 
 \end{frame}
 
@@ -36,9 +41,21 @@ A few different file organization options we could choose:
 \begin{frame}
 \frametitle{File Organization}
 
-Under most circumstances one relation corresponds to one file. However, multiple relations can be in the same file if desired. 
+Under most circumstances one relation corresponds to one file. 
+
+
+However, multiple relations can be in the same file if desired. 
 
 To start with, we will just have one relation in a file. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{File Organization}
+
 
 Remember that these file organizations are not affected by whether records are of fixed or variable length.
 
@@ -52,7 +69,17 @@ The first $k$ records may be stored in the first block, but which records are th
 
 The simplest way to order records is: don't order the records! 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/bane.jpg}
+\end{center}
+
 The heap file has no inherent organization. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Heap File}
 
 Records appear in the file in the order in which they are inserted. 
 
@@ -75,9 +102,17 @@ If not, the last block of the file is read, modified, and written.
 
 \begin{frame}
 \frametitle{Heap File}
-However, searching for a record is more difficult, because the file is not ordered in any way. 
+However, searching for a record is more difficult, because the file is not ordered.
 
 Thus, we would have to perform a linear search ($O(n)$) over all records. 
+
+\end{frame}
+
+
+\begin{frame}
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/detektiv.png}
+\end{center}
 
 To find one individual record in the relation it be necessary to examine, on average, half of the entries (assuming that all requests are equally likely).
 
@@ -118,6 +153,10 @@ Heap organization throws into the light the idea that the file structure has per
 No matter what we choose, it will mean some operations are faster at the expense of other operations. 
 
 Heap organization means that insertion is fast but reading, updating, and deleting are slower. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/pile.jpg}
+\end{center}
 
 Normally we would expect retrieval to be the most common operation, right?
 
@@ -199,6 +238,13 @@ If we deleted the record at the very end of the file, there is nothing special t
 
 If the record being deleted is in an overflow block, that makes the order more sequential rather than less. 
 
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Sorted File}
+
 If the record inside a block is being deleted, update the pointers.
 
 The empty space would be noted for the future. 
@@ -250,6 +296,10 @@ Instead of having to search to find the record with ID 99901, we could instead c
 We will take a short digression to cover the subject of hashing, actually. 
 
 In Data Structures and Algorithms you learned about \alert{internal hashing}, which we will quickly review, but hashing can be much more.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/knowmore.jpg}
+\end{center}
 
 
 \end{frame}
@@ -327,6 +377,10 @@ A goal of hashing is to distribute the records relatively evenly across the addr
 
 We also do not want too much empty space. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/butter.jpg}
+\end{center}
+
 Ideal is something like 70-90\% full; and if we need to make the table bigger (or smaller), then we do so.
 
 \end{frame}
@@ -371,6 +425,11 @@ The first approach is \alert{extendible hashing} -- an access structure is store
 
 The access structure is an array of $2^{d}$ bucket addresses, where $d$ is the global depth of the directory.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Extendible Hashing}
+
 The first $d$ bits of a hash value are the index into the array to determine which element of the array is selected. 
 
 The array element is the bucket in which the corresponding entry is stored. 
@@ -408,6 +467,14 @@ If we have to split a bucket, then a relatively small number of records need to 
 If we have to increase the value of $d$ then we have a potentially larger and more painful reorganization, but we probably won't lose any sleep over that. 
 
 Why not? When $d$ is small, the total number of records in the system is not very large so the time to move all of them (worst case) is not very big. 
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Increasing the Number of Buckets}
 
 For example, if $d$ is 3, if the table is completely full, there are $2^{3} = 8$ buckets. Not very many. 
 
