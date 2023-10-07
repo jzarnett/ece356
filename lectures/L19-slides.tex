@@ -21,6 +21,10 @@
 
 There are now some clear ways we can transform an input query to determine which of the equivalent representations will have the lowest cost of execution. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/gottagofast.jpg}
+\end{center}
+
 It is fair to say that the query optimizer is likely to focus first on join relations since that is potentially the biggest area in which we can make some gains.
 
 \end{frame}
@@ -34,6 +38,11 @@ We want to select the employee number, salary, and address for an employee with 
 
 Suppose number and salary are in the employee table with 300 entries, and the address information is in another table with 12000 entries. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Query Optimization}
+
 We have a join query, and if we do this badly, we will compute the join of employees and addresses, producing some 300 results.
 
 Then we need to do a selection and a projection on that intermediate relation.
@@ -44,11 +53,21 @@ If done efficiently, we will do the selection and projection first, meaning the 
 
 \begin{frame}
 \frametitle{Query Optimization}
-The query optimizer should systematically generate equivalent expressions. 
+The query optimizer should systematically generate equivalent expressions.
+
+\begin{center}
+	\includegraphics[width=0.8\textwidth]{images/lead-to-rome.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Query Optimization}
 
 It is likely that the optimizer does not consider every possibility and will take some ``shortcuts'' rather than brute force this. 
 
-One technique that helps on top of that is to re-use common subexpressions to reduce the amount of space used by representing the expressions during evaluation.
+One technique that helps on top of that is to re-use common subexpressions to reduce the amount of space used.
 
 
 \end{frame}
@@ -62,6 +81,12 @@ But for the database server to get those it can either look them up, or it can g
 
 As mentioned earlier, sometimes certain numbers, like the number of tuples in a relation, are easily available by looking at metadata. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Estimating Statistics}
+
+
 If we want to know, however, how many employees have a salary between \$40~000 and \$50~000, the only way to be sure\footnote{Other than nuking it from orbit...} is to actually do the query.
 
 And we don't want to do the query when estimating the cost...
@@ -72,9 +97,19 @@ And we don't want to do the query when estimating the cost...
 \begin{frame}
 \frametitle{Guess we better... guess?}
 
-If we cannot measure, then, well, we need to guess. Our guesses are, however, not wild, but instead educated. 
+If we cannot measure, then, well, we need to (educated) guess. 
 
-Estimates are based on assumptions, and those assumptions are very often wrong. 
+Estimates are based on assumptions, and those assumptions are often wrong. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/football.jpeg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Guess we better... guess?}
 
 That is okay. We do not need to be perfect. 
 
@@ -88,7 +123,7 @@ And even if we pick the second or third or fifth best option, that is acceptable
 \begin{frame}
 \frametitle{Cost Centres}
 
-There are five major areas where costs for actually performing a query accumulates. 
+There are five major areas for query costs:
 
 \begin{enumerate}
 	\item \textbf{Disk I/O}
@@ -98,7 +133,7 @@ There are five major areas where costs for actually performing a query accumulat
 	\item \textbf{Communication}
 \end{enumerate}
 
-We will generally proceed on the basis that disk I/O is the largest cost and outweighs everything else.
+Assume disk I/O is the largest cost and outweighs everything else.
 
 \end{frame}
 
@@ -117,7 +152,17 @@ Some items that might be in the metadata:
 	\item $h_{r, i}$: the height of an index $i$ defined on relation $r$
 \end{itemize}
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Metadata}
+
 There can also be metadata about index information as well... which might make it metametadata?
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/inception.jpeg}
+\end{center}
 
 \end{frame}
 
@@ -132,20 +177,18 @@ If every insertion or update or deletion resulted in an update, that may mean a 
 
 If we only do periodic updates, it likely means that the statistic data will be outdated when we go to retrieve it for use in a query optimization context. 
 
-Perhaps some amount of balance is necessary...
-
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Histogram Data}
 
-A database may also be interested in keeping some statistical information in a histogram. 
+Idea: keep some statistical information in a histogram. 
 
-The values are divided into ranges and we have some idea of how many tuples are in those ranges. 
+Values are divided into ranges; can see how many tuples are in those ranges. 
 
 \begin{center}
-\includegraphics[width=0.4\textwidth]{images/histogram}
+\includegraphics[width=0.6\textwidth]{images/histogram}
 \end{center}
 
 \end{frame}
@@ -182,7 +225,7 @@ The estimate depends on what we know about the attribute $A$ referenced in the s
 
 If it is a key field, and therefore unique, we know the select will return 1 result. 
 
-Unless, of course, it is not found and we will get zero results.
+Unless, of course, it is not found, and we will get zero results.
 
 \end{frame}
 
@@ -192,6 +235,16 @@ Unless, of course, it is not found and we will get zero results.
 If values are evenly distributed, then we can expect that $n_{r}/V(A, r)$ tuples should be returned. 
 
 If there are ten possible values and everything is approximately evenly distributed then a select is expected to produce 10\% of the tuples as its result. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Single Equality Predicate}
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/distribution.png}
+\end{center}
+
 
 The uniform distribution may not be accurate, but if it is a reasonable approximation of the data, it is simple and fast. 
 
@@ -203,15 +256,21 @@ If a histogram is available, we can look in the range that contains that search 
 \begin{frame}
 \frametitle{Single Comparison Predicate}
 
-The next case is when we have a comparison like the salary greater than or equal to \$150~000. 
+The next case is when we have a comparison: salary $>=$ \$150~000. 
 
-We can, using the known maximum and minimum values of this attribute, take a guess. 
+Idea: use the known maximum and minimum values of this attribute!
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Single Comparison Predicate}
 
 If the requested value $v$ is less than the minimum, we expect no rows returned. 
 
-If the requested value is greater than the max also zero. 
+If the requested value is greater than the max, we know it's also zero.
 
-Otherwise, the formula to estimate, where $m$ is the minimum value and $M$ is the maximum value: $n_{r} \times \dfrac{v - m}{M - m}$
+Otherwise: ($m$ = minimum; $M$ = max): $n_{r} \times \dfrac{v - m}{M - m}$
 
 Of course, if a histogram is available, we would prefer to use that. 
 
@@ -244,7 +303,7 @@ $n_{r} \times \dfrac{s_{1} \times s_{2}... \times s_{k}}{(n_{r})^{k}}$.
 \begin{frame}
 \frametitle{Complex Predicates}
 
-For disjunctive selection it is the probability of matching an one of those conditions. 
+For disjunctive selection: the probability of matching any one of those conditions. 
 
 The calculation will be simplified by trying to compute 1 minus the probability it satisfies none of the conditions: 
 
@@ -279,11 +338,11 @@ That's a lot.
 
 If the intersection of $r_{1}$ and $r_{2}$ is a key (unique value) for $r_{1}$ then we know that a tuple in $r_{2}$ can match with at most one in $r_{1}$.
 
-So the maximum number of tuples that could occur is the number of tuples in $r_{2}$. 
+So the max number of tuples that could occur is the number of tuples in $r_{2}$. 
 
 If the intersection is also defined as a foreign key on $r_{2}$ then it is exactly the number of tuples in $r_{2}$. 
 
-This also applies symmetrically (so you can swap $r_{1}$ and $r_{2}$ in the previous statements).
+This also applies symmetrically (so you can swap $r_{1}$ and $r_{2}$ above).
 
 
 \end{frame}
@@ -350,7 +409,7 @@ $\sigma_{\theta_{1}}(r) \cup \sigma_{\theta_{2}}(r)$ is easily rewritten as $\si
 \begin{frame}
 \frametitle{Set Operations}
 
-If the set operation is on different relations then we could actually estimate it directly. 
+If the set operation is on different relations we could estimate it directly. 
 
 We will typically assume worst case scenario, so: 
 
@@ -358,7 +417,7 @@ We will typically assume worst case scenario, so:
 
 (2) intersection will be the size of the smaller of the two relations, and 
 
-(3) in set difference we will assume in $r_{1} - r_{2}$ that the result is the size of $r_{1}$ (i.e. no tuples removed). 
+(3) in set difference we will assume in $r_{1} - r_{2}$ that the result is the size of $r_{1}$.
 
 \end{frame}
 
@@ -384,6 +443,12 @@ If we are interested in knowing how many distinct values of an attribute $A$ the
 
 The simplest possible case is if the query specifies that $A$ equals some value $a$ in which case there will be at most 1 distinct value of $A$. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Distinct Values}
+
+
 If the predicate is complex and there are several allowed values $a_{1}, a_{2}, a_{3}... a_{n}$ then we can be certain the maximum number of possible values of $A$ is $n$. 
 
 The last easy case is if there is a comparison, in which case the estimate is $V(A,r) \times s$ where $s$ is the selectivity of the selection.
@@ -399,6 +464,15 @@ Otherwise we will assume that the distribution of values of $A$ has no relation 
 
 The correct way to guess is through the use of probability theory. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/ohnomath.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Distinct Values}
 We could also do a quick estimate of the smallest value of $V(A, r)$ (the most restrictive selection condition). 
 
 This same logic holds for estimating how many unique values will be returned in a join: the smallest condition will limit how many rows are in the relation.
@@ -409,7 +483,7 @@ This same logic holds for estimating how many unique values will be returned in 
 \begin{frame}
 \frametitle{Advanced Query Optimization}
 
-There are three more advanced techniques we will mention but not discuss deeply:
+There are three more advanced techniques we will mention but not discuss:
 
 \begin{itemize}
 	\item Top-K
@@ -425,7 +499,7 @@ There are three more advanced techniques we will mention but not discuss deeply:
 
 Consider a query that asks you to find the top $k$ tuples based on some attribute, such as finding the top ten customers based on annual revenue. 
 
-We could potentially save some work if we know that no further results are required.
+We could save some work if we know that no further results are required.
 
 For something like top customers by revenue, we would probably need to find all the tuples that match, aggregate them, and then sort by income...
 
@@ -439,7 +513,18 @@ Update queries often have a bunch of conditions restricting them to one tuple.
 
 If that is the case, update optimization is not really an issue. 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Update Ordering}
+
 But if the update affects a number of rows, then there is a possible problem called the \alert{Halloween problem}.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/everyday.jpg}
+\end{center}
+
 
 An updated tuple could be inserted into the relation ahead of where the scan is, meaning the tuple could be updated again incorrectly. 
 
@@ -450,7 +535,7 @@ An updated tuple could be inserted into the relation ahead of where the scan is,
 
 The problem can be solved in a few ways. 
 
-One is to determine the tuples to be modified first before any updates take place. 
+One is to determine the tuples to be modified before any updates take place. 
 
 Another has to do with splitting up the updates to be done into batches so that we don't have to wait for the whole selection to be done.
 
@@ -472,7 +557,7 @@ That would, of course, require that query 1 does not modify the data, which coul
 \begin{frame}
 \frametitle{Multiquery Optimization}
 
-The second way to optimize when we have multiple queries is to do some things in parallel. 
+The second way to optimize when we have multiple queries is: parallelism.
 
 Suppose query 3 scans over a particular relation $r$ looking for some attributes, and query 4 scans over the same relation $r$ looking for something different
 
