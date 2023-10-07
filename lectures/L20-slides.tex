@@ -20,13 +20,20 @@
 
 Let us focus now on \alert{Join Elimination}.
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/joinelim.jpg}
+\end{center}
+
 So much of the previous examination has focused on the cost of the join and that has highlighted in a real way just how expensive it is to perform a join. 
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Query Optimization}
 
 For this reason, good optimizer routines will attempt to eliminate the join altogether if it can be skipped. 
 
 The optimizer can only do this if there is certainty that the outcome will not be affected by not doing the join. 
-
-We will shortly see how that is accomplished.
 
 
 \end{frame}
@@ -49,7 +56,13 @@ Developers make mistakes, as you know, or perhaps some legacy code cannot be cha
 
 Regardless, SQL is a language in which you specify the result that you want, not specifically how to get it. 
 
-If there is a more efficient route, then it's worth taking from the point of view of the database server. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Join Elimination}
+
+If there is a more efficient route, then it's worth taking.
 
 If you ask for some operation that the compiler knows it can replace with an equivalent but faster operation, why wouldn't you want that? 
 
@@ -62,9 +75,9 @@ Compilers don't admonish the user for writing code that it has to transform into
 \begin{frame}
 \frametitle{Join Elimination}
 
-We will examine some real SQL queries to see how we can get rid of a total unnecessary join.
+We will examine some real SQL queries to see how we can get rid of a totally unnecessary join.
 
-This join can only be removed if the database server can prove that the join is not needed.
+This join can only be removed if the server can prove that the join is not needed.
 
 Therefore the removal of this operation has no impact on the outcome.
 
@@ -76,9 +89,9 @@ Therefore the removal of this operation has no impact on the outcome.
 
 Consider a statement that looks like this: \texttt{SELECT c.* FROM customer AS c JOIN address AS a ON c.address\_id = a.address\_id;} 
 
-This gets customer information and joins with those where there are addresses on file. 
+Get customer information and join with those where addresses are on file. 
 
-This is an inner join and as presented simply we cannot do anything with this information. 
+This is an inner join. As presented we cannot do anything with this information. 
 
 We need to make sure that the customer data has a matching row.
 
@@ -93,6 +106,16 @@ Suppose that we have a foreign key defined from customer's \texttt{address\_id} 
 If nulls are not permitted then we know for sure that every customer has exactly one record in the address table.
 
 Therefore the join condition is not useful and may be eliminated. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/mindblown.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Join Elimination Example}
 
 This means we could in fact replace that query with \texttt{select * from customer;} with no need for any references to the join table at all. 
 
@@ -110,7 +133,7 @@ An outer join constraint can be removed as well.
 
 Imagine the query said this: \texttt{SELECT c.* FROM customer AS c LEFT OUTER JOIN address AS a ON c.address\_id = a.address\_id;}. 
 
-All tuples are fetched from customer whether or not there is an associated address. 
+All tuples are fetched from customer.
 
 \end{frame}
 
@@ -119,13 +142,18 @@ All tuples are fetched from customer whether or not there is an associated addre
 
 Suppose the foreign key constraint is removed. 
 
-Does that change anything? No -- a unique constraint on the address would be sufficient. 
+Does that change anything?
 
-Therefore it can once again be replaced with the simple \texttt{select * from customer;}.
+\end{frame}
+
+\begin{frame}
+\frametitle{Or Don't...?}
+
+ No -- a unique constraint on the address would be sufficient. 
+
+It can once again be replaced with the simple \texttt{select * from customer;}.
 
 If, however, both constraints are removed and we cannot be sure that there is at most one address corresponding to a customer.
-
-Then we have to do the join.
 
 
 \end{frame}
@@ -133,12 +161,16 @@ Then we have to do the join.
 \begin{frame}
 \frametitle{Eliminate a Wilder Join}
 
-When an outer join occurs with distinct keyword.
+Here is an even stranger example:   an outer join occurs with distinct keyword.
 
 In a many-to-many relationship (the example in the source material is about actors and films) then outer join would produce duplicate tuples. 
 
 The query asks for a listing of actor names. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Eliminate a Wilder Join}
 It is an outer join query (which makes no sense...) 
 
 Because it's an outer join you will even return the actors who appear in no films.
@@ -153,6 +185,11 @@ Why would you query all actors whether or not they had been in a film by referen
 
 If you don't care whether they had been in a film, why do you even look at the films table...
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Bad Example is Bad?}
 Anyway, this sort of thing could happen in an application where the SQL statement is composed by some if-statement logic.
 
 E.g., checkboxes like ``appears in a film'' and ``does not appear in film'' and two conditions are added (like ``incoming = true OR incoming = false'').
@@ -165,9 +202,18 @@ Obviously, the more complex the query, the harder it is to determine whether or 
 
 The same queries written on a database in which the constraints have not been added would not be eligible for the join elimination optimization. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Harder to Read}
+
 In the inner join example, the foreign key and not null constraints, for example, are beneficial. 
 
 This reveals a second purpose why constraints are valuable in the database.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/twothings.jpg}
+\end{center}
 
 \end{frame}
 
@@ -178,6 +224,11 @@ You are asked to search through the library to find all copies of the book ``Har
 That is a plausible task. 
 
 But, suppose that you know as well there is a rule that this library will keep only one copy of that book ever. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Join Elimination Analogy}
 
 If that is the case, as soon as you have found the single copy of that book, you can stop looking (no need to check more ``just in case''). 
 
@@ -347,6 +398,12 @@ The sort order in which tuples are generated is important if the result will be 
 
 A sort order is called \alert{interesting} if it is useful in a later operation. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{May You Live In Interesting Times}
+
 Suppose $r_{1}$ and $r_{2}$ are being computed for a join with $r_{3}$.
 
 It is advantageous if the combined result $r_{1} \bowtie r_{2}$ is sorted on attributes that match to $r_{3}$ to make that join more efficient.
@@ -420,6 +477,15 @@ Now we can actually discuss them more formally.
 \end{frame}
 
 \begin{frame}
+\frametitle{Strategy}
+
+\begin{center}
+	\includegraphics[width=0.8\textwidth]{images/strategy.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
 \frametitle{Perform selection early}
 
 No surprises here: the sooner we do a selection, the fewer tuples are going to result and the fewer tuples are input to any subsequent operations. 
@@ -437,6 +503,13 @@ Chances are we get a lot of benefit out of selection: it can cut a relation down
 There are exceptions, however.
 
 Suppose the query is $\sigma_{\theta}( r \bowtie s )$ where $\theta$ refers only to attributes in $s$. 
+
+Why is this not great?
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Perform selection early}
 
 If we do the selection first and: 
 
@@ -507,11 +580,17 @@ A student wishes to query what courses they are enrolled in.
 
 If one student does this query with a particular value for student ID number, we can re-use that same evaluation plan in the future.
 
-Another student will repeat the exact same query with her student ID number instead.
+\end{frame}
 
-The results will be different and this query may be more expensive on the second run.
+\begin{frame}
+\frametitle{Plan Caching}
 
-That is expected, all we really needed was an estimate.
+
+Another student will repeat the exact same query with her student ID number.
+
+The results will be different; this query may be more expensive on the 2$^{nd}$ run.
+
+That is expected; all we really needed was an estimate.
 
 \end{frame}
 
