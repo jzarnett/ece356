@@ -23,8 +23,21 @@ We now turn our attention to the question of how the database will control the v
 
 There are a variety of schemes, but at this point the ones we will examine will always assume that failure does not happen. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/couldgowrong.jpg}
+\end{center}
+
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Concurrency Control}
+
 Once we understand the concurrency control mechanisms we can then build on them to include failure recovery.
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/sparrow-run.jpg}
+\end{center}
 
 \end{frame}
 
@@ -40,7 +53,7 @@ This is easy for the database designers and effectively means putting the proble
 \begin{frame}
 \frametitle{Lock-Based Protocols}
 
-As you will recall from learning about concurrency and synchronization, our typical ``go-to'' strategy for dealing with concurrency problems is locking of some sort. 
+Our typical strategy for concurrency problems is locking of some sort. 
 
 You are surely familiar with locks and locking so we will not need to repeat any of the material on that subject from earlier. 
 
@@ -79,6 +92,13 @@ If there are no locks for that item, then the request may be granted.
 
 If the request is exclusive and there exists any lock on that data item, the request must wait. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Your Wish is Granted}
+
+
 If the request is for a read and there exists an exclusive lock on the item, the request must wait. 
 
 If the request is for a read and there exist only read locks on the item, the read may proceed. 
@@ -97,6 +117,12 @@ If so, then we would need to check to see whether a new request's locking mode i
 
 The compatibility rule for reader-writer locks is pretty simple as above. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Wish Granting, Generally}
+
 In the more general approach it is necessary to check all the locks currently held for that item and see if they are compatible. 
 
 If they are all compatible, the lock may be granted.
@@ -111,7 +137,7 @@ As with the kinds of locks we are accustomed to from C-like languages, there is 
 
 Unlocking an item will allow some other waiting transaction (or transactions) to be able to then lock that item.
 
-The standard advice in concurrency is to unlock items as soon as possible (but no sooner).
+The standard advice in concurrency is to unlock items as soon as possible.
 
 Pay attention to serializability, however...
 
@@ -123,6 +149,11 @@ Pay attention to serializability, however...
 Suppose there are two concurrent transactions going on. $T_{1}$ is to transfer \$50 from chequing (account C) to savings (account S). 
 
 The second is to show your total net worth.
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Always Bank Examples}
 
 Let's look at the statements needed to get this done:
 
@@ -169,7 +200,18 @@ No matter what order we execute the transactions, the result will be the same si
 
 If they are, respectively \$100 and \$200 then the total must remain \$300. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{More Concurrency, More Problems}
+
+
 If the transactions are executed incorrectly, we will print a result of \$250. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/give-money.png}
+\end{center}
 
 How?
 
@@ -224,6 +266,11 @@ Deadlock, as you will recall, is what happens when two or more transactions (for
 
 As before, an unfortunate interleaving of lock and unlock statements can mean that the transactions get stuck. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Hello Deadlock, My Old Friend...}
+
 Deadlock is bad, but not as bad (we think) as inconsistent states being shown (or worse, saved!). 
 
 If a deadlock occurs, we can detect it and then can do something about it; if an inconsistent state is shown then we may never know about it.
@@ -236,7 +283,7 @@ If a deadlock occurs, we can detect it and then can do something about it; if an
 
 There are often rules in the system for how transactions behave with respect to locks called the \alert{locking protocol}. 
 
-The locking protocol sets up some rules about when items may be locked and unlocked.
+The locking protocol sets up some rules about when items may be (un)locked.
 
 That reduces the number of possible schedules such that the only allowed schedules are conflict-serializable schedules. 
 
@@ -249,6 +296,10 @@ A schedule is considered legal if it follows all the rules of the locking protoc
 
 Alongside the risk of deadlock, there is also the possibility of starvation. 
 
+\begin{center}
+	\includegraphics[width=0.35\textwidth]{images/stillstanding.png}
+\end{center}
+
 The more locks a particular transaction requires, the more likely it is to have to wait and the higher the risk of starvation.
 
 \end{frame}
@@ -258,7 +309,7 @@ The more locks a particular transaction requires, the more likely it is to have 
 
 A new rule: locks should be granted in order of request.
 
-A transaction $T_{i}$ will never have to wait for a transaction $T_{j}$ that requested that lock later. 
+$T_{i}$ will never have to wait for $T_{j}$ that requested that lock later. 
 
 This is, obviously, in addition to the usual rule that the lock can only be granted when the requested lock mode is compatible with the existing locks, if any. 
 
@@ -273,6 +324,11 @@ The database two phase locking protocol is a little bit different.
 
 In this there are two distinct phases: growing and shrinking. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Two Phase Locking}
+
 In the growing phase a transaction may acquire locks; in the shrinking phase a transaction may release locks but may not obtain any new ones. 
 
 The initial state is the growing phase and as soon as the first lock is released then it is not permitted to obtain any new ones
@@ -283,7 +339,7 @@ The initial state is the growing phase and as soon as the first lock is released
 \frametitle{Conflict Serializability}
 Any two phase locking protocol gives us, automatically, conflict serializability. 
 
-For any transaction, there exists the point where the last lock as been obtained, and this is called the \alert{lock point}. 
+For any transaction, there exists the point where the last lock has been obtained, and this is called the \alert{lock point}. 
 
 We can order transactions based on their lock points and it gives a serial ordering of the transactions. 
 
@@ -300,6 +356,11 @@ There exist two more restrictive locking protocols.
 The first is the strict two phase locking protocol, which requires that all exclusive locks are held until the transaction is committed.
 
 This guarantees that no intermediate states are ever made visible.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{More Restrictive}
 
 The other is the rigorous two phase locking protocol which requires all locks, no matter the type, to be held all the way until the commit.
 
@@ -331,6 +392,16 @@ An upgrade is like trying to acquire a lock, so it can result in blocking of a t
 \end{frame}
 
 \begin{frame}
+\frametitle{Upgrade \& Downgrade}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/upgrade.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
 \frametitle{Lock and Unlock Algorithm}
 
 \begin{enumerate}
@@ -354,7 +425,14 @@ The lock manager is the mysterious part of the database that decides when to gra
 
 In fact, the lock manager receives the requests to lock and unlock commands. 
 
-The lock manager may return a grant of the lock when it is received, or a denial message. 
+The lock manager may return a grant of the lock when it is received, or a denial.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Lock Manager Implementation}
+
 
 But that answer might not come right away: if a grant cannot be completed right now we can delay it until it can be granted. 
 
@@ -398,9 +476,14 @@ As for whether it is granted right away or not, compatibility must be checked.
 
 If it is compatible it may be granted; otherwise it must wait. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Lock Table Rules}
+
 When there is an unlock request, the entry for that transaction and data item are removed and, if possible, further requests are granted. 
 
-If a transaction aborts, any locks (granted or not) are removed from the lock table.
+If a transaction aborts, any locks (granted/not) are removed from the lock table.
 
 \end{frame}
 
@@ -409,9 +492,9 @@ If a transaction aborts, any locks (granted or not) are removed from the lock ta
 
 The graph based protocol is lock based protocol that uses a tree. 
 
-To make this work, all data elements need to be assigned an identifier (an ID of some sort) which allows establishment of partial ordering on the data elements. 
+To make this work, all data elements need to be assigned an identifier which allows establishment of partial ordering on the data elements. 
 
-The purpose is so that it is possible to enforce the rule that they are acquired in order.
+Why? So it is possible to enforce the rule that they are acquired in order.
 
 
 \end{frame}
@@ -454,6 +537,13 @@ The cycle is formed as: $T_{i}$ is waiting for resource $R_{i}$ and that resourc
 
 The exception is the case of $T_{n}$, which is waiting for resource $R_{n}$ that is held by $T_{0}$ (completing the cycle by wrapping around). 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Proof of No Circular Wait}
+
+
 Since Process $T_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. 
 
 But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. 
@@ -479,6 +569,10 @@ The other negative here is that the database server might need to lock items oth
 \frametitle{Fix It If We Must...}
 
 The tree protocol is useful if the goal is to prevent deadlock from happening, but it is not a very good solution given the tradeoffs.
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/doitover.jpg}
+\end{center}
 
 It is more likely that we will just allow transactions to proceed and detect if they do get stuck, and if so, try to do something to fix it.
 
