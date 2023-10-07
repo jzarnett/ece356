@@ -23,6 +23,17 @@ Transactions are fundamental to database operations.
 
 A transaction is a grouping of operations that belong together and should be treated as an indivisible unit. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/transactions.jpg}
+\end{center}
+
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Transactions}
+
+
 Remember \texttt{x++;}? The solution we used then was mutual exclusion.
 
 The transaction is the database way of dealing with the need to prevent intermediate state from becoming visible.
@@ -49,9 +60,19 @@ To execute a transaction we need first to create one.
 
 A transaction has a begin transaction statement, then the operations to take place in the transaction, and finally an end transaction statement. 
 
-Execution looks something like writing down the transaction into a log, doing the operations in the transaction. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/rememberit.jpg}
+\end{center}
 
-When the last one is complete, if all went well, mark the transaction as successful. 
+\end{frame}
+
+\begin{frame}
+\frametitle{Transactions: VCS}
+
+
+Execution looks something like writing down the transaction into a log, and then doing the operations in the transaction. 
+
+When the last one is complete, mark the transaction as successful. 
 
 
 \end{frame}
@@ -76,7 +97,17 @@ How might a transaction be unsuccessful?
 
 An error might be encountered in execution of the query.
 
-These exceptions, however, tend to be handled by undoing any partly-done changes.
+These exceptions tend to be handled by undoing any partly-done changes.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{ACID}
+Transactions should have the \alert{ACID} properties:
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/acid.jpg}
+\end{center}
 
 \end{frame}
 
@@ -99,11 +130,21 @@ It was inevitable that a bank analogy would be applied to transactions.
 
 The example revolves around transferring \$50 from account A to account B. 
 
-This is a common enough operation: your friend buys tickets to that Metallica Concert.
+This is a common operation: your friend buys tickets to a Metallica Concert.
 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/metallica.jpg}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Obligatory, Mandatory, Non-Optional Bank Analogy}
 You send an electronic bank transfer to said friend in the amount of your half.  
 
-Here's a situation where you need both parts to happen for everyone to be happy. 
+Here's a situation where both parts need to happen for everyone to be happy. 
 
 \end{frame}
 
@@ -135,11 +176,21 @@ Moreover, if we have a crash at this stage, the operation is only partway comple
 \begin{frame}
 \frametitle{Atomicity}
 
-The way we prevent this problem is the same way that NTFS does it: there is a log file. 
+The way we prevent this problem is the same way that NTFS does it: log file. 
 
 The transaction steps are written in the log file before they are executed. 
 
 The transaction is treated like a checklist: after each operation is done we check off the box next to the operation and then we may proceed to the next. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/step1.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Atomicity}
 
 If there is a crash and we have an inconsistent state, we can use the log to go backwards and undo the partially complete operation.
 
@@ -157,6 +208,15 @@ There aren't any sort of foreign key or unique key rules here.
 But: the sum of account A and account B must remain the same after the transaction is done. 
 
 If that is not true, then something is wrong and money has gone missing or been created out of thin air. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Consistency}
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/moneyprinter.jpg}
+\end{center}
 
 Destroying and creating money are the job of the central banks and they get very upset when you try to do it yourself at home. 
 
@@ -182,7 +242,17 @@ As we know, the same data is being accessed by multiple threads in a C program, 
 
 An unlucky interleaving of statements could happen here as well. 
 
-In a simple model, we can just solve the problem by doing transactions one at a time. 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/twoproblems.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Isolation}
+
+
+Simple solution: we can just do transactions one at a time. 
 
 Isolation is a very complex subject that will be the subject of the next lecture.
 
@@ -221,7 +291,17 @@ Hard drives can and do die at the worst possible times.
 
 A further level of storage beyond non-volatile is called \alert{stable storage} which they define as where data can never get lost. 
 
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/forever.jpg}
+\end{center}
+
 Never is somewhat exaggerated: no matter how many forms of storage you have, a nuclear war will probably get them all (or at least all of us). 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Stable Storage}
 
 The point of stable storage, though, is to be sure that even the failure of nonvolatile storage is not sufficient for data to get lost.
 
@@ -298,7 +378,17 @@ That is an important rule to hold to because without it we could check off an it
 \begin{frame}
 \frametitle{Managing the Log}
 
-If the transaction succeeds and is committed then it can be removed from the log. 
+If the transaction succeeds and is committed, it can be removed from the log. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/finalexam.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Managing the Log}
 
 This keeps the log file size reasonable. 
 
@@ -331,21 +421,40 @@ There are now two ways forward from the aborted state.
 
 The first is to re-try the transaction. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/tryagain.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Something went wrong...}
+
+
 Sometimes the transaction failed due to temporary circumstances, network disruption being one such example. 
 
 As we will see, transactions sometimes interfere with each other a bit and that can cause one of them to need to start over again. 
 
-The transaction, having been aborted, is assigned a new number and it tries again.
-
+The transaction, having been aborted, is assigned a new number.
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Failure = Death}
 
-The alternative is to kill the transaction, which is really just the same as giving up. 
+The alternative is to kill the transaction, which is really the same as giving up. 
 
 Giving up is mandatory if the operation in question failed due to some unrecoverable error such as trying to violate a constraint.
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/physics.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Failure = Death}
 
  An error of some sort will be returned the requesting program/client to indicate the failure. 
  
@@ -373,7 +482,10 @@ We could write data to a temporary location until such time that is true.
 
 Sometimes the state of an external write of some sort is fairly indeterminate: what happens if we aren't sure whether the data was sent to the printer?
 
-Sometimes, sadly, we actually want to show the status of a transaction to a user. Users love progress bars...
+Sometimes, we actually want to show the status of a transaction to a user. 
+
+
+Users love progress bars...
 
 \end{frame}
 
