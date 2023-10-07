@@ -28,6 +28,17 @@ The simple approach is to force transactions to run one at a time, which of cour
 \end{frame}
 
 \begin{frame}
+\frametitle{Transaction Isolation}
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/tooslow.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
 \frametitle{Threading}
 
 The database server has the same threading problems that you likely recall from the discussion of concurrency.
@@ -103,7 +114,16 @@ You could in theory start the second transaction a little bit early to get some 
 
 Well -- maybe! 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{More Speed, More Risk}
+
 That might be revealing the partial state of a transaction and that might not be acceptable. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/troy.png}
+\end{center}
 
 What if an error is encountered on assigning the balance of B because and the transaction is to be rolled back? Things start to get interesting...
 
@@ -168,14 +188,23 @@ T1.6. write B.balance
 
 If our intention is to ensure serializability, we do need to know how to tell if a schedule is serializable. 
 
-For simple examples like above, we can determine by inspection whether it is serializable.
+For simple examples, we can determine by inspection whether it is serializable.
 
-Those are the simple cases; when multiple transactions are interleaved it starts to get more difficult.
+When multiple transactions are interleaved it starts to get more difficult.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Determining Serializability}
 
 
-From the view of the database (or any program, really), it is more or less irrelevant what the contents of a variable or attribute are. 
+From the view of the database (or any program, really), it is more or less irrelevant what the contents of a variable or attribute are.
 
-The order reads and writes are what matter; the actual value is pretty much irrelevant.
+\begin{center}
+	\includegraphics[width=0.45\textwidth]{images/nobodycares.jpg}
+\end{center}
+
+The order reads and writes are what matter; the actual value is irrelevant.
 
 \end{frame}
 
@@ -198,9 +227,14 @@ Two transactions $T_{i}$ and $T_{j}$ are said to \alert{conflict} if they are op
 \begin{frame}
 \frametitle{Be Conflict-Free}
 
-Non-conflicting instructions can be swapped with no consequences in the schedule. 
+Non-conflicting instructions can swap with no consequences in the schedule. 
 
 If a schedule $S$ can be transformed into $S'$ by a series of swaps of non-conflicting instructions, we say that $S$ and $S'$ are conflict-equivalent.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Be Conflict-Free}
 
 If a particular schedule $S$ is conflict-equivalent to a serial schedule then it is called conflict-serializable.
 
@@ -215,11 +249,16 @@ A simple approach to determining the conflict-serializability of a schedule reli
 
 This is formed out of the transactions participating in the schedule and constraints are reflected as edges in this graph. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Determining Conflict-Serializability}
+
 Each transaction is a node. 
 
-If transaction $T_{i}$ does a read before transaction $T_{j}$ does a write, that is an edge from $T_{i}$ to $T_{j}$. 
+If $T_{i}$ does a read before $T_{j}$ does a write, that is an edge from $T_{i}$ to $T_{j}$. 
 
-The same holds for a read after write dependency and for a write after write dependency. 
+The same holds for a RAW dependency and for a WAW dependency. 
 
 \end{frame}
 
@@ -266,7 +305,7 @@ We would like to know what schedules make recovery possible at all, and even whi
 
 If we can recover from a problem, the schedule is called \alert{recoverable}. 
 
-A schedule that is not recoverable should never be chosen by the database server.
+A schedule that is not recoverable should never be chosen.
 
 It means a transaction that is aborted could potentially result in inconsistent results, violating the atomicity principle.
 
@@ -278,6 +317,14 @@ It means a transaction that is aborted could potentially result in inconsistent 
 On the other hand, if a transaction $T_{k}$ is committed, it should never be necessary to roll that transaction back. 
 
 If we did, the durability property would be violated. 
+
+What do we want?
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Recoverable}
+
 
 The behaviour we are looking for in the example is that if $T_{1}$ aborts for some reason, $T_{2}$ must also abort.
 
@@ -303,7 +350,17 @@ If we have two transactions as above like $T_{1}$ and $T_{2}$ and the first tran
 
 But: transaction that aborts may cause some other transactions to abort, which would in turn cause more transactions to abort.
 
- This is called a cascade rollback.
+This is called a \alert{cascade rollback}.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Cascade Rollback}
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/checkmate.png}
+\end{center}
+
 
 \end{frame}
 
@@ -366,7 +423,13 @@ Non-repeatable reads tend to happen in real life a lot.
 
 Selecting seats on a flight: when you go to select seats, you are presented with a map and you get to make your choice about which seat. 
 
-If multiple people are doing the same thing then there is no problem unless two people are trying to choose the same seat. 
+If multiple people are doing the same thing then there is no problem unless two people are trying to choose the same seat.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Non-Repeatable Reads}
+
 
 If that's not the case, then there is no conflict. 
 
@@ -382,20 +445,38 @@ Ultimately, one user will succeed and the second user will not.
 
 The successful user will be told of the success and the unsuccessful user will be prompted to select again, and be presented with the updated map. 
 
-This is a form of rollback, really:
+This is a form of rollback, really!
 
-The user then may choose whether to give up or try again. 
-
-In a rather unpleasant scenario, the user may be forced to try several times before succeeding.
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Non-Repeatable Reads}
 
-We could force serializability by allowing only one passenger to select seats at a time. 
+
+The user then may choose whether to give up or try again. 
+
+In a rather unpleasant scenario, the user may be forced to try several times before succeeding.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/seatconflict.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Non-Repeatable Reads}
+
+We could force serializability by allowing only 1 passenger to select at a time. 
 
 That might be acceptable (if annoying) if seat selection took place only at the time when flights are booked. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Non-Repeatable Reads}
+
 
 That isn't what happens, though; people select them at check-in. 
 
@@ -412,9 +493,15 @@ The stored data is called up and sent to the client for editing.
 
 If some other client is accessing that data at the same time, there is a conflict. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Client-Server Database Interactions}
+
+
 Before changes are applied, it is common to reload the underlying data and see if it has changed. 
 
-If so then the current edit cannot go through without some sort of confirmation or changes.
+If so, then the current edit cannot go through without some sort of confirmation or changes.
 
 \end{frame}
 
@@ -437,6 +524,11 @@ To actually achieve the isolation levels, there are three strategies:
 Locking is pretty much what you would expect: synchronization primitives are established and then they need to be acquired and released as is appropriate.
 
 Suppose we have locks for each table. If we need more than one table, we have the possibility of a deadlock. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Locking}
 
 Remember from the discussion of concurrency the idea of two-phase locking. 
 
