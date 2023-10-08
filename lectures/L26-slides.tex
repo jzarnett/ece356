@@ -23,6 +23,10 @@ We can also use timestamps for arranging concurrency.
 
 The timestamp, as you will recall, is a unique identifier, and they are typically assigned in the order the transactions are submitted to the system. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/herefirst.jpg}
+\end{center}
+
 If timestamps are used appropriately, then consistent results are produced without the use of any locks or locking, meaning deadlock can never occur.
 
 \end{frame}
@@ -35,6 +39,11 @@ The transactions can be ordered based on their timestamps.
 
 If a transaction $T_{i}$ arrives and then later another transaction $T_{j}$ arrives, then $T\!S(T_{i}) < T\!S(T_{j})$. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Timestamp Notation}
+
 If two transactions arrive at exactly the same time, then some sort of serialization procedure will be needed to make sure that they are not identical. 
 
 It is commonly the case that the system clock is used to get the time stamp; just read the current value of the clock and use that.
@@ -45,11 +54,11 @@ It is commonly the case that the system clock is used to get the time stamp; jus
 \begin{frame}
 \frametitle{Timestamp as Logical Counter}
 
-The alternative is a logical counter: increment a simple integer counter for each transaction. 
+Alternative: logical counter -- increment a simple integer counter.
 
 After a timestamp is assigned, just increment the counter. 
 
-Eventually there is a limit (even if you can have $2^{64}$ transactions, in theory, which is quite a lot, but not infinite).
+Eventually there is a limit (even if you can have $2^{64}$ transactions)
 
 At some point the transaction counter will need to roll over or reset.
 
@@ -59,6 +68,10 @@ At some point the transaction counter will need to roll over or reset.
 \frametitle{What Are Timestamps For}
 
 Generation of the timestamps is simple, it would seem, but what are they for? 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/telltime.jpg}
+\end{center}
 
 Timestamps are used for serializability order in the schedule. 
 
@@ -82,11 +95,19 @@ Each time the a data element $X$ is read or written, its appropriate timestamp i
 \begin{frame}
 \frametitle{Read and Write Timestamps}
 
-The formal definition of the read timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully read $X$. 
+The formal definition of the read timestamp of an item $X$: 
+
+The largest timestamp amongst all the timestamps of transactions that have successfully read $X$. 
 
 So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has read $X$ successfully.
+\end{frame}
 
-The formal definition of the write timestamp of an item $X$: the largest timestamp amongst all the timestamps of transactions that have successfully written $X$. 
+\begin{frame}
+\frametitle{Read and Write Timestamps}
+
+The formal definition of the write timestamp of an item $X$: 
+
+The largest timestamp amongst all the timestamps of transactions that have successfully written $X$. 
 
 So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has written $X$ successfully.
 
@@ -95,7 +116,11 @@ So $T\!S(X) = T\!S(T_{k})$ where $T_{k}$ is the youngest transaction that has wr
 \begin{frame}
 \frametitle{Cascading Rollback}
 
-Unfortunately, simple timestamp ordering does not avoid the risk of cascading rollback. 
+Sadly, simple timestamp ordering does not avoid the risk of cascading rollback. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/suezcanal.jpg}
+\end{center}
 
 Schedules are not guaranteed to be recoverable. 
 
@@ -142,7 +167,7 @@ The timestamp ordering protocol does provide us with conflict serializability.
 
 Starvation can still occur: a very long transaction might be constantly rolled back by shorter transactions constantly swooping in and making changes.
 
-Unfortunately it might be necessary to block other transactions and let the long one finish.
+It might be necessary to block other transactions and let the long one finish.
 
 
 \end{frame}
@@ -179,6 +204,15 @@ A modification of the basic algorithm called Thomas's Write Rule allows greater 
 
 To explain it simply, it is ``ignore outdated writes''.
 
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/thomas.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Thomas's Write Rule}
+
 More formally, the write item checks are modified to the following;
 \begin{enumerate}
 	\item If $T\!S_{r}(X) > T\!S(T_{i})$ then abort and roll back $T_{i}$ (write rejected).
@@ -191,13 +225,13 @@ More formally, the write item checks are modified to the following;
 \begin{frame}
 \frametitle{Validation Based Protocol}
 
-A transaction that is read-only does not interfere with any other read-only transaction. 
+A read-only transaction doesn't interfere with any other read-only transaction. 
 
 If a database has many more reads than writes, then a concurrency control routine might do unnecessary work or delay transactions unnecessarily.
 
-If we could instead just step in where transactions may be in conflict, that would be better. 
+What if we step in where transactions may be in conflict?
 
-It is necessary then to find out what transactions are the ones that have the potential for conflict...
+What transactions are the ones that have the potential for conflict...?
 
 
 \end{frame}
@@ -205,7 +239,7 @@ It is necessary then to find out what transactions are the ones that have the po
 \begin{frame}
 \frametitle{Validation Protocol}
 
-Transactions have three phases (although read only transactions skip the last one). 
+Transactions have three phases:
 
 \begin{enumerate}
 	\item \textbf{Read Phase.} 
@@ -221,8 +255,8 @@ Transactions have three phases (although read only transactions skip the last on
 The validation test for the current transaction $T_{i}$, for each transaction $T_{k}$ where $T\!S(T_{k}) < T\!S(T_{i})$, one of the following conditions must hold:
 
 \begin{enumerate}
-	\item $T_{k}$ finishes before the start of $T_{i}$: serializability order is maintained because the current transaction starts after the previous one finished.
-	\item The set of data items written by $T_{k}$ does not intersect with the set of data items read by $T_{i}$, and $T_{k}$ finishes writing before $T_{i}$ starts its validation phase. This ensures that the writes of these transactions do not overlap.
+	\item $T_{k}$ finishes before the start of $T_{i}$: serializability order is maintained because the current transaction starts after the previous one finished.\\[5em]
+	\item The set of data items written by $T_{k}$ does not intersect with the set of data items read by $T_{i}$, and $T_{k}$ finishes writing before $T_{i}$ starts its validation phase. 
 \end{enumerate} 
 
 \end{frame}
@@ -230,15 +264,25 @@ The validation test for the current transaction $T_{i}$, for each transaction $T
 \begin{frame}
 \frametitle{Validation Protocol}
 
-To make this work out as expected we need, now, three timestamps for each transaction. 
+Now there are three timestamps for each transaction. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/four-a-lot.jpg}
+\end{center}
 
 One for the start of the transaction, one for the start of the validation phase, and then a final timestamp for when the transaction is finished.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Validation Protocol}
+
 Validation prevents cascading rollbacks because the writes don't really take place until the validation phase has taken place.
 
-This is called \alert{optimistic concurrency control}: transactions assume they will finish. 
+This is \alert{optimistic concurrency control}: transactions assume they will finish. 
 
-The locking and timestamp approaches are a bit more pessimistic. They force a rollback if there is a risk of conflict.
+The locking and timestamp approaches are a bit more pessimistic.\\
+\quad They force a rollback if there is a risk of conflict.
 
 \end{frame}
 
@@ -262,20 +306,38 @@ The general recommendation is that optimistic approaches are lower overhead and 
 
 Thus far we have said that a transaction must be either delayed or denied (aborted) to ensure serializability. 
 
-In a multiversion scheme, we have multiple versions of the data at the same time.
+Multiversion scheme: we have multiple versions of the data at the same time.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/spidermen.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Multiversion Schemes}
 
 Instead of rejecting a read because a write has taken place in the meantime, the read is provided an older version of the item. 
 
 Choosing which one is meant to be read is the hard part of this routine.
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/spartacus.jpg}
+\end{center}
+
 \end{frame}
 
 \begin{frame}
 \frametitle{Keeping Extra Data}
 This does require more storage space to maintain multiple versions of the data. 
 
-Old versions might be maintained anyway for recovery, or just record keeping purposes.
+Old versions might be maintained anyway for recovery, or just record keeping.
 
-Many databases are used in environments where all changes must be tracked for legal reasons.
+Many DBs are in environments where changes must be tracked, by law.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/thelaw.jpg}
+\end{center}
 
 \end{frame}
 
@@ -287,9 +349,13 @@ Many databases are used in environments where all changes must be tracked for le
 Ensuring serializability requires holding to just two rules:
 
 \begin{enumerate}
-	\item If transaction $T$ tries to write item $X$, and version $i$ of $X$ has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$, and the read timestamp of $X_{i}$ is larger than the timestamp of $T$, the abort the transaction $T$ and roll it back. Otherwise, create a new version of $X$ with read and write timestamps equal to the timestamp of $T$.
+	\item If transaction $T$ tries to write item $X$, and version $i$ of $X$ has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$, and the read timestamp of $X_{i}$ is larger than the timestamp of $T$, the abort the transaction $T$ and roll it back. \\[1em]
 	
-	\item If transaction $T$ wants to read item $X$, find the version of $X$ ($X_{i}$) that has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$. Update the read timestamp of $X_{i}$ to the maximum of its current read timestamp and the timestamp of $T$.
+	Otherwise, create a new version of $X$ with read and write timestamps equal to the timestamp of $T$. \\[3em]
+	
+	\item If transaction $T$ wants to read item $X$, find the version of $X$ ($X_{i}$) that has the highest write timestamp of all versions of $X$ that is also less than or equal to the timestamp of $T$.  \\[1em]
+	
+	Update the read timestamp of $X_{i}$ to the maximum of its current read timestamp and the timestamp of $T$.
 \end{enumerate}
 
 
@@ -297,7 +363,7 @@ Ensuring serializability requires holding to just two rules:
 
 \begin{frame}
 \frametitle{Reading is Succeeding}
-The goal is that read operations are always successful, even if they read an older version. 
+Goal: read operations are always successful, even if they read an older version. 
 
 A write, however, might not be permitted if it comes ``too late'' -- trying to write a version that another transaction would have read. 
 
@@ -314,7 +380,13 @@ An old version is no longer needed when its write timestamp is smaller than that
 
 But one must be careful then to only delete old versions; at least the current version must be maintained. 
 
-But also it means that in a period in which there are no transactions active, we may clean up any old versions. 
+\end{frame}
+
+\begin{frame}
+\frametitle{Cleaning Up}
+
+
+It means that in a period in which there are no transactions active, we may clean up any old versions. 
 
 That may not occur frequently enough in a heavily used database, so it might be a periodic task to simply trash very old versions.
 
@@ -328,6 +400,12 @@ We resolve any conflicts on writes through rollbacks, which are expensive, rathe
 What if we said we want an all-of-the-above solution that combines two phase locking with the multiversion scheme? 
 
 The advantage of multiversion schemes is that reads don't fail. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Multiversion Two Phase Locking}
 
 The advantage of two phase locking is that locks allow transactions to wait rather than roll back, and deadlock is avoided. 
 
@@ -351,7 +429,7 @@ The timestamp under this scheme is an incrementing counter rather than the actua
 
 \begin{frame}
 \frametitle{Read-Only Transactions}
-Read-only transactions are assigned a timestamp based on the current value of the counter for update transactions, at the time when the read transaction is created. 
+Read-only transactions are assigned a timestamp based on the current value of the counter for update transactions at the time of creation. 
 
 Multiple read transactions can have the same value of their timestamp. 
 
