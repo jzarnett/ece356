@@ -20,9 +20,12 @@
 
 You should recall from learning about concurrency what deadlock is about, and therefore a brief review only is in order. 
 
-Those in need of a refresher are advised to take a look through previous courses' material to get caught up. 
+You may need to look through previous material (ECE 252) to get caught up.
 
-Others may find this to be review material, but it does deviate in some significant ways from the discussion of deadlocked processes.
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/goback.jpg}
+\end{center}
+
 
 \end{frame}
 
@@ -32,7 +35,6 @@ We have already introduced the subject of deadlock and gave an informal definiti
 
 A more formal definition: ``the \textit{permanent} blocking of a set of transactions that either compete for system resources or communicate with each other''. 
 
-There is emphasis on permanent. 
 
 It may be possible for all transactions to be stuck temporarily, because one is waiting for some event (e.g., a read from disk).
 
@@ -58,7 +60,7 @@ We could choose not to handle deadlock.
 
 This option is certainly convenient for database system designers! 
 
-While it is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. 
+It is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. 
 
 If two transactions get deadlocked, the user may simply see no progress and just feel bad about it. 
 
@@ -69,11 +71,9 @@ If two transactions get deadlocked, the user may simply see no progress and just
 
 The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. 
 
-If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening. 
+Goal: prevent circular wait from occurring.
 
-If we prevent the circular wait from occurring, we are still in a world where deadlock can occur. 
-
-We cleverly avoid it taking place based on how we allow locks to occur.
+We just cleverly avoid it taking place based on how we allow locks to occur.
 
 \end{frame}
 
@@ -82,7 +82,7 @@ We cleverly avoid it taking place based on how we allow locks to occur.
 
 This pillar cannot, generally speaking, be disallowed. 
 
-The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. 
+The purpose of  mutual exclusion is to prevent errors (eg, inconsistent state)
 
 Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. 
 
@@ -95,13 +95,17 @@ It is therefore not acceptable as a solution.
 \frametitle{Hold and Wait}
 To prevent the hold-and-wait condition, we must guarantee that when a transaction requests a resource, it does not have any other resource. 
 
-One plausible solution is that the transaction must request all resources at the beginning of the program. 
+Previous idea: the program must request all resources at the beginning of execution.
 
-So if the transaction is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program: 
+\end{frame}
 
-All three must be requested right at the beginning and held throughout the transaction.
+\begin{frame}
+\frametitle{Hold and Wait}
+So if the transaction is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point?
 
- No further resources may be requested at any time during execution
+All three must be requested at the beginning \& held throughout the transaction.
+
+ No further resources may be requested at any time during execution.
 
 \end{frame}
 
@@ -114,7 +118,7 @@ In the database context, if we have to preempt a transaction, it means the trans
 
 To work out an ordering, transactions are assigned a timestamp. 
 
-If a transaction is rolled back, its timestamp remains the same
+If a transaction is rolled back, its timestamp remains the same.
 \end{frame}
 
 
@@ -149,6 +153,10 @@ Otherwise, $T_{j}$ is ``wounded'' by $T_{i}$ and $T_{j}$ is rolled back.
 
 So, in case of a conflict, one of the two transactions is going to be rolled back. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/rollback.jpg}
+\end{center}
+
 And it is always the younger one. 
 
 In either approach there may be unnecessary rollbacks...
@@ -160,11 +168,11 @@ In either approach there may be unnecessary rollbacks...
 
 Instead we could also have locks that have timeouts. 
 
-When a lock is requested there is a defined maximum time the transaction is willing to wait. 
+When a lock is requested there is a max time the transaction is willing to wait. 
 
-If that time limit is reached, the transaction rolls back automatically and begins again. 
+If the limit is reached, the transaction rolls back automatically \& begins again. 
 
-The obvious difficulty lies in choosing the length of time that the transactions will wait.
+The difficulty lies in choosing the length of time that the transactions will wait.
 
 \end{frame}
 
@@ -172,6 +180,10 @@ The obvious difficulty lies in choosing the length of time that the transactions
 \frametitle{Circular Wait}
 
 We have already discussed the idea of using two phase locking to put an ordering on the locks and we need not repeat that yet again. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/infiniteloop.png}
+\end{center}
 
 
 \end{frame}
@@ -226,14 +238,21 @@ How often should the deadlock detection algorithm be run?
 \begin{frame}
 \frametitle{Deadlock Recovery}
 
-On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide. Or: 
+On the subject of what transaction to select as a victim we already identified the timestamp as one possible way to decide. 
+
+Other ideas?
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Deadlock Recovery}
 
 \begin{enumerate}
 \item How long the transaction has been executing.
-	\item How long is remaining in execution (see the estimates from the execution plan).
+	\item How long is remaining in execution	
 	\item What resources the transaction has used.
 	\item Future resource requests, if known.
-	\item How many times, if any, the transaction has been selected as a victim (to prevent starvation).
+	\item How many times, if any, the transaction has been selected as a victim.
 \end{enumerate}
 
 \end{frame}
@@ -313,6 +332,17 @@ Then a transaction must follow the six rules below:
 	\item All attempts to lock must observe the table (below) as to whether they are permitted to proceed (or wait).
 	\item The transaction must lock the root of the tree first (in any mode, but it must pick one).
 	\item A node $n$ can be locked in \textbf{S} or \textbf{IS} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{IS} mode.
+\end{enumerate}
+	
+\end{frame}
+
+\begin{frame}
+\frametitle{Intention Lock Rules}
+
+Then a transaction must follow the six rules below:
+
+\begin{enumerate}	
+ \setcounter{enumi}{3}
 	\item A node $n$ can be locked in \textbf{X}, \textbf{SIX}, or \textbf{IX} mode only if the parent of $n$ is locked in either \textbf{IX} or \textbf{SIX} mode.
 	\item A node $n$ may only be locked if the transaction has not previously unlocked any nodes.
 	\item A node $n$ may only be unlocked if none of the children of $n$ are locked by this transaction.
