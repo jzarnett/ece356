@@ -24,10 +24,20 @@ When there are several options, we can examine these options and make a determin
 
 We form candidates - pretenders to the throne of the correct database -  by breaking up the possibilities for repair into all of their possible variants. 
 
+ \end{frame}
+
+\begin{frame}
+\frametitle{Probabilistically Answering Queries}
+
+
+
 In each candidate database, one tuple from each cluster is selected. 
 
-Both candidate databases will receive a probability of being the ``correct" database.
+Both candidate databases will receive a probability of being the ``correct" one.
 
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/guessing.png}
+\end{center}
 
 \end{frame}
 
@@ -67,6 +77,12 @@ Both candidate databases will receive a probability of being the ``correct" data
 Suppose the query being asked were all the names of all employees making more than \$70~000. 
 
 In the trivial case, M. Stowe's salary is certainly greater than \$70~000, since its probability is 1 (completely certain). 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Are We Sure?}
 
 Uncertainty enters the picture when examining the J. Page tuples. 
 
@@ -149,6 +165,12 @@ The tuple we will consider correct is the one closest to the representative.
 
 For numerical data, similarity between two figures can be computed. 
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Inconsistent Data Probability}
+
 For data for which there is no obvious distance measure, we term them \alert{categorical data}; information loss as the distance metric.
 
 Information loss is simply a measure of the difference between  the tuple in question and the representative. 
@@ -174,6 +196,16 @@ Open question: how we might find a representative sample when it is not obviousl
 
 Whichever is picked to be the representative will not differ from the representative (by definition), so it will receive a probability of 1. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/hesme.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Choosing the Representative Data?}
+
 Thus, whatever we (perhaps randomly) choose to be our representative is the eventual winner and will be considered correct. 
 
 It is clear that we need to come to some decision, but reporting 100\% certainty about data which is, at best, 50\% certain is misleading. 
@@ -185,11 +217,24 @@ It is clear that we need to come to some decision, but reporting 100\% certainty
 
 This analysis also equates popular with correct.
 
-If an incorrect answer appears in the database twice and a correct answer once, then the incorrect answer will be chosen and deemed correct, since it is more popular. 
+If an incorrect answer appears in the database twice and a correct answer once, then the incorrect answer will be deemed correct, since it is more popular. 
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/vote.jpg}
+\end{center}
+
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Popular Answer...}
 
 That aside, there is not much that can be done about this problem... 
 
-Even a human observing the database might be more likely to conclude that the popular answer is the correct one, in the absence of additional, external knowledge.
+Even a human observing the database might be more likely to conclude that the popular answer is the correct one. 
+
+Unless they had some other external knowledge?
 
 \end{frame}
 
@@ -201,6 +246,9 @@ Computational complexity is broken down into a short analysis on each of the met
 
 Computational complexity may disqualify a method from being practically useful, should it take too much time to reach a reasonable answer.
 
+\begin{center}
+	\includegraphics[width=0.35\textwidth]{images/pleasewait.jpg}
+\end{center}
 
 
 \end{frame}
@@ -235,11 +283,17 @@ We can evaluate a query with an exponential number of possible repairs in polyno
 \begin{frame}
 \frametitle{Aggregate Query Transformation}
 
-Aggregate queries: build a conflict graph; a standard graph with nodes and edges. 
+Aggregate queries: build a conflict graph; a standard graph with nodes/edges. 
 
 In the graph, maximal independent sets - that is, sets that are the farthest apart in terms of data equality - represent possible repairs of the database. 
 
 As long as there is at most one nontrivial constraint, all operators except \texttt{COUNT} are polynomial time.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Aggregate Query Transformation}
 
 If there are many nontrivial constraints, then the problem of finding lower and upper bounds becomes NP-complete. 
 
@@ -275,14 +329,38 @@ The notes cover various deficiencies in the papers that went into this topic...
 \begin{frame}
 \frametitle{Conclusion}
 
-There appears to be no single right answer when dealing with an inconsistent database. 
+There is no single right answer when dealing with an inconsistent database. 
 
 However inconsistent it may be, it is unlikely that we will be able to unequivocally say what is correct and what is not. 
 
-With these techniques, we can certainly get back consistent answers to our queries. 
+\end{frame}
 
-The success of aggregate queries is less certain, but the chances are still reasonable.
 
+
+
+\begin{frame}
+\frametitle{Conclusion}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/soupdujour.jpg}
+\end{center}
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Conclusion}
+
+With these techniques, we can get back consistent answers to our queries. 
+
+
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/close-enough.jpg}
+\end{center}
+
+The success of aggregate queries is less certain; chances are still reasonable.
 
 \end{frame}
 
