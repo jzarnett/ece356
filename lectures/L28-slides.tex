@@ -24,8 +24,18 @@ Think about a company like Amazon (let's restrict ourselves for the moment to th
 They have accumulated a huge amount of data about the purchases made. 
 
 There needs to be a way to store this very large volume of data. That is what data \alert{warehousing} is about. 
+ \end{frame}
+ 
+ 
+\begin{frame}
+\frametitle{Data Warehousing and Mining}
+
 
 The purchase history of Amazon users between the years 2010 and 2015 is perhaps not needed on a regular basis, but it is saved and stored. 
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/museum.jpg}
+\end{center}
 
 But why? Because it can be \alert{mined}: it provides insights.
 
@@ -38,9 +48,9 @@ But why? Because it can be \alert{mined}: it provides insights.
 
 The more data we have, the better predictions we can make. 
 
-Amazon may know that 60\% of the time, someone who buys product $x$ will soon buy product $y$.
+Amazon may know that 60\% of the time, someone who buys product $X$ will soon buy product $Y$.
 
-They can suggest $y$ to you on the page when you have added $x$ to your cart.
+They can suggest $Y$ to you on the page when you have added $X$ to your cart.
 
 
 \end{frame}
@@ -62,22 +72,37 @@ But the truth is, this sort of data mining can be downright... creepy.
 \begin{frame}
 \frametitle{How Did It Know?}
 
-Consider this story by Charles Duhigg, in the New York Times about how Target (the retailer) used the data it has to make predictions about whether a woman is expecting a child soon...
+Consider this story by Charles Duhigg, in the New York Times about Target...
+
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/target.jpg}
+\end{center}
+
+Used its data to make predictions about whether a woman is expecting a child...
 
 \end{frame}
 
 \begin{frame}
 \frametitle{Data Warehousing}
 
-More generally, data warehousing is used to prepare large amounts of data for mining.
+Data warehousing is used to prepare large amounts of data for mining.
 
-The purpose of the mining is to be used in what is called a \alert{decision support system}. 
+The purpose of the mining is to be used in a \alert{decision support system}. 
 
-These are used to:
+\begin{center}
+	\includegraphics[width=0.35\textwidth]{images/draw25.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Decision Support System}
+
+These are used to (for example):
 
 \begin{itemize}
  \item Guess super personal information about shoppers
- \item Tell store managers what products they should have in stock in what month
+ \item Tell store managers what products they should stock in what month
  \item Tell factory managers what products they should manufacture
  \item Tell admissions officers what applicants should be admitted to a university
 \end{itemize}
@@ -144,9 +169,18 @@ As examples, names and addresses can be misspelled (especially if a name is unco
 
 So the same human may be represented by the names ``Megan'' and ``Meghan'' due to some entry error in one of the databases. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Cleansing Data}
+
 You have probably already seen the idea of data cleansing on the small scale.
 
 What happens if you have multiple contacts with the same name in your phone address book?
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/duplicates.png}
+\end{center}
 
 \end{frame}
 
@@ -190,6 +224,15 @@ A credit score is a way of assessing the likelihood that a person borrowing mone
 
 The best way of predicting whether or not someone is likely to repay a loan is, of course, their previous behaviour. 
 
+\begin{center}
+	\includegraphics[width=0.25\textwidth]{images/happening-again.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Association}
+
 But for someone who doesn't have a credit history, we might try to use some association data to predict: 
 
 (1) whether we should lend this person money and 
@@ -201,13 +244,23 @@ But for someone who doesn't have a credit history, we might try to use some asso
 \begin{frame}
 \frametitle{Association: Credit Scores}
 
-Suppose then there are four categories for credit: bad, average, good, and excellent. 
+Suppose there are four categories for credit: bad, average, good, and excellent. 
 
 Then we need to figure out what are the key elements that determine someone's repayment history. 
 
 We have some amount of data on an individual: place of birth, educational attainment, age, gender, income, marital status, and many more items. 
 
-Some of the information we have is  not relevant; some of it is. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Association: Credit Scores}
+
+Some of the information we have is not relevant; some of it is. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/futile.jpg}
+\end{center}
 
 What we are looking for is a statistical correlation that says, for example, repayment of a loan is correlated with higher income.
 
@@ -234,9 +287,9 @@ Then we verify the predictive power of the rules we have developed by looking at
 
 Now, in theory we could use every piece of available data to make a prediction. 
 
-Realistically we only care about those elements that have a correlation and predictive value. 
+We only care about those elements that have a correlation and predictive value. 
 
-And to prevent things from getting out of hand, we might pick only a top few items, ranking them from strongest correlation to weakest. 
+We might pick only a top few items, ranking them from strongest to weakest. 
 
 Using those we can then build a tree that will be used to classify the creditworthiness of people for whom we have no (or limited) data.
 
@@ -249,6 +302,10 @@ It's worth noting that sometimes data may point to certain correlations, but it 
 
 Discrimination based on elements like family origin, gender, religion, anything like that is unethical if not illegal in a given jurisdiction. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/disapproval-face.png}
+\end{center}
+
 We might have the data in our database, though, or be able to find it out.
 
 It is still not okay to use.
@@ -259,9 +316,7 @@ It is still not okay to use.
 \begin{frame}
 \frametitle{Credit Repayment}
 
-Assume data we have says the biggest predictor of loan repayment is degree attainment. 
-
-The next biggest is income. 
+Assume data we have says the biggest predictor of loan repayment is degree attainment; the next biggest is income. 
 
 
 \begin{center}
@@ -303,6 +358,10 @@ Suppose an insurance company wants to make some observations about who is at ris
 Criteria under consideration might be the colour of the vehicle insured and the number of horsepower of the engine. 
 
 At first glance your intuition might say that it is obvious that the colour of the car is not very important.
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/redcar.png}
+\end{center}
 
 What we would like, however, is a way to quantify it.
 
@@ -419,7 +478,13 @@ Looking at people who have a rating of excellent, the probability of income bein
 
 Looking at people who have a rating of good, the probability of income being in that range is 0.05.
 
- And if the overall fraction of people in excellent is 0.1 and the overall fraction in good is 0.3 we can plug and chug: 
+ And if the overall fraction of people in excellent is 0.1 and the overall fraction in good is 0.3 we can plug and chug...
+ 
+ \end{frame}
+
+
+\begin{frame}
+\frametitle{Using Bayes Theorem}
  
 The probability of excellent for this person is .01 and for good it is 0.015. 
 
@@ -434,11 +499,18 @@ The conditional probability of any particular attribute is highly dependant on t
 
 In the worst case scenario, we would need to draw from a pool of people who are exactly alike on all relevant attributes to ensure that the prediction is good.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Attributes Can Be Related}
+
 So we will assume that all attributes have independent distributions: i.e., we can simply multiply them together. 
 
 We know that isn't true, but it is sufficient for the job of estimation. 
 
-It just might make a stats prof cry.
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/personally.jpg}
+\end{center}
 
 \end{frame}
 
@@ -448,6 +520,11 @@ It just might make a stats prof cry.
 Remember that association is about events that are likely to take place at the same time; e.g., a customer who buys one item is likely to buy another. 
 
 We are basically, once again, looking at statistics here. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Association}
 
 If the user adds the Blu-Ray disk for ``Inception'' to their cart. 
 
@@ -483,7 +560,7 @@ So if the premise is that buying milk implies buying bread, milk is the antecede
 \begin{frame}
 \frametitle{Support}
 
-If it so happens that 0.001\% of all purchases include both milk and screwdrivers, then support for the proposition that milk implies screwdrivers is very low. 
+If 0.001\% of all purchases include both milk and screwdrivers, then support for the proposition that milk implies screwdrivers is very low. 
 
 If, however, 50\% of all purchases include both milk and bread, support for this rule is very high.
 
@@ -498,6 +575,11 @@ The proposition of bread implies milk has a confidence of 80\% if 80\% of purcha
 
 A proposition with low confidence is probably not useful. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Confidence}
+
 Keep in mind that P implies Q can have a different confident from Q implies P, even though they have the same support. 
 
 That is to say, it might be the case that: \\
@@ -510,7 +592,7 @@ That is to say, it might be the case that: \\
 \begin{frame}
 \frametitle{What Do We Suggest?}
 
-In short, we want to find the items that are most likely to be purchased together. 
+So: we want to find the items that are most likely to be purchased together. 
 
 So first we find the sets of items that have large support (e.g., are likely to be purchased together). 
 
@@ -523,11 +605,19 @@ Then we look at the confidence level inside each set. Only those with sufficient
 
 To wrap up, a small digression about data visualization. 
 
-A visualization system helps users to look at large volumes of data and detect patterns. 
+A visualization helps users to look at large volumes of data and detect patterns. 
 
 If data is presented well, then humans can see patterns in the data that might not otherwise be easy to detect. 
+\end{frame}
 
-Bar charts, heat maps, and line graphs can all be effective ways of representing the data.
+\begin{frame}
+\frametitle{Data Visualization}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/stonks.jpg}
+\end{center}
+
+Bar charts, heat maps, line graphs can be effective ways of representing data.
 
 \end{frame}
 
