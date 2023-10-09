@@ -22,7 +22,17 @@
 
 We already got a look at the idea of transaction isolation but we are now going to examine more carefully how it works behind the scenes. 
 
-In general, the idea is that every transaction has its own ``world'' it can operate in and then we need to merge the result when the transaction is ready to commit. 
+ \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Snapshot Isolation for Concurrency Control}
+The idea is that every transaction has its own ``world'' it can operate in and then we need to merge the result when the transaction is ready to commit. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/ismine.jpg}
+\end{center}
 
 And that needs to be done atomically.
 
@@ -37,7 +47,17 @@ This applies really only for transactions that do at least one write.
 
 If the two writes are on disjoint items, there are no problems there either. 
 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Validation}
+
 It only gets interesting if there are two transactions that have items in common that run at the same time. 
+
+\begin{center}
+	\includegraphics[width=0.75\textwidth]{images/tugofwar.jpg}
+\end{center}
 
 Remember that here, when we talk about concurrency, we mean two transactions that are ``active'' at the same time.
 
@@ -63,9 +83,21 @@ Whichever transaction $T$ is ready to commit first has to pass a simple test.
 
 If any transaction concurrent with $T$ has already written an update to any data item that $T$ wants to write, $T$ is rolled back. 
 
+
 Otherwise $T$ commits and its updates are written to the database. 
 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{First Committer Wins}
+
 It's called first committer wins, because whatever transaction gets to the commit statement proceeds and any later transactions are rolled back.
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/good-day-sir.jpg}
+\end{center}
 
 \end{frame}
 
@@ -81,7 +113,7 @@ It is the timing of the write rather than the timing of the commit that indicate
 
 \begin{frame}
 \frametitle{Locking and Unlocking}
-Locks are always released when the transaction either commits or aborts as is necessary. 
+Locks are always released when the transaction either commits or aborts.
 
 A transaction $T_{2}$ writes a value later than $T_{1}$ writes that same value might actually succeed if for some other reason the first transaction aborts. 
 
@@ -96,15 +128,26 @@ But to keep things from getting rather confusing it is likely a simple implement
 This scheme as presented, however, does not ensure serializability.
 
 
-Example 1: We have two concurrent transactions $T_{1}$ and $T_{2}$ that operate on $A$ and $B$. 
+Example 1: Concurrent transactions $T_{1}$ and $T_{2}$ that operate on $A$ and $B$. 
 
 If $T_{1}$ reads $A$ and $B$, then updates $B$ and $T_{2}$ reads $A$ and $B$ and updates $A$, we have the potential for a conflict. 
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Serializability}
 
 Neither transaction sees the updates of the other when they do their reads. 
 
 When it comes to the write... well... 
 
 Neither transaction is detected as conflicting and neither is rolled back.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/badfeeling.jpg}
+\end{center}
 
 \end{frame}
 
@@ -128,21 +171,34 @@ $T_{1}$ reads $B$ and updates $B$, and $T_{2}$ reads $A$ and $B$ and updates $A$
 
 As before, there are no direct conflicts on the data items so neither first-committer-wins nor first-updater-wins would detect a problem. 
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Serializability}
+
 Furthermore, there's a possible serial order here: there are no conflicts on $A$, and no cycle in the precedence graph: 
 
 $T_{2}$ reads the value of $B$ that existed before the write by $T_{1}$.
-
 
 \end{frame}
 
 \begin{frame}
 \frametitle{A Wild Transaction Appears!}
 
-A third transaction, even one that is read-only, can cause the cycle to occur, however. 
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/t3.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{A Wild Transaction Appears!}
+
+A third transaction, even one that is read-only, can cause the cycle to occur. 
 
 If $T_{1}$ commits and $T_{2}$ is still running, and $T_{3}$ is created and its view of the world has the update from $T_{1}$ but not $T_{2}$...
 
-Suddenly we have the cycle in the precedence graph, rendering the schedule non-serializable.
+We have the cycle in the precedence graph, making it non-serializable.
 
 
 \end{frame}
@@ -165,7 +221,7 @@ We might have to really enforce constraints: the primary key.
 
 If you have a sequential counter of some sort, an ID number, then two newly created entries could produce the same new number. 
 
-Neither transaction can detect that another has tried to use the same ID number. 
+Neither transaction can detect that another tried to use the same ID number. 
 
 Only when we are actually ready to perform the second commit will the duplicate key value be detected.
 
@@ -187,7 +243,7 @@ But those are pretty important operations, so we can't ignore them forever.
 \begin{frame}
 \frametitle{Deletion}
 
-The impact of delete depends, obviously, on what the else is going on at the time. 
+The impact of delete depends on what the else is going on at the time. 
 
 We can take a view of what happens by considering the relation of the delete instruction relative to other instructions. 
 
@@ -199,11 +255,13 @@ The delete operation requires an exclusive lock on that data item.
 \begin{frame}
 \frametitle{Deletion}
 
+Cases to consider:
+
 \begin{itemize}
-	\item \textbf{Read instruction}: If the delete $I_{1}(X)$ happens before a read of X then the read will get a logical error; if the read happens before the delete, there is no problem.
-	\item \textbf{Write Instruction}: If the delete happens before the write, the write will get a logical error; if the write happens before the delete, there is no problem.
-	\item \textbf{Delete Instruction}: Whichever instruction goes first will succeed; the second one will have an error (can't delete a deleted item).
-	\item \textbf{Insert Instruction}: If the element doesn't exist to begin with, the delete can't be before the insert, otherwise there's nothing to delete... If the item did exist then a delete should go first so the new item replaces it.
+	\item \textbf{Read instruction}
+	\item \textbf{Write Instruction}	
+	\item \textbf{Delete Instruction}
+	\item \textbf{Insert Instruction}
 \end{itemize}
 
 
@@ -214,7 +272,7 @@ The delete operation requires an exclusive lock on that data item.
 
 The insert operation conflicts were explained above when discussing deletion, so they don't need to be repeated here. 
 
-Insert is also a lot like a write, so again, the insert operation is treated like a write. 
+Insert is also like a write, so again, the insert operation is treated like a write. 
 
 The newly created item is treated as exclusively locked by its creating transaction until the transaction commits.
 
@@ -261,6 +319,11 @@ There are two possibilities for how this might go:
 If $T_{2}$ happens first, nothing weird happens -- in the serial schedule, first it's $T_{2}$ then $T_{1}$ and the new book appears in the results. 
 
 In the second case, if $T_{1}$ goes first and it does not contain the new book, then in the serial schedule, $T_{1}$ appears first... 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Sing Once Again With Me / Our Strange Duet}
 
 Except... these transactions do not operate on any tuples in common and yet there is still some dependencies between them. 
 
@@ -315,7 +378,7 @@ Holding this sort of lock only restricts whether other transaction can update (o
 
 Even so, it's not all that dissimilar from the idea of having one lock for the whole table, in that it almost serializes all transactions.
 
-An alternative is \alert{index locking}, which allows us to lock parts of the index at finer granularity.
+An alternative is \alert{index locking}, which allows us to lock parts of the index.
 
 \end{frame}
 
@@ -326,8 +389,18 @@ An alternative is \alert{index locking}, which allows us to lock parts of the in
 
 \begin{itemize}
 	\item Every relation must have at least one index.
-	\item A transaction $T_{i}$ can only access tuples after it has found them using an index (if we must do a full table scan, it's treated as if we just crawled through the whole of some index...)
+	\item A transaction $T_{i}$ can only access tuples after it has found them using an index.
 	\item A transaction that performs a lookup (finding one tuple or multiple) must get a shared lock on all the index leaf nodes it accesses.
+\end{itemize}
+	
+	\end{frame}
+
+
+
+\begin{frame}
+\frametitle{He's There, The Phantom of the Database}
+
+\begin{itemize}
 	\item A transaction may not insert, delete, or update any tuples in the relation without updating every index of that relation. That requires getting exclusive locks on all index leaf nodes affected by the operation. 
 	\item Locks are still obtained on tuples as usual.
 	\item Two phase locking protocol still must be followed. 
@@ -342,7 +415,7 @@ You may imagine that the idea of index locking does not actually match very well
 
 Example: only checking on things that affect author. 
 
-That sort of locking technique sounds good but it is more difficult to implement. 
+That technique sounds good but it is more difficult to implement. 
 
 \end{frame}
 
@@ -353,7 +426,9 @@ The SQL standard provides several isolation levels, and it's not necessary that 
 
 We can weaken the rules a bit to get some more performance out of the database and that gives us what is called \alert{weak consistency}. 
 
-There are rules, but they are more like... guidelines?
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/barbosa.jpg}
+\end{center}
 
 \end{frame}
 
@@ -375,11 +450,11 @@ This means that we might read out of date data, but uncommitted values can never
 
 Cursor stability is a form of degree-two consistency for programs that iterate over some set of tuples using an iterator or cursor. 
 
-This means that the tuples are examined or processed one at a time, in some order. 
+The tuples are examined or processed one at a time, in some order. 
 
 The tuple currently being examined needs to be locked: before processing it is locked in shared mode. 
 
-If any processing changes that tuple then it must first be locked in exclusive mode. 
+If any processing changes that tuple, it must first be locked in exclusive mode. 
 
 \end{frame}
 
@@ -390,9 +465,9 @@ We don't get serializability of the transactions.
 
 It can be a way to improve performance in a database where there are a number of relations that are popular and frequently accessed. 
 
-But ultimately this offloads some of the work onto the applications using the database. 
+This offloads some of the work onto the applications using the database. 
 
-They must make sure they don't have a problem with non-serializable schedules.
+They must be sure they don't have a problem with non-serializable schedules.
 
 
 \end{frame}
@@ -400,10 +475,16 @@ They must make sure they don't have a problem with non-serializable schedules.
 \begin{frame}
 \frametitle{Users Ruin Everything...}
 
-Remember the example earlier about selecting seats on a flight (or at a concert or sporting event...). 
+Remember the example earlier about selecting seats on a flight?
 
-When you go to select seats, you are presented with a map and you get to make your choice about which seat. 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/seat-selection.png}
+\end{center}
 
+\end{frame}
+
+\begin{frame}
+\frametitle{Users Ruin Everything...}
 You have some period of time, e.g., 2 to 10 minutes to get this done. 
 
 That is a very long time as far as the database is concerned. 
@@ -416,7 +497,7 @@ If two transactions select the same seats then we reject the second transaction.
 \begin{frame}
 \frametitle{Users Ruin Everything...}
 
-This does have a major drawback when we're dealing with user-level timeframes. 
+This has a major drawback when we're dealing with user-level timeframes. 
 
 The database must remember information about updates performed by a transaction long after it has ended... 
 
@@ -480,7 +561,7 @@ If we want optimistic concurrency control, then we must also check the version n
 
 We can use special handling for the index structures to improve performance. 
 
-More obviously, we can allow non-serializable access to the index as long as the results are consistent. 
+Allow non-serializable access to the index as long as the results are consistent. 
 
 
 \end{frame}
@@ -490,9 +571,19 @@ More obviously, we can allow non-serializable access to the index as long as the
 
 The first technique for locking on index structures is the \alert{crabbing protocol}.
 
+\begin{center}
+	\includegraphics[width=0.4 \textwidth]{images/crab.jpg}
+\end{center}
+
 When searching for a key value, first lock the root note in shared mode. 
 
 When traversing down the tree, acquire a shared lock on the child node and release the lock on the parent node, repeating this until a leaf node is reached.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Crabbing Protocol}
+
 
 When performing an insertion or deletion of a leaf node:
 \begin{itemize}
@@ -534,7 +625,7 @@ Leaf nodes are locked using the two phase protocol.
 
 The rules for lookup are followed to find the leaf node where the records will be inserted or deleted. 
 
-The lock for the leaf is upgraded to exclusive, and the insertion or deletion is performed. 
+The lock for the leaf is upgraded to exclusive; insertion or deletion is performed. 
 
 Two phase locking is used to avoid the phantom phenomenon.
 
@@ -547,7 +638,7 @@ If as a result of insertion or deletion, a split or coalescence is needed...
 
 If a node is split, a new node is created as per normal for a B-Tree and it becomes the right sibling of the original node. 
 
-The previous right sibling of the original is now the right sibling of the new node. 
+The previous right sibling of the original is the right sibling of the new node. 
 
 Then the original node is released and an exclusive lock on the parent is requested to insert a pointer to that new node.
 
@@ -579,7 +670,7 @@ The parent may be coalesced as well if necessary, otherwise it is released.
 \begin{frame}
 \frametitle{B-Link Chemistry}
 
-Now let's see what happens if there is a lookup while this is going on at this point. 
+Let's see what happens if there is a lookup while this is going on.
 
 The lookup gets blocked at the bottom-left leaf node because it is exclusively locked by the insertion. 
 
