@@ -9,7 +9,7 @@ jobs:
         with:
           set-safe-directory: '/github/workspace'
       - id: files
-        uses: jzarnett/get-changed-files@v1.3.1
+        uses: jzarnett/get-changed-files@v1.4.0
       - run: |
           cp lectures/compiled/* lectures
           for changed_file in ${{ steps.files.outputs.added_modified }}; do
