@@ -42,10 +42,6 @@ One might conclude that queries on the database would be impossible or the answe
 
 We do have things we can do...
 
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/hope.jpg}
-\end{center}
-
 \end{frame}
 
 
@@ -97,18 +93,13 @@ However, it is not the case, that by simply relying on error-detection and rule 
 
 One way it could be inconsistent is from data warehousing; when data is imported from various sources and may need cleaning before storing. 
 
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/peaceorder.jpg}
-\end{center}
-\hfill ``Soon peace and order will be restored throughout the galaxy.''
-
-One way it could be inconsistent is from data warehousing; when data is imported from various sources and may need cleaning before storing. 
 
 \end{frame}
 
 
 \begin{frame}
 \frametitle{Strictness isn't Everything}
+
 
 The second is database integration: when some data is stored across many databases stitched together.
 
@@ -144,6 +135,7 @@ The nature of the repair will obviously be context-dependent.
 
 \end{frame}
 
+
 \begin{frame}
 \frametitle{Fix It!}
 
@@ -156,7 +148,6 @@ The basic definition of a repair $D'$ of a database $D$ is that $D'$ is a modifi
 
 \end{frame}
 
-
 \begin{frame}
 \frametitle{Basic Principles of Repairs}
 
@@ -165,7 +156,6 @@ There are infinitely many such database repairs that can be performed.
 \begin{center}
 	\includegraphics[width=0.25\textwidth]{images/thanos1.jpeg}
 \end{center}
-
 
 We add a further restriction; that the new database $D'$ is changed only minimally from the original $D$.
 
@@ -182,26 +172,14 @@ Making the minimal set of changes necessary to meet all constraints $C$ is nice.
 
 If a database is consistent, then the minimal repair is to do nothing ($D' = D$). 
 
-Furthermore, we will always be able to find a repair to the database.
+Furthermore, we will always be able to find a repair to the the database.
 
 \end{frame}
-
-
-
 
 \begin{frame}
 \frametitle{Minimal = Best?}
 
 With that in mind, it is sometimes undesirable to make the minimal set of changes, because that may simply be deletion of the offending tuple(s). 
-
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/indy.jpg}
-\end{center}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Minimal = Best?}
 
 While deletion may bring the database into a consistent state, it also may mean data loss, and that is generally not our first choice. 
 
@@ -286,13 +264,6 @@ How to repair a string such that it is unique in the relation?
 \frametitle{Performing More Complex Repairs}
 
 The number of possible strings which meet this condition is infinite (though it may be constrained from infinite to infeasible by limiting the length attribute. 
-
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Performing More Complex Repairs}
 
 Under those circumstances, insert a \texttt{null} into that attribute.
 
@@ -585,7 +556,6 @@ Existential qualifiers may lead to co-NP-completeness, and computational feasibi
 
 
 \end{frame}
-
 
 \end{document}
 
