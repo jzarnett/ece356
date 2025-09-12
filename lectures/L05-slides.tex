@@ -624,7 +624,7 @@ Like an insertion we may use the result of a subquery as the predicate in a wher
 
 We could delete all license plates where the registered address province is not Ontario with something like: 
 
-\texttt{DELETE FROM license\_plate WHERE owner\_address\_id IN (SELECT id FROM owner\_address WHERE province <> 'ON');}
+\texttt{DELETE FROM license\_plate WHERE owner\_address\_id IN (SELECT id FROM owner address WHERE province <> 'ON');}
 
 \end{frame}
 
