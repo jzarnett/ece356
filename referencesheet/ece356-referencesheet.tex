@@ -1,0 +1,232 @@
+\documentclass[legalpaper,10pt]{article}
+
+\usepackage{titling}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{setspace}
+\usepackage{subfig}
+\usepackage{sectsty}
+\usepackage{pdfpages}
+\usepackage{colortbl}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{relsize}
+\usepackage{amsmath}
+\usepackage{ifsym}
+\usepackage{ulem}
+\usepackage{fancyvrb}
+\usepackage{amsmath,amssymb,amsthm,graphicx,xspace}
+\usepackage[titlenotnumbered,noend,noline]{algorithm2e}
+\usepackage[compact]{titlesec}
+\usepackage{XCharter}
+\usepackage[T1]{fontenc}
+\usepackage[scaled]{beramono}
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata,shapes,trees,matrix,chains,scopes,positioning,calc,patterns}
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    text width=2.5em, text centered, rounded corners, minimum height=2em]
+\tikzstyle{bw} = [rectangle, draw, fill=blue!20, 
+    text width=4em, text centered, rounded corners, minimum height=2em]
+
+\definecolor{namerow}{cmyk}{.40,.40,.40,.40}
+\definecolor{namecol}{cmyk}{.40,.40,.40,.40}
+
+\let\LaTeXtitle\title
+\renewcommand{\title}[1]{\LaTeXtitle{\textsf{#1}}}
+
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+
+\newcommand{\handout}[5]{
+  \noindent
+  \begin{center}
+  \framebox{
+    \vbox{
+      \hbox to 5.78in { {\bf ECE254: Operating Systems and Systems Programming } \hfill #2 }
+      \vspace{4mm}
+      \hbox to 5.78in { {\Large \hfill #4  \hfill} }
+      \vspace{2mm}
+      \hbox to 5.78in { {\em #3 \hfill} }
+    }
+  }
+  \end{center}
+  \vspace*{4mm}
+}
+
+\newcommand{\lecture}[3]{\handout{#1}{#2}{#3}{Lecture #1}}
+\newcommand{\tuple}[1]{\ensuremath{\left\langle #1 \right\rangle}\xspace}
+
+\addtolength{\oddsidemargin}{-1.000in}
+\addtolength{\evensidemargin}{-0.500in}
+\addtolength{\textwidth}{2.0in}
+\addtolength{\topmargin}{-1.000in}
+\addtolength{\textheight}{1.75in}
+\addtolength{\parskip}{\baselineskip}
+\setlength{\parindent}{0in}
+\renewcommand{\baselinestretch}{1.5}
+\newcommand{\term}{Spring 2015}
+
+\singlespace
+
+\newcommand{\vclass}{ECE 356: Database Systems}
+\newcommand{\vtitle}{Reference Sheet}
+%\newcommand{\vpage}{1}
+%\newcommand{\vqcount}{2 }
+\newcommand{\rectangle}[3]{\tikz \draw (0,0) rectangle (#1,#2) node[pos=.5]{#3};}
+\newcommand{\multiline}[2][c]{%
+  \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+ 
+\pagestyle{fancy}
+\usepackage{lastpage}
+\lhead{Instructor: J. Zarnett}
+\chead{}
+\rhead{\bfseries \vtitle: \vclass }
+%\lfoot{}
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{0.3cm}
+
+%\newcommand{\answer}[1]{\fbox{\parbox{.8\linewidth}{\textbf{Answer guide:} \\#1}}}
+%\renewcommand{\answer}[1]{}
+
+\begin{document}
+
+\textbf{A. (Partial) ``University'' Database Definition}\\
+{\tt
+  student( \underline{student\_id}, firstname, lastname, date\_of\_birth, userid )\\
+  course( \underline{course\_code}, name, calendar\_desc, credits)\\
+  section( \underline{course\_code, section\_number, term}, instructor\_id )\\
+  enrolment( \underline{student\_id, course\_code, section\_number, term}, grade )\\
+  instructor( \underline{id}, firstname, lastname, peng, department\_id, salary ) \\
+  department( \underline{id}, name, faculty\_id, budget )\\
+  faculty( \underline{id}, name )
+}
+
+\begin{tabular}{l|l}
+	\textbf{Table Name} & \textbf{Foreign Key(s)} \\ \hline
+	\texttt{section} & \texttt{course\_code} $\rightarrow$ \texttt{course.course\_code} \\ 
+	~ & \texttt{instructor\_id} $\rightarrow$ \texttt{instructor.id} \\
+	\hline
+	\texttt{enrolment} & \texttt{student\_id} $\rightarrow$ \texttt{student.student\_id} \\
+	~ & \texttt{course\_code, section\_number, term} $\rightarrow$ \texttt{section.course\_code, section\_number, term} \\ \hline
+	\texttt{instructor} & \texttt{department\_id}  $\rightarrow$ \texttt{department.id} \\ \hline
+	\texttt{department} & \texttt{faculty\_id} $\rightarrow$ \texttt{faculty.id} \\ 
+
+\end{tabular}
+
+\textbf{B. Relational Algebra}
+
+\begin{tabular}{c|l||c|l||c|l}
+	\textbf{Symbol} & \textbf{Meaning} & \textbf{Symbol} & \textbf{Meaning} & \textbf{Symbol} & \textbf{Meaning} \\ \hline
+	
+	$\sigma$ & Selection & $\Pi$ & Projection & $\cup$ & Union \\
+	$ \times $ & Cartesian Product & $ - $ & Minus (Difference) & $ \rho $ & Rename \\
+	$ \cap $ & Intersection &  $ \leftarrow $ & Assignment & $ \Join $ & Join \\
+	${\tiny \textifsym{d|><|}} $ & Left Outer Join & ${\tiny \textifsym{|><|d}} $ & Right Outer Join & $ {\tiny \textifsym{d|><|d}} $ & Full Outer Join \\	
+\end{tabular}
+
+
+
+\textbf{C. Armstrong's Axioms \& Derived Rules}
+\vspace{-1em}
+\begin{itemize}
+\setlength\itemsep{0em}
+	\item \textbf{Reflexivity}: If $\alpha$ is a set of attributes and $\beta$ is contained within $\alpha$, then $\alpha \rightarrow \beta$ holds.
+	\item \textbf{Augmentation}: If $\alpha \rightarrow \beta$ holds and $\gamma$ is a set of attributes, then $\gamma\alpha \rightarrow \gamma\beta$ holds.
+	\item \textbf{Transitivity}: If $\alpha \rightarrow \beta$ holds and $\beta \rightarrow \gamma$ holds, then $\alpha \rightarrow \gamma$ holds.
+	\item \textbf{Union}: If $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds, then $\alpha \rightarrow \beta\gamma$ holds.
+	\item \textbf{Decomposition}: If $\alpha \rightarrow \beta\gamma$ holds, then  $\alpha \rightarrow \beta$ holds and $\alpha \rightarrow \gamma$ holds (reverse of previous rule).
+	\item \textbf{Pseudotransitivity}: If $\alpha \rightarrow \beta$ holds and $\gamma\beta \rightarrow \delta$ holds, then $\alpha\gamma \rightarrow \delta$ holds.
+\end{itemize}
+
+\setlist{nolistsep}
+\textbf{D. Query Transformation Rules}
+
+\begin{enumerate}
+\setlength\itemsep{0.9em}
+\item Conjunctive Selection:
+$\sigma_{\theta_{1} \wedge \theta_{2}}(E) = \sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E))$
+
+\item Selection Commutes:
+ $\sigma_{\theta_{1}}(\sigma_{\theta_{2}}(E)) = \sigma_{\theta_{2}}(\sigma_{\theta_{1}}(E))$
+
+\item Projection Redundancy Elimination:
+ $\Pi_{L_{1}}(\Pi_{L_{2}}(\Pi_{L_{3}}(E))) = \Pi_{L_{1}}(E)$
+
+\item Commuting Selection and Projection: $\Pi_{L}(\sigma_{\theta}(E)) = \sigma_{\theta}(\Pi_{L}(E))$
+
+\item Selection Combination
+
+\begin{enumerate}
+
+\item $\sigma_{\theta}(E_{1} \times E_{2}) = E_{1} \bowtie_{\theta} E_{2}$
+
+\item $\sigma_{\theta_{1}}( E_{1} \bowtie_{\theta_{2}} E_{2}) = E_{1} \bowtie_{\theta_{1}\wedge\theta_{2}} E_{2}$
+\end{enumerate}
+
+
+\item Theta Joins Commute:
+$E_{1} \bowtie_{\theta} E_{2} = E_{2} \bowtie_{\theta} E_{1}$
+
+\item Natural Join Associates:
+\begin{enumerate}
+
+\item $(E_{1} \bowtie E_{2}) \bowtie E_{3} = E_{1} \bowtie (E_{2} \bowtie E_{3})$. 
+
+\item $(E_{1} \bowtie_{\theta_{1}} E_{2}) \bowtie_{\theta_{2}\wedge\theta_{3}} E_{3} = E_{1} \bowtie_{\theta_{1}\wedge\theta_{3}} (E_{2} \bowtie_{\theta_{2}} E_{3})$. 
+
+\item $(E_{1} \times E_{2}) \times E_{3} = E_{1} \times (E_{2} \times E_{3})$. 
+\end{enumerate}
+
+
+\item Selection Distribution:
+\begin{enumerate}
+\item $\sigma_{\theta_{0}}(E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{0}}(E_{1})) \bowtie_{\theta} E_{2}$ 
+
+\item $\sigma_{\theta_{1}\wedge\theta_{2}} (E_{1} \bowtie_{\theta} E_{2}) = (\sigma_{\theta_{1}}(E_{1})) \bowtie_{\theta} (\sigma_{\theta_{2}}(E_{2})) $
+
+\end{enumerate}
+
+\item Projection Distribution:
+
+\begin{enumerate}
+\item $\Pi_{L_{1} \cup L_{2}}( E_{1} \bowtie_{\theta} E_{2} ) = (\Pi_{L_{1}}(E_{1})) \bowtie_{\theta} (\Pi_{L_{2}}(E_{2}))$
+
+\item $\Pi_{L_{1} \cup L_{2}} (E_{1} \bowtie_{\theta} E_{2}) = \Pi_{L_{1} \cup L_{2}}((\Pi_{L_{1} \cup L_{3}}(E1)) \bowtie_{\theta} (\Pi_{L_{2} \cup L_{4}}(E_{2})))$
+
+\end{enumerate}
+
+\item Set Operations Commute:
+
+\begin{enumerate}
+
+\item $E_{1} \cup E_{2} = E_{2} \cup E_{1}$
+
+\item $E_{1} \cap E_{2} = E_{2} \cap E_{1}$
+\end{enumerate}
+
+\item Set Operations Associate:
+
+\begin{enumerate}
+\item $(E_{1} \cup E_{2}) \cup E_{3} = E_{1} \cup (E_{2} \cup E_{3})$
+
+\item $(E_{1} \cap E_{2}) \cap E_{3} = E_{1} \cap (E_{2} \cap E_{3})$
+\end{enumerate}
+
+\item Selection Distribution 2:
+
+\begin{enumerate}
+\item $\sigma_{\theta}(E_{1} \cup E_{2}) = \sigma_{\theta}(E_{1}) \cup \sigma_{\theta}(E_{2})$
+
+\item $\sigma_{\theta}(E_{1} \cap E_{2}) = \sigma_{\theta}(E_{1}) \cap \sigma_{\theta}(E_{2})$
+
+\item $\sigma_{\theta}(E_{1} - E_{2}) = \sigma_{\theta}(E_{1}) - \sigma_{\theta}(E_{2})$
+\end{enumerate}
+
+\item Projection Distribution 2: $\Pi_{L}(E_{1} \cup E_{2} = (\Pi_{L}(E_{1}))\cup(\Pi_{L}(E_{2}))$
+\end{enumerate}
+
+
+\end{document}
