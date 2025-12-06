@@ -118,7 +118,7 @@ Repeat the process with the larger runs as input until we produce the sorted fil
 
 Suppose the file consists of 10~000 blocks and we can fit 50 blocks in memory to do the sort. 
 
-We can therefore create runs of 10~000/50 = 200 blocks each. 
+We can therefore create 10~000/50 = 200 runs.
 
 Each run is sorted. 
 
@@ -543,7 +543,7 @@ The outer join operation requires us to add some tuples that don't have a match 
 
 A nested loop algorithm isn't too bad: if there is no match then pad the tuples with nulls on the appropriate side(s) and add it to the output.
 
-Or: compute the (regular) join, then do a select on all tuples, subtracting those without a match, and pad those tuples and add them to the result.
+Or: compute the (regular) join, then do a select on all tuples, keeping those without a match, and pad those tuples and add them to the result.
 
 
 \end{frame}
